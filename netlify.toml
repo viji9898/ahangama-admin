@@ -9,3 +9,8 @@
   port = 8888
   targetPort = 5173
   functions = "netlify/functions"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
