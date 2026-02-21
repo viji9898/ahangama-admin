@@ -41,7 +41,12 @@ interface Venue {
   created_at?: string;
 }
 
-export default function VenueDetail({ venue }: { venue?: Venue }) {
+type Props = {
+  venue?: Venue;
+  onVenueUpdated?: (venue: Partial<Venue>) => void;
+};
+
+export default function VenueDetail({ venue, onVenueUpdated }: Props) {
   const [localVenue, setLocalVenue] = useState<Venue | undefined>(venue);
 
   useEffect(() => {
@@ -50,6 +55,7 @@ export default function VenueDetail({ venue }: { venue?: Venue }) {
 
   const handleVenueUpdated = (updated: Partial<Venue> | undefined) => {
     if (!updated) return;
+    onVenueUpdated?.(updated);
     setLocalVenue((prev) => {
       const updatedId = updated?.id;
       if (prev?.id && updatedId && prev.id === updatedId) {

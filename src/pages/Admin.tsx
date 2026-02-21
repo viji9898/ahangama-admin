@@ -67,6 +67,18 @@ export default function Admin() {
     fetchVenues();
   }, []);
 
+  const handleVenueUpdated = (updated: Partial<Venue>) => {
+    const updatedId = String(updated?.id || "").trim();
+    if (!updatedId) return;
+
+    setVenues((prev) =>
+      prev.map((v) => (v.id === updatedId ? { ...v, ...updated } : v)),
+    );
+    setSelectedVenue((prev) =>
+      prev?.id === updatedId ? { ...prev, ...updated } : prev,
+    );
+  };
+
   return (
     <div
       style={{
@@ -157,7 +169,7 @@ export default function Admin() {
         </Table>
       </div>
       <div style={{ flex: 1, minWidth: 400, maxWidth: "50vw" }}>
-        <VenueDetail venue={selectedVenue} />
+        <VenueDetail venue={selectedVenue} onVenueUpdated={handleVenueUpdated} />
       </div>
     </div>
   );

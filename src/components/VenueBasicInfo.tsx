@@ -23,6 +23,20 @@ type Props = {
 };
 
 export function VenueBasicInfo({ venue, onVenueUpdated }: Props) {
+  const formatDateTime = (value: unknown) => {
+    if (!value) return "—";
+    const d = new Date(String(value));
+    if (Number.isNaN(d.getTime())) return String(value);
+
+    return new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d);
+  };
+
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -200,10 +214,12 @@ export function VenueBasicInfo({ venue, onVenueUpdated }: Props) {
               <b>Area:</b> {venue?.area}
             </div>
             <div>
-              <b>Updated At:</b> {venue?.updatedAt || venue?.updated_at}
+              <b>Updated At:</b>{" "}
+              {formatDateTime(venue?.updatedAt || venue?.updated_at)}
             </div>
             <div>
-              <b>Created At:</b> {venue?.createdAt || venue?.created_at}
+              <b>Created At:</b>{" "}
+              {formatDateTime(venue?.createdAt || venue?.created_at)}
             </div>
           </Col>
         </Row>
