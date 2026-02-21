@@ -27,6 +27,21 @@ function getAllowedEmails() {
 }
 
 export function requireAdmin(event) {
+  // 🔹 1. Allow import secret (machine access)
+  const headers = event.headers || {};
+  const importSecret =
+    headers["x-admin-import-secret"] || headers["X-Admin-Import-Secret"];
+
+  if (importSecret && process.env.ADMIN_IMPORT_SECRET) {
+    if (importSecret === process.env.ADMIN_IMPORT_SECRET) {
+      return { email: "import@system" };
+    }
+    const err = new Error("FORBIDDEN");
+    err.statusCode = 403;
+    throw err;
+  }
+
+  // 🔹 2. Existing cookie-based admin auth
   const cookieHeader = event.headers?.cookie || event.headers?.Cookie || "";
   const cookies = parseCookies(cookieHeader);
 

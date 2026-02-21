@@ -69,7 +69,7 @@ export async function handler(event) {
       .toLowerCase();
     const id = String(body.id || slug)
       .trim()
-      .toLowerCase(); // id defaults to slug
+      .toLowerCase();
 
     if (!destinationSlug) return badRequest("destinationSlug is required");
     if (!name) return badRequest("name is required");
@@ -80,15 +80,14 @@ export async function handler(event) {
     const categories = Array.isArray(body.categories)
       ? body.categories.map(String)
       : [];
-
     const emoji = Array.isArray(body.emoji) ? body.emoji.map(String) : [];
-
     const bestFor = Array.isArray(body.bestFor) ? body.bestFor.map(String) : [];
-
     const tags = Array.isArray(body.tags) ? body.tags.map(String) : [];
-
     const offers = Array.isArray(body.offers) ? body.offers : [];
 
+    // NOTE: This UPSERT updates on id conflict.
+    // If you also want to resolve conflicts on (destination_slug, slug),
+    // see note below.
     const sql = `
       INSERT INTO venues (
         id, destination_slug, name, slug, status,
@@ -114,7 +113,34 @@ export async function handler(event) {
         $22,$23,$24,
         $25,$26,$27
       )
-      RETURNING *;
+      ON CONFLICT (id) DO UPDATE SET
+        destination_slug = EXCLUDED.destination_slug,
+        name = EXCLUDED.name,
+        slug = EXCLUDED.slug,
+        status = EXCLUDED.status,
+        categories = EXCLUDED.categories,
+        emoji = EXCLUDED.emoji,
+        stars = EXCLUDED.stars,
+        reviews = EXCLUDED.reviews,
+        discount = EXCLUDED.discount,
+        excerpt = EXCLUDED.excerpt,
+        description = EXCLUDED.description,
+        best_for = EXCLUDED.best_for,
+        tags = EXCLUDED.tags,
+        card_perk = EXCLUDED.card_perk,
+        offers = EXCLUDED.offers,
+        how_to_claim = EXCLUDED.how_to_claim,
+        restrictions = EXCLUDED.restrictions,
+        area = EXCLUDED.area,
+        lat = EXCLUDED.lat,
+        lng = EXCLUDED.lng,
+        logo = EXCLUDED.logo,
+        image = EXCLUDED.image,
+        og_image = EXCLUDED.og_image,
+        map_url = EXCLUDED.map_url,
+        instagram_url = EXCLUDED.instagram_url,
+        whatsapp = EXCLUDED.whatsapp
+      RETURNING *, (xmax = 0) AS inserted;
     `;
 
     const params = [
@@ -156,16 +182,10 @@ export async function handler(event) {
       body.whatsapp ?? null,
     ];
 
-    try {
-      const r = await query(sql, params);
-      return json(200, { ok: true, venue: toVenueDto(r.rows[0]) });
-    } catch (e) {
-      const msg = String(e?.message || e);
-      if (msg.toLowerCase().includes("duplicate key")) {
-        return json(409, { ok: false, error: "Venue already exists" });
-      }
-      throw e;
-    }
+    const r = await query(sql, params);
+    const row = r.rows[0];
+    const inserted = !!row.inserted;
+    return json(200, { ok: true, inserted, venue: toVenueDto(row) });
   } catch (e) {
     const statusCode = e?.statusCode || 500;
     return json(statusCode, { ok: false, error: String(e?.message || e) });
