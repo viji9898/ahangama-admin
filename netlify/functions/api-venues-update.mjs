@@ -14,6 +14,7 @@ function toVenueDto(row) {
     name: row.name,
     slug: row.slug,
     status: row.status,
+    live: row.live,
     categories: row.categories ?? [],
     emoji: row.emoji ?? [],
     stars: row.stars,
@@ -72,36 +73,38 @@ export async function handler(event) {
         slug             = COALESCE($4, slug),
         status           = COALESCE($5, status),
 
-        categories       = COALESCE($6::text[], categories),
-        emoji            = COALESCE($7::text[], emoji),
+        live             = COALESCE($6::boolean, live),
 
-        stars            = COALESCE($8::numeric, stars),
-        reviews          = COALESCE($9::int, reviews),
-        discount         = COALESCE($10::numeric, discount),
+        categories       = COALESCE($7::text[], categories),
+        emoji            = COALESCE($8::text[], emoji),
 
-        excerpt          = COALESCE($11, excerpt),
-        description      = COALESCE($12, description),
+        stars            = COALESCE($9::numeric, stars),
+        reviews          = COALESCE($10::int, reviews),
+        discount         = COALESCE($11::numeric, discount),
 
-        best_for         = COALESCE($13::text[], best_for),
-        tags             = COALESCE($14::text[], tags),
+        excerpt          = COALESCE($12, excerpt),
+        description      = COALESCE($13, description),
 
-        card_perk        = COALESCE($15, card_perk),
-        offers           = COALESCE($16::jsonb, offers),
+        best_for         = COALESCE($14::text[], best_for),
+        tags             = COALESCE($15::text[], tags),
 
-        how_to_claim     = COALESCE($17, how_to_claim),
-        restrictions     = COALESCE($18, restrictions),
+        card_perk        = COALESCE($16, card_perk),
+        offers           = COALESCE($17::jsonb, offers),
 
-        area             = COALESCE($19, area),
-        lat              = COALESCE($20::double precision, lat),
-        lng              = COALESCE($21::double precision, lng),
+        how_to_claim     = COALESCE($18, how_to_claim),
+        restrictions     = COALESCE($19, restrictions),
 
-        logo             = COALESCE($22, logo),
-        image            = COALESCE($23, image),
-        og_image         = COALESCE($24, og_image),
+        area             = COALESCE($20, area),
+        lat              = COALESCE($21::double precision, lat),
+        lng              = COALESCE($22::double precision, lng),
 
-        map_url          = COALESCE($25, map_url),
-        instagram_url    = COALESCE($26, instagram_url),
-        whatsapp         = COALESCE($27, whatsapp)
+        logo             = COALESCE($23, logo),
+        image            = COALESCE($24, image),
+        og_image         = COALESCE($25, og_image),
+
+        map_url          = COALESCE($26, map_url),
+        instagram_url    = COALESCE($27, instagram_url),
+        whatsapp         = COALESCE($28, whatsapp)
 
       WHERE id = $1
       RETURNING *;
@@ -118,6 +121,8 @@ export async function handler(event) {
       has("name") ? String(body.name).trim() : null,
       has("slug") ? String(body.slug).trim().toLowerCase() : null,
       has("status") ? String(body.status).trim().toLowerCase() : null,
+
+      has("live") ? Boolean(body.live) : null,
 
       has("categories")
         ? Array.isArray(body.categories)

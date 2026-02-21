@@ -11,6 +11,7 @@ interface Venue {
   name?: string;
   slug?: string;
   status?: string;
+  live?: boolean;
   categories?: string[];
   emoji?: string[];
   stars?: number;

@@ -18,6 +18,7 @@ function toVenueDto(row) {
     name: row.name,
     slug: row.slug,
     status: row.status,
+    live: row.live,
     categories: row.categories ?? [],
     emoji: row.emoji ?? [],
     stars: row.stars,
@@ -86,6 +87,7 @@ export async function handler(event) {
     const sql = `
       SELECT
         id, destination_slug, name, slug, status,
+        live,
         categories, emoji,
         stars, reviews, discount,
         excerpt, description,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import VenueDetail from "./VenueDetail";
 
-import { Table, Tag } from "antd";
+import { Badge, Table, Tag } from "antd";
 import "antd/dist/reset.css";
 
 interface Venue {
@@ -10,6 +10,7 @@ interface Venue {
   name?: string;
   slug?: string;
   status?: string;
+  live?: boolean;
   categories?: string[];
   emoji?: string[];
   stars?: number;
@@ -112,17 +113,27 @@ export default function Admin() {
           })}
         >
           <Table.Column<Venue>
+            title="Live"
+            dataIndex="live"
+            width={60}
+            render={(_, record) => (
+              <span style={{ fontSize: 22, lineHeight: 1 }}>
+                <Badge status={(record.live ?? true) ? "success" : "error"} />
+              </span>
+            )}
+          />
+          <Table.Column<Venue>
             title="Logo"
             dataIndex="logo"
-            width={100}
+            width={75}
             render={(logo) =>
               logo ? (
                 <img
                   src={logo}
                   alt="logo"
                   style={{
-                    width: 32,
-                    height: 32,
+                    width: 28,
+                    height: 28,
                     objectFit: "contain",
                     borderRadius: 4,
                   }}
@@ -131,8 +142,9 @@ export default function Admin() {
             }
           />
           <Table.Column<Venue> title="Name" dataIndex="name" />
-          <Table.Column<Venue> title="ID" dataIndex="id" />
-          <Table.Column<Venue> title="Slug" dataIndex="slug" />
+
+          {/* <Table.Column<Venue> title="ID" dataIndex="id" />
+          <Table.Column<Venue> title="Slug" dataIndex="slug" /> */}
           <Table.Column<Venue>
             title="Categories"
             dataIndex="categories"

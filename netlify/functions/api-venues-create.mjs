@@ -14,6 +14,7 @@ function toVenueDto(row) {
     name: row.name,
     slug: row.slug,
     status: row.status,
+    live: row.live,
     categories: row.categories ?? [],
     emoji: row.emoji ?? [],
     stars: row.stars,
@@ -76,6 +77,7 @@ export async function handler(event) {
     if (!slug) return badRequest("slug is required");
 
     const status = String(body.status || "active").toLowerCase();
+    const live = typeof body.live === "boolean" ? body.live : true;
 
     const categories = Array.isArray(body.categories)
       ? body.categories.map(String)
@@ -91,6 +93,7 @@ export async function handler(event) {
     const sql = `
       INSERT INTO venues (
         id, destination_slug, name, slug, status,
+        live,
         categories, emoji,
         stars, reviews, discount,
         excerpt, description,
@@ -103,21 +106,23 @@ export async function handler(event) {
       )
       VALUES (
         $1,$2,$3,$4,$5,
-        $6,$7,
-        $8,$9,$10,
-        $11,$12,
-        $13,$14,
-        $15,$16::jsonb,
-        $17,$18,
-        $19,$20,$21,
-        $22,$23,$24,
-        $25,$26,$27
+        $6,
+        $7,$8,
+        $9,$10,$11,
+        $12,$13,
+        $14,$15,
+        $16,$17::jsonb,
+        $18,$19,
+        $20,$21,$22,
+        $23,$24,$25,
+        $26,$27,$28
       )
       ON CONFLICT (id) DO UPDATE SET
         destination_slug = EXCLUDED.destination_slug,
         name = EXCLUDED.name,
         slug = EXCLUDED.slug,
         status = EXCLUDED.status,
+        live = EXCLUDED.live,
         categories = EXCLUDED.categories,
         emoji = EXCLUDED.emoji,
         stars = EXCLUDED.stars,
@@ -149,6 +154,8 @@ export async function handler(event) {
       name,
       slug,
       status,
+
+      live,
 
       categories,
       emoji,

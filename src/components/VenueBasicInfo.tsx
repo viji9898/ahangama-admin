@@ -23,6 +23,9 @@ export function VenueBasicInfo({ venue }: { venue: any }) {
             <b>Status:</b> {venue?.status}
           </div>
           <div>
+            <b>Live:</b> {venue?.live ? "Yes" : "No"}
+          </div>
+          <div>
             <b>Area:</b> {venue?.area}
           </div>
           <div>
