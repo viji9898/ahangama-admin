@@ -181,31 +181,30 @@ export function VenueDescription({ venue, onVenueUpdated }: Props) {
           </Button>
         }
       >
-      <Row gutter={32}>
-        <Col span={12}>
-          <div>
-            <b>Excerpt:</b> {venue?.excerpt || "—"}
-          </div>
-          <div>
-            <b>Description:</b> {venue?.description || "—"}
-          </div>
-          <div>
-            <b>Best For:</b>{" "}
-            {normalizeList(venue?.bestFor).length
-              ? normalizeList(venue?.bestFor).join(", ")
-              : "—"}
-          </div>
-        </Col>
-        <Col span={12}>
-          <div>
-            <b>How To Claim:</b> {venue?.howToClaim || "—"}
-          </div>
-          <div>
-            <b>Restrictions:</b> {venue?.restrictions || "—"}
-          </div>
-        </Col>
-      </Row>
-
+        <Row gutter={32}>
+          <Col span={12}>
+            <div>
+              <b>Excerpt:</b> {venue?.excerpt || "—"}
+            </div>
+            <div>
+              <b>Description:</b> {venue?.description || "—"}
+            </div>
+            <div>
+              <b>Best For:</b>{" "}
+              {normalizeList(venue?.bestFor).length
+                ? normalizeList(venue?.bestFor).join(", ")
+                : "—"}
+            </div>
+          </Col>
+          <Col span={12}>
+            <div>
+              <b>How To Claim:</b> {venue?.howToClaim || "—"}
+            </div>
+            <div>
+              <b>Restrictions:</b> {venue?.restrictions || "—"}
+            </div>
+          </Col>
+        </Row>
       </Card>
 
       <Modal
@@ -311,17 +310,19 @@ export function VenueDescription({ venue, onVenueUpdated }: Props) {
 
         {baseline.excerpt !== current.excerpt && (
           <div>
-            <Typography.Text strong>Excerpt:</Typography.Text> {baseline.excerpt || "—"} →{" "}
-            {current.excerpt || "—"}
+            <Typography.Text strong>Excerpt:</Typography.Text>{" "}
+            {baseline.excerpt || "—"} → {current.excerpt || "—"}
           </div>
         )}
         {baseline.description !== current.description && (
           <div>
-            <Typography.Text strong>Description:</Typography.Text> {baseline.description ? "(updated)" : "(empty)"} →{" "}
+            <Typography.Text strong>Description:</Typography.Text>{" "}
+            {baseline.description ? "(updated)" : "(empty)"} →{" "}
             {current.description ? "(updated)" : "(empty)"}
           </div>
         )}
-        {JSON.stringify(baseline.bestFor) !== JSON.stringify(current.bestFor) && (
+        {JSON.stringify(baseline.bestFor) !==
+          JSON.stringify(current.bestFor) && (
           <div>
             <Typography.Text strong>Best For:</Typography.Text>{" "}
             {baseline.bestFor.length ? baseline.bestFor.join(", ") : "—"} →{" "}
@@ -330,13 +331,14 @@ export function VenueDescription({ venue, onVenueUpdated }: Props) {
         )}
         {baseline.howToClaim !== current.howToClaim && (
           <div>
-            <Typography.Text strong>How to claim:</Typography.Text> {baseline.howToClaim || "—"} →{" "}
-            {current.howToClaim || "—"}
+            <Typography.Text strong>How to claim:</Typography.Text>{" "}
+            {baseline.howToClaim || "—"} → {current.howToClaim || "—"}
           </div>
         )}
         {baseline.restrictions !== current.restrictions && (
           <div>
-            <Typography.Text strong>Restrictions:</Typography.Text> {baseline.restrictions ? "(updated)" : "(empty)"} →{" "}
+            <Typography.Text strong>Restrictions:</Typography.Text>{" "}
+            {baseline.restrictions ? "(updated)" : "(empty)"} →{" "}
             {current.restrictions ? "(updated)" : "(empty)"}
           </div>
         )}
