@@ -30,7 +30,9 @@ const maxBytesForKind = (kind) => {
 };
 
 const keyFor = (venueId, kind) => {
-  const safeId = String(venueId || "").trim().toLowerCase();
+  const safeId = String(venueId || "")
+    .trim()
+    .toLowerCase();
   if (!safeId) return null;
   if (kind === "logo") return `venues/${safeId}/logo.jpg`;
   if (kind === "image") return `venues/${safeId}/image.jpg`;

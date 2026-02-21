@@ -96,7 +96,10 @@ export default function VenueDetail({ venue, onVenueUpdated }: Props) {
         venue={localVenue}
         onVenueUpdated={handleVenueUpdated}
       />
-      <VenueDescription venue={localVenue} onVenueUpdated={handleVenueUpdated} />
+      <VenueDescription
+        venue={localVenue}
+        onVenueUpdated={handleVenueUpdated}
+      />
       <VenueLocationSocial
         venue={localVenue}
         onVenueUpdated={handleVenueUpdated}

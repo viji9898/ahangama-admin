@@ -13,7 +13,9 @@ const maxBytesForKind: Record<Kind, number> = {
 };
 
 const requiredDimsForKind: Record<Kind, { w: number; h: number }> = {
-  logo: { w: 100, h: 100 },
+  // logo: max 1000x1000
+  logo: { w: 1000, h: 1000 },
+  // image + ogImage: exact 1200x630
   image: { w: 1200, h: 630 },
   ogImage: { w: 1200, h: 630 },
 };
@@ -140,11 +142,20 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
     const dims = requiredDimsForKind[kind];
     try {
       const { w, h } = await loadImageDimensions(file);
-      if (w !== dims.w || h !== dims.h) {
-        message.error(
-          `${labelForKind[kind]} must be exactly ${dims.w}×${dims.h}px (got ${w}×${h}px).`,
-        );
-        return;
+      if (kind === "logo") {
+        if (w > dims.w || h > dims.h) {
+          message.error(
+            `${labelForKind[kind]} must be at most ${dims.w}×${dims.h}px (got ${w}×${h}px).`,
+          );
+          return;
+        }
+      } else {
+        if (w !== dims.w || h !== dims.h) {
+          message.error(
+            `${labelForKind[kind]} must be exactly ${dims.w}×${dims.h}px (got ${w}×${h}px).`,
+          );
+          return;
+        }
       }
     } catch (e) {
       message.error(String((e as Error)?.message || e));
@@ -194,7 +205,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
             disabled={!venue?.id || uploading !== null}
             loading={uploading === "logo"}
           >
-            Upload Logo (100×100, ≤50KB)
+            Upload Logo (≤1000×1000, ≤50KB)
           </Button>
           <Button
             size="small"

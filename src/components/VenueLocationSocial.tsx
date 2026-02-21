@@ -135,12 +135,16 @@ export function VenueLocationSocial({ venue, onVenueUpdated }: Props) {
     }
 
     const payload: Record<string, unknown> = { id };
-    if ((baseline.lat ?? null) !== (current.lat ?? null)) payload.lat = current.lat;
-    if ((baseline.lng ?? null) !== (current.lng ?? null)) payload.lng = current.lng;
-    if (baseline.mapUrl !== current.mapUrl) payload.mapUrl = current.mapUrl || null;
+    if ((baseline.lat ?? null) !== (current.lat ?? null))
+      payload.lat = current.lat;
+    if ((baseline.lng ?? null) !== (current.lng ?? null))
+      payload.lng = current.lng;
+    if (baseline.mapUrl !== current.mapUrl)
+      payload.mapUrl = current.mapUrl || null;
     if (baseline.instagramUrl !== current.instagramUrl)
       payload.instagramUrl = current.instagramUrl || null;
-    if (baseline.whatsapp !== current.whatsapp) payload.whatsapp = current.whatsapp || null;
+    if (baseline.whatsapp !== current.whatsapp)
+      payload.whatsapp = current.whatsapp || null;
 
     setSaving(true);
     try {
@@ -198,73 +202,73 @@ export function VenueLocationSocial({ venue, onVenueUpdated }: Props) {
           </Button>
         }
       >
-      <Row gutter={32}>
-        <Col span={12}>
-          <div>
-            <b>Lat:</b> {venue?.lat}
-          </div>
-          <div>
-            <b>Lng:</b> {venue?.lng}
-          </div>
-          <div>
-            <b>Map URL:</b>{" "}
-            {venue?.mapUrl ? (
-              <Button
-                size="small"
-                type="link"
-                href={venue.mapUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open
-              </Button>
-            ) : (
-              "—"
-            )}
-          </div>
-        </Col>
-        <Col span={12}>
-          <div>
-            <b>Instagram URL:</b>{" "}
-            {venue?.instagramUrl ? (
-              <Button
-                size="small"
-                type="link"
-                href={venue.instagramUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open
-              </Button>
-            ) : (
-              "—"
-            )}
-          </div>
-          <div>
-            <b>WhatsApp:</b> {venue?.whatsapp || "—"}
-          </div>
-        </Col>
+        <Row gutter={32}>
+          <Col span={12}>
+            <div>
+              <b>Lat:</b> {venue?.lat}
+            </div>
+            <div>
+              <b>Lng:</b> {venue?.lng}
+            </div>
+            <div>
+              <b>Map URL:</b>{" "}
+              {venue?.mapUrl ? (
+                <Button
+                  size="small"
+                  type="link"
+                  href={venue.mapUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open
+                </Button>
+              ) : (
+                "—"
+              )}
+            </div>
+          </Col>
+          <Col span={12}>
+            <div>
+              <b>Instagram URL:</b>{" "}
+              {venue?.instagramUrl ? (
+                <Button
+                  size="small"
+                  type="link"
+                  href={venue.instagramUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open
+                </Button>
+              ) : (
+                "—"
+              )}
+            </div>
+            <div>
+              <b>WhatsApp:</b> {venue?.whatsapp || "—"}
+            </div>
+          </Col>
 
-        <Col span={24} style={{ marginTop: 16 }}>
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>Map</div>
-          {hasCoords ? (
-            <iframe
-              title="Venue map"
-              src={mapEmbedUrl}
-              style={{
-                width: "100%",
-                height: 320,
-                border: 0,
-                borderRadius: 8,
-              }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          ) : (
-            <div style={{ color: "#888" }}>No coordinates available.</div>
-          )}
-        </Col>
-      </Row>
+          <Col span={24} style={{ marginTop: 16 }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Map</div>
+            {hasCoords ? (
+              <iframe
+                title="Venue map"
+                src={mapEmbedUrl}
+                style={{
+                  width: "100%",
+                  height: 320,
+                  border: 0,
+                  borderRadius: 8,
+                }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            ) : (
+              <div style={{ color: "#888" }}>No coordinates available.</div>
+            )}
+          </Col>
+        </Row>
       </Card>
 
       <Modal
@@ -374,32 +378,32 @@ export function VenueLocationSocial({ venue, onVenueUpdated }: Props) {
 
         {(baseline.lat ?? null) !== (current.lat ?? null) && (
           <div>
-            <Typography.Text strong>Lat:</Typography.Text> {String(baseline.lat ?? "—")} →{" "}
-            {String(current.lat ?? "—")}
+            <Typography.Text strong>Lat:</Typography.Text>{" "}
+            {String(baseline.lat ?? "—")} → {String(current.lat ?? "—")}
           </div>
         )}
         {(baseline.lng ?? null) !== (current.lng ?? null) && (
           <div>
-            <Typography.Text strong>Lng:</Typography.Text> {String(baseline.lng ?? "—")} →{" "}
-            {String(current.lng ?? "—")}
+            <Typography.Text strong>Lng:</Typography.Text>{" "}
+            {String(baseline.lng ?? "—")} → {String(current.lng ?? "—")}
           </div>
         )}
         {baseline.mapUrl !== current.mapUrl && (
           <div>
-            <Typography.Text strong>Map URL:</Typography.Text> {baseline.mapUrl || "—"} →{" "}
-            {current.mapUrl || "—"}
+            <Typography.Text strong>Map URL:</Typography.Text>{" "}
+            {baseline.mapUrl || "—"} → {current.mapUrl || "—"}
           </div>
         )}
         {baseline.instagramUrl !== current.instagramUrl && (
           <div>
-            <Typography.Text strong>Instagram URL:</Typography.Text> {baseline.instagramUrl || "—"} →{" "}
-            {current.instagramUrl || "—"}
+            <Typography.Text strong>Instagram URL:</Typography.Text>{" "}
+            {baseline.instagramUrl || "—"} → {current.instagramUrl || "—"}
           </div>
         )}
         {baseline.whatsapp !== current.whatsapp && (
           <div>
-            <Typography.Text strong>WhatsApp:</Typography.Text> {baseline.whatsapp || "—"} →{" "}
-            {current.whatsapp || "—"}
+            <Typography.Text strong>WhatsApp:</Typography.Text>{" "}
+            {baseline.whatsapp || "—"} → {current.whatsapp || "—"}
           </div>
         )}
       </Modal>
