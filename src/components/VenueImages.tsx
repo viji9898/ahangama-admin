@@ -86,9 +86,12 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
 
   const previewItems = useMemo(() => {
     const items: Array<{ kind: Kind; label: string; url: string }> = [];
-    if (busted.logo) items.push({ kind: "logo", label: "Logo", url: busted.logo });
-    if (busted.image) items.push({ kind: "image", label: "Image", url: busted.image });
-    if (busted.ogImage) items.push({ kind: "ogImage", label: "OG Image", url: busted.ogImage });
+    if (busted.logo)
+      items.push({ kind: "logo", label: "Logo", url: busted.logo });
+    if (busted.image)
+      items.push({ kind: "image", label: "Image", url: busted.image });
+    if (busted.ogImage)
+      items.push({ kind: "ogImage", label: "OG Image", url: busted.ogImage });
     return items;
   }, [busted.logo, busted.image, busted.ogImage]);
 
