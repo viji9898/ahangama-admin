@@ -89,7 +89,7 @@ export default function VenueDetail({ venue, onVenueUpdated }: Props) {
       }}
     >
       <h2 style={{ marginTop: 0 }}>{localVenue?.name}</h2>
-      <VenueImages venue={localVenue} />
+      <VenueImages venue={localVenue} onVenueUpdated={handleVenueUpdated} />
       <VenueBasicInfo venue={localVenue} onVenueUpdated={handleVenueUpdated} />
       <VenueCategoriesTags venue={localVenue} />
       <VenueRatingsOffers
