@@ -1,4 +1,4 @@
-import { Button, Card, Col, Row, Space, message } from "antd";
+import { Button, Card, Carousel, Col, Modal, Row, Space, message } from "antd";
 import { useMemo, useRef, useState } from "react";
 
 const PRESIGN_ENDPOINT = "/.netlify/functions/api-s3-presign";
@@ -57,6 +57,10 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
   const [uploading, setUploading] = useState<Kind | null>(null);
   const [cacheBust, setCacheBust] = useState<number>(Date.now());
 
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [previewNonce, setPreviewNonce] = useState(0);
+
   const fileInputLogo = useRef<HTMLInputElement | null>(null);
   const fileInputImage = useRef<HTMLInputElement | null>(null);
   const fileInputOg = useRef<HTMLInputElement | null>(null);
@@ -79,6 +83,22 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
       ogImage: addBust(venue?.ogImage),
     };
   }, [venue?.logo, venue?.image, venue?.ogImage, cacheBust]);
+
+  const previewItems = useMemo(() => {
+    const items: Array<{ kind: Kind; label: string; url: string }> = [];
+    if (busted.logo) items.push({ kind: "logo", label: "Logo", url: busted.logo });
+    if (busted.image) items.push({ kind: "image", label: "Image", url: busted.image });
+    if (busted.ogImage) items.push({ kind: "ogImage", label: "OG Image", url: busted.ogImage });
+    return items;
+  }, [busted.logo, busted.image, busted.ogImage]);
+
+  const openPreviewForKind = (kind: Kind) => {
+    const idx = previewItems.findIndex((i) => i.kind === kind);
+    if (idx < 0) return;
+    setPreviewIndex(idx);
+    setPreviewNonce((n) => n + 1);
+    setPreviewOpen(true);
+  };
 
   const patchVenue = async (payload: Record<string, unknown>) => {
     const r = await fetch(UPDATE_ENDPOINT, {
@@ -269,6 +289,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
             <img
               src={busted.logo}
               alt="logo"
+              onClick={() => openPreviewForKind("logo")}
               style={{
                 width: 64,
                 height: 64,
@@ -276,6 +297,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
                 borderRadius: 8,
                 background: "#fff",
                 border: "1px solid #eee",
+                cursor: "pointer",
               }}
             />
           </Col>
@@ -288,6 +310,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
             <img
               src={busted.image}
               alt="image"
+              onClick={() => openPreviewForKind("image")}
               style={{
                 width: 64,
                 height: 64,
@@ -295,6 +318,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
                 borderRadius: 8,
                 background: "#fff",
                 border: "1px solid #eee",
+                cursor: "pointer",
               }}
             />
           </Col>
@@ -307,6 +331,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
             <img
               src={busted.ogImage}
               alt="ogImage"
+              onClick={() => openPreviewForKind("ogImage")}
               style={{
                 width: 64,
                 height: 64,
@@ -314,11 +339,49 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
                 borderRadius: 8,
                 background: "#fff",
                 border: "1px solid #eee",
+                cursor: "pointer",
               }}
             />
           </Col>
         )}
       </Row>
+
+      <Modal
+        title="Images"
+        open={previewOpen}
+        onCancel={() => setPreviewOpen(false)}
+        footer={null}
+        width={900}
+        destroyOnClose
+      >
+        {previewItems.length === 0 ? (
+          <div style={{ color: "#888" }}>No images</div>
+        ) : (
+          <Carousel key={previewNonce} initialSlide={previewIndex} dots>
+            {previewItems.map((item) => (
+              <div key={item.kind}>
+                <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
+                  {item.label}
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <img
+                    src={item.url}
+                    alt={item.kind}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "70vh",
+                      objectFit: "contain",
+                      borderRadius: 8,
+                      background: "#fff",
+                      border: "1px solid #eee",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </Carousel>
+        )}
+      </Modal>
     </Card>
   );
 }
