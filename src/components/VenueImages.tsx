@@ -220,34 +220,6 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
     <Card
       title="Images"
       style={{ marginBottom: 16 }}
-      extra={
-        <Space>
-          <Button
-            size="small"
-            onClick={() => pickFile("logo")}
-            disabled={!venue?.id || uploading !== null}
-            loading={uploading === "logo"}
-          >
-            Upload Logo (≤1000×1000, ≤50KB)
-          </Button>
-          <Button
-            size="small"
-            onClick={() => pickFile("image")}
-            disabled={!venue?.id || uploading !== null}
-            loading={uploading === "image"}
-          >
-            Upload Image (1200×630, ≤100KB)
-          </Button>
-          <Button
-            size="small"
-            onClick={() => pickFile("ogImage")}
-            disabled={!venue?.id || uploading !== null}
-            loading={uploading === "ogImage"}
-          >
-            Upload OG (1200×630, ≤100KB)
-          </Button>
-        </Space>
-      }
     >
       <input
         ref={fileInputLogo}
@@ -283,70 +255,113 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
         }}
       />
 
-      <Row gutter={16}>
-        {busted.logo && (
-          <Col>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>
-              Logo
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={6}>
+          <Space direction="vertical" size={8}>
+            <div style={{ fontSize: 12, color: "#888" }}>Logo</div>
+            {busted.logo ? (
+              <img
+                src={busted.logo}
+                alt="logo"
+                onClick={() => openPreviewForKind("logo")}
+                style={{
+                  width: 96,
+                  height: 96,
+                  objectFit: "contain",
+                  borderRadius: 8,
+                  background: "#fff",
+                  border: "1px solid #eee",
+                  cursor: "pointer",
+                }}
+              />
+            ) : (
+              <div style={{ fontSize: 12, color: "#888" }}>No image</div>
+            )}
+            <Button
+              size="small"
+              onClick={() => pickFile("logo")}
+              disabled={!venue?.id || uploading !== null}
+              loading={uploading === "logo"}
+            >
+              Upload
+            </Button>
+            <div style={{ fontSize: 12, color: "#888" }}>
+              ≤1000×1000, ≤50KB
             </div>
-            <img
-              src={busted.logo}
-              alt="logo"
-              onClick={() => openPreviewForKind("logo")}
-              style={{
-                width: 64,
-                height: 64,
-                objectFit: "contain",
-                borderRadius: 8,
-                background: "#fff",
-                border: "1px solid #eee",
-                cursor: "pointer",
-              }}
-            />
-          </Col>
-        )}
-        {busted.image && (
-          <Col>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>
-              Image
+          </Space>
+        </Col>
+
+        <Col xs={24} md={9}>
+          <Space direction="vertical" size={8}>
+            <div style={{ fontSize: 12, color: "#888" }}>Image</div>
+            {busted.image ? (
+              <img
+                src={busted.image}
+                alt="image"
+                onClick={() => openPreviewForKind("image")}
+                style={{
+                  width: "100%",
+                  maxWidth: 220,
+                  height: 96,
+                  objectFit: "cover",
+                  borderRadius: 8,
+                  background: "#fff",
+                  border: "1px solid #eee",
+                  cursor: "pointer",
+                }}
+              />
+            ) : (
+              <div style={{ fontSize: 12, color: "#888" }}>No image</div>
+            )}
+            <Button
+              size="small"
+              onClick={() => pickFile("image")}
+              disabled={!venue?.id || uploading !== null}
+              loading={uploading === "image"}
+            >
+              Upload
+            </Button>
+            <div style={{ fontSize: 12, color: "#888" }}>
+              1200×630, ≤100KB
             </div>
-            <img
-              src={busted.image}
-              alt="image"
-              onClick={() => openPreviewForKind("image")}
-              style={{
-                width: 64,
-                height: 64,
-                objectFit: "cover",
-                borderRadius: 8,
-                background: "#fff",
-                border: "1px solid #eee",
-                cursor: "pointer",
-              }}
-            />
-          </Col>
-        )}
-        {busted.ogImage && (
-          <Col>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>
-              OG Image
+          </Space>
+        </Col>
+
+        <Col xs={24} md={9}>
+          <Space direction="vertical" size={8}>
+            <div style={{ fontSize: 12, color: "#888" }}>OG Image</div>
+            {busted.ogImage ? (
+              <img
+                src={busted.ogImage}
+                alt="ogImage"
+                onClick={() => openPreviewForKind("ogImage")}
+                style={{
+                  width: "100%",
+                  maxWidth: 220,
+                  height: 96,
+                  objectFit: "cover",
+                  borderRadius: 8,
+                  background: "#fff",
+                  border: "1px solid #eee",
+                  cursor: "pointer",
+                }}
+              />
+            ) : (
+              <div style={{ fontSize: 12, color: "#888" }}>No image</div>
+            )}
+            <Button
+              size="small"
+              onClick={() => pickFile("ogImage")}
+              disabled={!venue?.id || uploading !== null}
+              loading={uploading === "ogImage"}
+            >
+              Upload
+            </Button>
+            <div style={{ fontSize: 12, color: "#888" }}>
+              1200×630, ≤100KB
             </div>
-            <img
-              src={busted.ogImage}
-              alt="ogImage"
-              onClick={() => openPreviewForKind("ogImage")}
-              style={{
-                width: 64,
-                height: 64,
-                objectFit: "cover",
-                borderRadius: 8,
-                background: "#fff",
-                border: "1px solid #eee",
-                cursor: "pointer",
-              }}
-            />
-          </Col>
-        )}
+          </Space>
+        </Col>
       </Row>
 
       <Modal
