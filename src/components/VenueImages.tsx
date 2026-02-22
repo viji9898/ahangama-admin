@@ -217,10 +217,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
   };
 
   return (
-    <Card
-      title="Images"
-      style={{ marginBottom: 16 }}
-    >
+    <Card title="Images" style={{ marginBottom: 16 }}>
       <input
         ref={fileInputLogo}
         type="file"
@@ -285,9 +282,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
             >
               Upload
             </Button>
-            <div style={{ fontSize: 12, color: "#888" }}>
-              ≤1000×1000, ≤50KB
-            </div>
+            <div style={{ fontSize: 12, color: "#888" }}>≤1000×1000, ≤50KB</div>
           </Space>
         </Col>
 
@@ -321,9 +316,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
             >
               Upload
             </Button>
-            <div style={{ fontSize: 12, color: "#888" }}>
-              1200×630, ≤100KB
-            </div>
+            <div style={{ fontSize: 12, color: "#888" }}>1200×630, ≤100KB</div>
           </Space>
         </Col>
 
@@ -357,9 +350,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
             >
               Upload
             </Button>
-            <div style={{ fontSize: 12, color: "#888" }}>
-              1200×630, ≤100KB
-            </div>
+            <div style={{ fontSize: 12, color: "#888" }}>1200×630, ≤100KB</div>
           </Space>
         </Col>
       </Row>
