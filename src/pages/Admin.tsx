@@ -185,6 +185,23 @@ export default function Admin() {
     });
   }, [venues, search]);
 
+  const venuesByCategoryEntries = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const venue of venues) {
+      const categories = Array.isArray(venue.categories)
+        ? venue.categories
+        : [];
+      for (const cat of categories) {
+        const key = String(cat).trim();
+        if (!key) continue;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries()).sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+    );
+  }, [venues]);
+
   return (
     <div
       style={{
@@ -208,7 +225,37 @@ export default function Admin() {
           <div style={{ fontSize: 12, color: "#888" }}>
             Live venues: <b>{liveVenueCount}</b>
             <span style={{ margin: "0 8px" }}>•</span>
-            Coming Soon: <b>{onlineVenueCount}</b>
+            Online venues: <b>{onlineVenueCount}</b>
+            <div style={{ marginTop: 4 }}>
+              <div style={{ maxWidth: 720 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {venuesByCategoryEntries.length === 0 ? (
+                    <span>—</span>
+                  ) : (
+                    venuesByCategoryEntries.map(([cat, n], idx) => {
+                      const colors = [
+                        "magenta",
+                        "red",
+                        "volcano",
+                        "orange",
+                        "gold",
+                        "lime",
+                        "green",
+                        "cyan",
+                        "blue",
+                        "geekblue",
+                        "purple",
+                      ] as const;
+                      return (
+                        <Tag key={cat} color={colors[idx % colors.length]}>
+                          {cat}: {n}
+                        </Tag>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           <Button type="primary" onClick={openAddModal}>
             Add Venue

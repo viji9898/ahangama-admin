@@ -22,7 +22,8 @@ export default function AdminShell() {
             to="/admin"
             style={{
               color: "#fff",
-              textDecoration: location.pathname === "/admin" ? "underline" : "none",
+              textDecoration:
+                location.pathname === "/admin" ? "underline" : "none",
             }}
           >
             List All Venues
