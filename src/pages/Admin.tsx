@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import VenueDetail from "./VenueDetail";
 
 import {
@@ -164,6 +164,27 @@ export default function Admin() {
     );
   };
 
+  const liveVenueCount = venues.filter((v) => (v.live ?? true) === true).length;
+  const onlineVenueCount = venues.filter((v) => v.live === false).length;
+
+  const tableVenues = useMemo(() => {
+    const filtered = venues.filter((v) => {
+      const q = search.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        v.name?.toLowerCase().includes(q) ||
+        v.slug?.toLowerCase().includes(q) ||
+        v.id?.toLowerCase().includes(q)
+      );
+    });
+
+    return filtered.slice().sort((a, b) => {
+      const aLive = (a.live ?? true) === true ? 1 : 0;
+      const bLive = (b.live ?? true) === true ? 1 : 0;
+      return bLive - aLive;
+    });
+  }, [venues, search]);
+
   return (
     <div
       style={{
@@ -184,6 +205,11 @@ export default function Admin() {
             onChange={(e) => setSearch(e.target.value)}
             style={{ width: 360 }}
           />
+          <div style={{ fontSize: 12, color: "#888" }}>
+            Live venues: <b>{liveVenueCount}</b>
+            <span style={{ margin: "0 8px" }}>•</span>
+            Coming Soon: <b>{onlineVenueCount}</b>
+          </div>
           <Button type="primary" onClick={openAddModal}>
             Add Venue
           </Button>
@@ -201,15 +227,7 @@ export default function Admin() {
       >
         <div style={{ flex: 1, minWidth: 320, maxWidth: "40vw" }}>
           <Table<Venue>
-            dataSource={venues.filter((v) => {
-              const q = search.trim().toLowerCase();
-              if (!q) return true;
-              return (
-                v.name?.toLowerCase().includes(q) ||
-                v.slug?.toLowerCase().includes(q) ||
-                v.id?.toLowerCase().includes(q)
-              );
-            })}
+            dataSource={tableVenues}
             rowKey="id"
             loading={loading}
             style={{ marginTop: 20, maxWidth: "40vw" }}
