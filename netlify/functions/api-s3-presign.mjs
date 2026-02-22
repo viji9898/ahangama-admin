@@ -9,8 +9,21 @@ const json = (statusCode, body) => ({
 });
 
 const BUCKET = (process.env.S3_BUCKET || "").trim();
-const REGION = (process.env.AWS_REGION || "").trim() || "us-east-1";
+const REGION =
+  (process.env.S3_REGION || process.env.AWS_REGION || "").trim() || "us-east-1";
 const PUBLIC_BASE_URL = (process.env.S3_PUBLIC_BASE_URL || "").trim();
+
+// Netlify reserves AWS_* env vars in the UI. Prefer S3_* variables.
+const ACCESS_KEY_ID = (
+  process.env.S3_ACCESS_KEY_ID ||
+  process.env.AWS_ACCESS_KEY_ID ||
+  ""
+).trim();
+const SECRET_ACCESS_KEY = (
+  process.env.S3_SECRET_ACCESS_KEY ||
+  process.env.AWS_SECRET_ACCESS_KEY ||
+  ""
+).trim();
 
 const USE_ACL_PUBLIC_READ = String(process.env.S3_USE_ACL_PUBLIC_READ || "")
   .trim()
@@ -89,7 +102,17 @@ export async function handler(event) {
       return json(400, { ok: false, error: "Invalid kind" });
     }
 
-    const s3 = new S3Client({ region: REGION });
+    const s3 = new S3Client({
+      region: REGION,
+      ...(ACCESS_KEY_ID && SECRET_ACCESS_KEY
+        ? {
+            credentials: {
+              accessKeyId: ACCESS_KEY_ID,
+              secretAccessKey: SECRET_ACCESS_KEY,
+            },
+          }
+        : {}),
+    });
 
     const fields = {
       key,
