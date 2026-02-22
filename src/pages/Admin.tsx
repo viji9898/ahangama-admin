@@ -186,20 +186,35 @@ export default function Admin() {
   }, [venues, search]);
 
   const venuesByCategoryEntries = useMemo(() => {
+    const desired = [
+      { key: "eat", label: "eat" },
+      { key: "stays", label: "stays" },
+      { key: "wellness", label: "wellness" },
+      { key: "co-working", label: "Co-Working" },
+      { key: "experiences", label: "Experiences" },
+      { key: "retail", label: "retail" },
+      { key: "surf", label: "surf" },
+      { key: "transport", label: "Transport" },
+    ];
+
     const counts = new Map<string, number>();
     for (const venue of venues) {
+      const isLive = (venue.live ?? true) === true;
+      if (!isLive) continue;
+
       const categories = Array.isArray(venue.categories)
         ? venue.categories
         : [];
       for (const cat of categories) {
-        const key = String(cat).trim();
+        const key = String(cat).trim().toLowerCase();
         if (!key) continue;
         counts.set(key, (counts.get(key) ?? 0) + 1);
       }
     }
-    return Array.from(counts.entries()).sort(
-      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
-    );
+
+    return desired
+      .map((d) => [d.label, counts.get(d.key) ?? 0] as const)
+      .filter(([, n]) => n > 0);
   }, [venues]);
 
   return (
@@ -225,9 +240,10 @@ export default function Admin() {
           <div style={{ fontSize: 12, color: "#888" }}>
             Live venues: <b>{liveVenueCount}</b>
             <span style={{ margin: "0 8px" }}>•</span>
-            Online venues: <b>{onlineVenueCount}</b>
+            Coming Soon: <b>{onlineVenueCount}</b>
             <div style={{ marginTop: 4 }}>
               <div style={{ maxWidth: 720 }}>
+                <div style={{ marginBottom: 4 }}>Live by category:</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {venuesByCategoryEntries.length === 0 ? (
                     <span>—</span>

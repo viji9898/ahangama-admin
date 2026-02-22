@@ -1,5 +1,15 @@
-import { Button, Card, Carousel, Col, Modal, Row, Space, message } from "antd";
-import { useMemo, useRef, useState } from "react";
+import {
+  Button,
+  Card,
+  Carousel,
+  Col,
+  Modal,
+  Row,
+  Space,
+  Spin,
+  message,
+} from "antd";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const PRESIGN_ENDPOINT = "/.netlify/functions/api-s3-presign";
 const UPDATE_ENDPOINT = "/.netlify/functions/api-venues-update";
@@ -57,6 +67,14 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
   const [uploading, setUploading] = useState<Kind | null>(null);
   const [cacheBust, setCacheBust] = useState<number>(Date.now());
 
+  const [imgState, setImgState] = useState<
+    Record<Kind, "empty" | "loading" | "loaded" | "error">
+  >({
+    logo: "empty",
+    image: "empty",
+    ogImage: "empty",
+  });
+
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [previewNonce, setPreviewNonce] = useState(0);
@@ -64,6 +82,10 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
   const fileInputLogo = useRef<HTMLInputElement | null>(null);
   const fileInputImage = useRef<HTMLInputElement | null>(null);
   const fileInputOg = useRef<HTMLInputElement | null>(null);
+
+  const thumbLogoImg = useRef<HTMLImageElement | null>(null);
+  const thumbImageImg = useRef<HTMLImageElement | null>(null);
+  const thumbOgImg = useRef<HTMLImageElement | null>(null);
 
   const inputForKind = (kind: Kind) => {
     if (kind === "logo") return fileInputLogo;
@@ -83,6 +105,46 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
       ogImage: addBust(venue?.ogImage),
     };
   }, [venue?.logo, venue?.image, venue?.ogImage, cacheBust]);
+
+  useEffect(() => {
+    setImgState({
+      logo: busted.logo ? "loading" : "empty",
+      image: busted.image ? "loading" : "empty",
+      ogImage: busted.ogImage ? "loading" : "empty",
+    });
+
+    // If the browser serves the image from cache, onLoad can be missed.
+    // Check `complete` and update state accordingly.
+    const checkComplete = (kind: Kind, el: HTMLImageElement | null) => {
+      if (!el) return;
+      if (!el.complete) return;
+      if (el.naturalWidth > 0) markLoaded(kind);
+      else markError(kind);
+    };
+
+    // Next tick so refs are attached.
+    const t = window.setTimeout(() => {
+      checkComplete("logo", thumbLogoImg.current);
+      checkComplete("image", thumbImageImg.current);
+      checkComplete("ogImage", thumbOgImg.current);
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [busted.logo, busted.image, busted.ogImage]);
+
+  const markLoaded = (kind: Kind) =>
+    setImgState((prev) => ({ ...prev, [kind]: "loaded" }));
+
+  const markError = (kind: Kind) =>
+    setImgState((prev) => ({ ...prev, [kind]: "error" }));
+
+  const hasImageLoadError =
+    imgState.logo === "error" ||
+    imgState.image === "error" ||
+    imgState.ogImage === "error";
+
+  const refreshImages = () => {
+    setCacheBust(Date.now());
+  };
 
   const previewItems = useMemo(() => {
     const items: Array<{ kind: Kind; label: string; url: string }> = [];
@@ -217,7 +279,21 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
   };
 
   return (
-    <Card title="Images" style={{ marginBottom: 16 }}>
+    <Card
+      title="Images"
+      style={{ marginBottom: 16 }}
+      extra={
+        hasImageLoadError ? (
+          <Button
+            size="small"
+            onClick={refreshImages}
+            disabled={uploading !== null}
+          >
+            Refresh
+          </Button>
+        ) : null
+      }
+    >
       <input
         ref={fileInputLogo}
         type="file"
@@ -257,20 +333,31 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
           <Space direction="vertical" size={8}>
             <div style={{ fontSize: 12, color: "#888" }}>Logo</div>
             {busted.logo ? (
-              <img
-                src={busted.logo}
-                alt="logo"
-                onClick={() => openPreviewForKind("logo")}
-                style={{
-                  width: 96,
-                  height: 96,
-                  objectFit: "contain",
-                  borderRadius: 8,
-                  background: "#fff",
-                  border: "1px solid #eee",
-                  cursor: "pointer",
-                }}
-              />
+              imgState.logo === "error" ? (
+                <div style={{ fontSize: 12, color: "#888" }}>
+                  Failed to load
+                </div>
+              ) : (
+                <Spin spinning={imgState.logo === "loading"} size="small">
+                  <img
+                    ref={thumbLogoImg}
+                    src={busted.logo}
+                    alt="logo"
+                    onClick={() => openPreviewForKind("logo")}
+                    onLoad={() => markLoaded("logo")}
+                    onError={() => markError("logo")}
+                    style={{
+                      width: 96,
+                      height: 96,
+                      objectFit: "contain",
+                      borderRadius: 8,
+                      background: "#fff",
+                      border: "1px solid #eee",
+                      cursor: "pointer",
+                    }}
+                  />
+                </Spin>
+              )
             ) : (
               <div style={{ fontSize: 12, color: "#888" }}>No image</div>
             )}
@@ -290,21 +377,32 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
           <Space direction="vertical" size={8}>
             <div style={{ fontSize: 12, color: "#888" }}>Image</div>
             {busted.image ? (
-              <img
-                src={busted.image}
-                alt="image"
-                onClick={() => openPreviewForKind("image")}
-                style={{
-                  width: "100%",
-                  maxWidth: 220,
-                  height: 96,
-                  objectFit: "cover",
-                  borderRadius: 8,
-                  background: "#fff",
-                  border: "1px solid #eee",
-                  cursor: "pointer",
-                }}
-              />
+              imgState.image === "error" ? (
+                <div style={{ fontSize: 12, color: "#888" }}>
+                  Failed to load
+                </div>
+              ) : (
+                <Spin spinning={imgState.image === "loading"} size="small">
+                  <img
+                    ref={thumbImageImg}
+                    src={busted.image}
+                    alt="image"
+                    onClick={() => openPreviewForKind("image")}
+                    onLoad={() => markLoaded("image")}
+                    onError={() => markError("image")}
+                    style={{
+                      width: "100%",
+                      maxWidth: 220,
+                      height: 96,
+                      objectFit: "cover",
+                      borderRadius: 8,
+                      background: "#fff",
+                      border: "1px solid #eee",
+                      cursor: "pointer",
+                    }}
+                  />
+                </Spin>
+              )
             ) : (
               <div style={{ fontSize: 12, color: "#888" }}>No image</div>
             )}
@@ -324,21 +422,32 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
           <Space direction="vertical" size={8}>
             <div style={{ fontSize: 12, color: "#888" }}>OG Image</div>
             {busted.ogImage ? (
-              <img
-                src={busted.ogImage}
-                alt="ogImage"
-                onClick={() => openPreviewForKind("ogImage")}
-                style={{
-                  width: "100%",
-                  maxWidth: 220,
-                  height: 96,
-                  objectFit: "cover",
-                  borderRadius: 8,
-                  background: "#fff",
-                  border: "1px solid #eee",
-                  cursor: "pointer",
-                }}
-              />
+              imgState.ogImage === "error" ? (
+                <div style={{ fontSize: 12, color: "#888" }}>
+                  Failed to load
+                </div>
+              ) : (
+                <Spin spinning={imgState.ogImage === "loading"} size="small">
+                  <img
+                    ref={thumbOgImg}
+                    src={busted.ogImage}
+                    alt="ogImage"
+                    onClick={() => openPreviewForKind("ogImage")}
+                    onLoad={() => markLoaded("ogImage")}
+                    onError={() => markError("ogImage")}
+                    style={{
+                      width: "100%",
+                      maxWidth: 220,
+                      height: 96,
+                      objectFit: "cover",
+                      borderRadius: 8,
+                      background: "#fff",
+                      border: "1px solid #eee",
+                      cursor: "pointer",
+                    }}
+                  />
+                </Spin>
+              )
             ) : (
               <div style={{ fontSize: 12, color: "#888" }}>No image</div>
             )}
@@ -373,18 +482,22 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
                   {item.label}
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <img
-                    src={item.url}
-                    alt={item.kind}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "70vh",
-                      objectFit: "contain",
-                      borderRadius: 8,
-                      background: "#fff",
-                      border: "1px solid #eee",
-                    }}
-                  />
+                  <Spin spinning={imgState[item.kind] === "loading"}>
+                    <img
+                      src={item.url}
+                      alt={item.kind}
+                      onLoad={() => markLoaded(item.kind)}
+                      onError={() => markError(item.kind)}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "70vh",
+                        objectFit: "contain",
+                        borderRadius: 8,
+                        background: "#fff",
+                        border: "1px solid #eee",
+                      }}
+                    />
+                  </Spin>
                 </div>
               </div>
             ))}
