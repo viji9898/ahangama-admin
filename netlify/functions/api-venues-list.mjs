@@ -19,6 +19,12 @@ function toVenueDto(row) {
     slug: row.slug,
     status: row.status,
     live: row.live,
+    editorialTags: row.editorial_tags ?? [],
+    isPassVenue: row.is_pass_venue,
+    staffPick: row.staff_pick,
+    priorityScore: row.priority_score,
+    laptopFriendly: row.laptop_friendly,
+    powerBackup: row.power_backup,
     categories: row.categories ?? [],
     emoji: row.emoji ?? [],
     stars: row.stars,
@@ -88,6 +94,7 @@ export async function handler(event) {
       SELECT
         id, destination_slug, name, slug, status,
         live,
+        editorial_tags, is_pass_venue, staff_pick, priority_score, laptop_friendly, power_backup,
         categories, emoji,
         stars, reviews, discount,
         excerpt, description,
@@ -100,7 +107,7 @@ export async function handler(event) {
         updated_at, created_at
       FROM venues
       WHERE ${where.join(" AND ")}
-      ORDER BY updated_at DESC
+      ORDER BY priority_score DESC, staff_pick DESC, stars DESC NULLS LAST
       LIMIT 500
     `;
 

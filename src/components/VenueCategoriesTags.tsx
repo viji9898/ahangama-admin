@@ -14,6 +14,8 @@ import {
 } from "antd";
 import { useEffect, useMemo, useState } from "react";
 
+import type { Venue } from "../types/venue";
+
 const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:8888";
 const UPDATE_ENDPOINT = `${BASE_URL}/.netlify/functions/api-venues-update`;
 const SECRET = (
@@ -28,7 +30,7 @@ const normalizeList = (items: unknown): string[] => {
   return Array.from(new Set(out));
 };
 
-export function VenueCategoriesTags({ venue }: { venue: any }) {
+export function VenueCategoriesTags({ venue }: { venue: Venue }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -168,10 +170,9 @@ export function VenueCategoriesTags({ venue }: { venue: any }) {
         const text = await res.text().catch(() => "");
         message.error(text || "Failed to update venue.");
       }
-    } catch (err) {
-      message.error(
-        String((err as any)?.message || err || "Error updating venue."),
-      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      message.error(msg || "Error updating venue.");
     } finally {
       setSaving(false);
     }

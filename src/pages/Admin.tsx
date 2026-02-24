@@ -14,40 +14,7 @@ import {
 } from "antd";
 import { useSearchParams } from "react-router-dom";
 
-interface Venue {
-  id?: string;
-  destinationSlug?: string;
-  name?: string;
-  slug?: string;
-  status?: string;
-  live?: boolean;
-  categories?: string[];
-  emoji?: string[];
-  stars?: number;
-  reviews?: number;
-  discount?: number;
-  excerpt?: string;
-  description?: string;
-  bestFor?: string[];
-  tags?: string[];
-  cardPerk?: string;
-  offers?: string[] | string;
-  howToClaim?: string;
-  restrictions?: string;
-  area?: string;
-  lat?: number;
-  lng?: number;
-  logo?: string;
-  image?: string;
-  ogImage?: string;
-  mapUrl?: string;
-  instagramUrl?: string;
-  whatsapp?: string;
-  updatedAt?: string;
-  updated_at?: string;
-  createdAt?: string;
-  created_at?: string;
-}
+import type { Venue } from "../types/venue";
 
 export default function Admin() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -74,7 +41,7 @@ export default function Admin() {
         });
         const data = await r.json();
         setVenues(data.venues || []);
-      } catch (e) {
+      } catch {
         setError("Failed to load venues");
       } finally {
         setLoading(false);

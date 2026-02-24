@@ -4,42 +4,10 @@ import { VenueCategoriesTags } from "../components/VenueCategoriesTags";
 import { VenueRatingsOffers } from "../components/VenueRatingsOffers";
 import { VenueDescription } from "../components/VenueDescription";
 import { VenueLocationSocial } from "../components/VenueLocationSocial";
+import { VenueCuration } from "../components/VenueCuration";
 import { useEffect, useState } from "react";
 
-interface Venue {
-  id?: string;
-  destinationSlug?: string;
-  name?: string;
-  slug?: string;
-  status?: string;
-  live?: boolean;
-  categories?: string[];
-  emoji?: string[];
-  stars?: number;
-  reviews?: number;
-  discount?: number;
-  excerpt?: string;
-  description?: string;
-  bestFor?: string[];
-  tags?: string[];
-  cardPerk?: string;
-  offers?: string[] | string;
-  howToClaim?: string;
-  restrictions?: string;
-  area?: string;
-  lat?: number;
-  lng?: number;
-  logo?: string;
-  image?: string;
-  ogImage?: string;
-  mapUrl?: string;
-  instagramUrl?: string;
-  whatsapp?: string;
-  updatedAt?: string;
-  updated_at?: string;
-  createdAt?: string;
-  created_at?: string;
-}
+import type { Venue } from "../types/venue";
 
 type Props = {
   venue?: Venue;
@@ -91,6 +59,7 @@ export default function VenueDetail({ venue, onVenueUpdated }: Props) {
       <h2 style={{ marginTop: 0 }}>{localVenue?.name}</h2>
       <VenueImages venue={localVenue} onVenueUpdated={handleVenueUpdated} />
       <VenueBasicInfo venue={localVenue} onVenueUpdated={handleVenueUpdated} />
+      <VenueCuration venue={localVenue} onVenueUpdated={handleVenueUpdated} />
       <VenueCategoriesTags venue={localVenue} />
       <VenueRatingsOffers
         venue={localVenue}

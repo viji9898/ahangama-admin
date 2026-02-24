@@ -14,6 +14,8 @@ import {
 } from "antd";
 import { useEffect, useMemo, useState } from "react";
 
+import type { Venue } from "../types/venue";
+
 const UPDATE_ENDPOINT = "/.netlify/functions/api-venues-update";
 
 const toFiniteNumberOrNull = (v: unknown): number | null => {
@@ -23,8 +25,8 @@ const toFiniteNumberOrNull = (v: unknown): number | null => {
 };
 
 type Props = {
-  venue: any;
-  onVenueUpdated?: (venue: any) => void;
+  venue: Venue;
+  onVenueUpdated?: (venue: Partial<Venue>) => void;
 };
 
 export function VenueLocationSocial({ venue, onVenueUpdated }: Props) {

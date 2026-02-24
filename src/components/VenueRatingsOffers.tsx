@@ -14,6 +14,8 @@ import {
 } from "antd";
 import { useEffect, useMemo, useState } from "react";
 
+import type { Venue } from "../types/venue";
+
 const UPDATE_ENDPOINT = "/.netlify/functions/api-venues-update";
 
 const toFiniteNumberOrNull = (v: unknown): number | null => {
@@ -51,8 +53,8 @@ const normalizeOffersArray = (offersText: string) => {
 };
 
 type Props = {
-  venue: any;
-  onVenueUpdated?: (venue: any) => void;
+  venue: Venue;
+  onVenueUpdated?: (venue: Partial<Venue>) => void;
 };
 
 export function VenueRatingsOffers({ venue, onVenueUpdated }: Props) {
@@ -279,8 +281,10 @@ export function VenueRatingsOffers({ venue, onVenueUpdated }: Props) {
             <div style={{ marginBottom: 8 }}>
               <b>Offers:</b>{" "}
               {Array.isArray(venue?.offers)
-                ? (venue?.offers as string[]).join(", ")
-                : venue?.offers || "—"}
+                ? (venue?.offers as unknown[]).map(String).join(", ")
+                : venue?.offers
+                  ? String(venue.offers)
+                  : "—"}
             </div>
             <div style={{ marginBottom: 8 }}>
               <b>How to claim:</b> {venue?.howToClaim || "—"}

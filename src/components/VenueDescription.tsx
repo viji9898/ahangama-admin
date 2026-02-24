@@ -13,6 +13,8 @@ import {
 } from "antd";
 import { useEffect, useMemo, useState } from "react";
 
+import type { Venue } from "../types/venue";
+
 const UPDATE_ENDPOINT = "/.netlify/functions/api-venues-update";
 
 const normalizeList = (items: unknown): string[] => {
@@ -33,8 +35,8 @@ const toListArray = (text: string) =>
   );
 
 type Props = {
-  venue: any;
-  onVenueUpdated?: (venue: any) => void;
+  venue: Venue;
+  onVenueUpdated?: (venue: Partial<Venue>) => void;
 };
 
 export function VenueDescription({ venue, onVenueUpdated }: Props) {

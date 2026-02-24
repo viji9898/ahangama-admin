@@ -11,6 +11,8 @@ import {
 } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { Venue } from "../types/venue";
+
 const PRESIGN_ENDPOINT = "/.netlify/functions/api-s3-presign";
 const UPDATE_ENDPOINT = "/.netlify/functions/api-venues-update";
 
@@ -59,8 +61,8 @@ const loadImageDimensions = async (file: File) => {
 };
 
 type Props = {
-  venue: any;
-  onVenueUpdated?: (venue: any) => void;
+  venue: Venue;
+  onVenueUpdated?: (venue: Partial<Venue>) => void;
 };
 
 export function VenueImages({ venue, onVenueUpdated }: Props) {

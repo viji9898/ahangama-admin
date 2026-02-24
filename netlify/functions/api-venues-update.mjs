@@ -7,6 +7,19 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
+const ALLOWED_POWER_BACKUP = new Set([
+  "generator",
+  "inverter",
+  "none",
+  "unknown",
+]);
+
+const normalizeStringArray = (value) => {
+  if (!Array.isArray(value)) return [];
+  const out = value.map((s) => String(s).trim()).filter(Boolean);
+  return Array.from(new Set(out));
+};
+
 function toVenueDto(row) {
   return {
     id: row.id,
@@ -15,6 +28,12 @@ function toVenueDto(row) {
     slug: row.slug,
     status: row.status,
     live: row.live,
+    editorialTags: row.editorial_tags ?? [],
+    isPassVenue: row.is_pass_venue,
+    staffPick: row.staff_pick,
+    priorityScore: row.priority_score,
+    laptopFriendly: row.laptop_friendly,
+    powerBackup: row.power_backup,
     categories: row.categories ?? [],
     emoji: row.emoji ?? [],
     stars: row.stars,
@@ -65,6 +84,36 @@ export async function handler(event) {
     // Helper to support PATCH while allowing explicit nulls
     const has = (k) => Object.prototype.hasOwnProperty.call(body, k);
 
+    if (has("powerBackup")) {
+      const v = String(body.powerBackup ?? "")
+        .trim()
+        .toLowerCase();
+      if (!ALLOWED_POWER_BACKUP.has(v)) {
+        return json(400, {
+          ok: false,
+          error:
+            'powerBackup must be one of ["generator", "inverter", "none", "unknown"]',
+        });
+      }
+    }
+
+    if (has("priorityScore")) {
+      const raw = body.priorityScore;
+      if (raw === null) {
+        return json(400, { ok: false, error: "priorityScore cannot be null" });
+      }
+      const n = Number(raw);
+      if (!Number.isFinite(n)) {
+        return json(400, {
+          ok: false,
+          error: "priorityScore must be a number",
+        });
+      }
+      if (n < 0) {
+        return json(400, { ok: false, error: "priorityScore must be >= 0" });
+      }
+    }
+
     const sql = `
       UPDATE venues
       SET
@@ -75,36 +124,43 @@ export async function handler(event) {
 
         live             = COALESCE($6::boolean, live),
 
-        categories       = COALESCE($7::text[], categories),
-        emoji            = COALESCE($8::text[], emoji),
+        editorial_tags   = COALESCE($7::text[], editorial_tags),
+        is_pass_venue    = COALESCE($8::boolean, is_pass_venue),
+        staff_pick       = COALESCE($9::boolean, staff_pick),
+        priority_score   = COALESCE($10::numeric, priority_score),
+        laptop_friendly  = COALESCE($11::boolean, laptop_friendly),
+        power_backup     = COALESCE($12::varchar, power_backup),
 
-        stars            = COALESCE($9::numeric, stars),
-        reviews          = COALESCE($10::int, reviews),
-        discount         = COALESCE($11::numeric, discount),
+        categories       = COALESCE($13::text[], categories),
+        emoji            = COALESCE($14::text[], emoji),
 
-        excerpt          = COALESCE($12, excerpt),
-        description      = COALESCE($13, description),
+        stars            = COALESCE($15::numeric, stars),
+        reviews          = COALESCE($16::int, reviews),
+        discount         = COALESCE($17::numeric, discount),
 
-        best_for         = COALESCE($14::text[], best_for),
-        tags             = COALESCE($15::text[], tags),
+        excerpt          = COALESCE($18, excerpt),
+        description      = COALESCE($19, description),
 
-        card_perk        = COALESCE($16, card_perk),
-        offers           = COALESCE($17::jsonb, offers),
+        best_for         = COALESCE($20::text[], best_for),
+        tags             = COALESCE($21::text[], tags),
 
-        how_to_claim     = COALESCE($18, how_to_claim),
-        restrictions     = COALESCE($19, restrictions),
+        card_perk        = COALESCE($22, card_perk),
+        offers           = COALESCE($23::jsonb, offers),
 
-        area             = COALESCE($20, area),
-        lat              = COALESCE($21::double precision, lat),
-        lng              = COALESCE($22::double precision, lng),
+        how_to_claim     = COALESCE($24, how_to_claim),
+        restrictions     = COALESCE($25, restrictions),
 
-        logo             = COALESCE($23, logo),
-        image            = COALESCE($24, image),
-        og_image         = COALESCE($25, og_image),
+        area             = COALESCE($26, area),
+        lat              = COALESCE($27::double precision, lat),
+        lng              = COALESCE($28::double precision, lng),
 
-        map_url          = COALESCE($26, map_url),
-        instagram_url    = COALESCE($27, instagram_url),
-        whatsapp         = COALESCE($28, whatsapp)
+        logo             = COALESCE($29, logo),
+        image            = COALESCE($30, image),
+        og_image         = COALESCE($31, og_image),
+
+        map_url          = COALESCE($32, map_url),
+        instagram_url    = COALESCE($33, instagram_url),
+        whatsapp         = COALESCE($34, whatsapp)
 
       WHERE id = $1
       RETURNING *;
@@ -124,16 +180,15 @@ export async function handler(event) {
 
       has("live") ? Boolean(body.live) : null,
 
-      has("categories")
-        ? Array.isArray(body.categories)
-          ? body.categories.map(String)
-          : []
-        : null,
-      has("emoji")
-        ? Array.isArray(body.emoji)
-          ? body.emoji.map(String)
-          : []
-        : null,
+      has("editorialTags") ? normalizeStringArray(body.editorialTags) : null,
+      has("isPassVenue") ? Boolean(body.isPassVenue) : null,
+      has("staffPick") ? Boolean(body.staffPick) : null,
+      has("priorityScore") ? Number(body.priorityScore) : null,
+      has("laptopFriendly") ? Boolean(body.laptopFriendly) : null,
+      has("powerBackup") ? String(body.powerBackup).trim().toLowerCase() : null,
+
+      has("categories") ? normalizeStringArray(body.categories) : null,
+      has("emoji") ? normalizeStringArray(body.emoji) : null,
 
       has("stars") ? (body.stars ?? null) : null,
       has("reviews") ? (body.reviews ?? null) : null,
@@ -142,16 +197,8 @@ export async function handler(event) {
       has("excerpt") ? (body.excerpt ?? null) : null,
       has("description") ? (body.description ?? null) : null,
 
-      has("bestFor")
-        ? Array.isArray(body.bestFor)
-          ? body.bestFor.map(String)
-          : []
-        : null,
-      has("tags")
-        ? Array.isArray(body.tags)
-          ? body.tags.map(String)
-          : []
-        : null,
+      has("bestFor") ? normalizeStringArray(body.bestFor) : null,
+      has("tags") ? normalizeStringArray(body.tags) : null,
 
       has("cardPerk") ? (body.cardPerk ?? null) : null,
       has("offers")
