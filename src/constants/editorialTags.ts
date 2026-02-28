@@ -1,4 +1,7 @@
 export const EDITORIAL_TAGS = [
+  "3 Days in Ahangama",
+  "48 Hour Reset",
+  "Long Weekend Loop",
   "Surf-Town Classic",
   "Post-Surf Ritual",
   "Beach Road Staple",
