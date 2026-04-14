@@ -5,6 +5,7 @@ import { VenueRatingsOffers } from "../components/VenueRatingsOffers";
 import { VenueDescription } from "../components/VenueDescription";
 import { VenueLocationSocial } from "../components/VenueLocationSocial";
 import { VenueCuration } from "../components/VenueCuration";
+import { Card, Space, Tabs, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
 
 import type { Venue } from "../types/venue";
@@ -41,6 +42,59 @@ export default function VenueDetail({ venue, onVenueUpdated }: Props) {
     );
   }
 
+  const tabs = [
+    {
+      key: "overview",
+      label: "Overview",
+      children: (
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <VenueBasicInfo
+            venue={localVenue}
+            onVenueUpdated={handleVenueUpdated}
+          />
+          <VenueCuration
+            venue={localVenue}
+            onVenueUpdated={handleVenueUpdated}
+          />
+          <VenueCategoriesTags venue={localVenue} />
+        </Space>
+      ),
+    },
+    {
+      key: "content",
+      label: "Content",
+      children: (
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <VenueDescription
+            venue={localVenue}
+            onVenueUpdated={handleVenueUpdated}
+          />
+          <VenueRatingsOffers
+            venue={localVenue}
+            onVenueUpdated={handleVenueUpdated}
+          />
+        </Space>
+      ),
+    },
+    {
+      key: "media",
+      label: "Media",
+      children: (
+        <VenueImages venue={localVenue} onVenueUpdated={handleVenueUpdated} />
+      ),
+    },
+    {
+      key: "location",
+      label: "Location & Social",
+      children: (
+        <VenueLocationSocial
+          venue={localVenue}
+          onVenueUpdated={handleVenueUpdated}
+        />
+      ),
+    },
+  ];
+
   return (
     <div
       style={{
@@ -56,23 +110,46 @@ export default function VenueDetail({ venue, onVenueUpdated }: Props) {
         boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
       }}
     >
-      <h2 style={{ marginTop: 0 }}>{localVenue?.name}</h2>
-      <VenueImages venue={localVenue} onVenueUpdated={handleVenueUpdated} />
-      <VenueBasicInfo venue={localVenue} onVenueUpdated={handleVenueUpdated} />
-      <VenueCuration venue={localVenue} onVenueUpdated={handleVenueUpdated} />
-      <VenueCategoriesTags venue={localVenue} />
-      <VenueRatingsOffers
-        venue={localVenue}
-        onVenueUpdated={handleVenueUpdated}
-      />
-      <VenueDescription
-        venue={localVenue}
-        onVenueUpdated={handleVenueUpdated}
-      />
-      <VenueLocationSocial
-        venue={localVenue}
-        onVenueUpdated={handleVenueUpdated}
-      />
+      <Space direction="vertical" size={20} style={{ width: "100%" }}>
+        <Card
+          size="small"
+          styles={{ body: { padding: 20 } }}
+          style={{
+            borderRadius: 16,
+            border: "1px solid rgba(15, 23, 42, 0.06)",
+            background: "rgba(255, 255, 255, 0.7)",
+          }}
+        >
+          <Space direction="vertical" size={10} style={{ width: "100%" }}>
+            <Typography.Text type="secondary">
+              Editing workspace
+            </Typography.Text>
+            <Typography.Title level={3} style={{ margin: 0 }}>
+              {localVenue?.name}
+            </Typography.Title>
+            <Space size={[8, 8]} wrap>
+              {localVenue?.id ? (
+                <Tag bordered={false}>{localVenue.id}</Tag>
+              ) : null}
+              {localVenue?.slug ? (
+                <Tag bordered={false}>{localVenue.slug}</Tag>
+              ) : null}
+              <Tag color={(localVenue?.live ?? true) ? "green" : "default"}>
+                {(localVenue?.live ?? true) ? "Live" : "Coming soon"}
+              </Tag>
+              {localVenue?.status ? <Tag>{localVenue.status}</Tag> : null}
+              {localVenue?.area ? <Tag>{localVenue.area}</Tag> : null}
+            </Space>
+          </Space>
+        </Card>
+
+        <Tabs
+          defaultActiveKey="overview"
+          items={tabs}
+          style={{ width: "100%" }}
+          tabBarStyle={{ marginBottom: 16 }}
+        />
+      </Space>
     </div>
   );
 }

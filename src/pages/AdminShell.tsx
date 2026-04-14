@@ -34,6 +34,7 @@ export default function AdminShell() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          background: "#0f172a",
         }}
       >
         <Typography.Text style={{ color: "#fff", fontWeight: 600 }}>
@@ -48,7 +49,19 @@ export default function AdminShell() {
                 location.pathname === "/admin" ? "underline" : "none",
             }}
           >
-            List All Venues
+            Home
+          </Link>
+          <Link
+            to="/admin/venues"
+            style={{
+              color: "#fff",
+              textDecoration:
+                location.pathname.startsWith("/admin/venues")
+                  ? "underline"
+                  : "none",
+            }}
+          >
+            Venues
           </Link>
           {displayName ? (
             <Typography.Text style={{ color: "#fff" }}>

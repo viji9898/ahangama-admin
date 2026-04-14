@@ -15,6 +15,7 @@ import {
   Segmented,
   Select,
   Space,
+  Switch,
   Table,
   Tag,
   Typography,
@@ -41,6 +42,7 @@ type CreateVenueFormValues = {
 const CREATE_ENDPOINT = "/.netlify/functions/api-venues-create";
 const DELETE_ENDPOINT = "/.netlify/functions/api-venues-delete";
 const LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
+const UPDATE_ENDPOINT = "/.netlify/functions/api-venues-update";
 
 const categoryOptions = [
   { label: "Eat", value: "eat" },
@@ -139,6 +141,7 @@ export default function Admin() {
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
+  const [quickUpdatingIds, setQuickUpdatingIds] = useState<string[]>([]);
   const [createForm] = Form.useForm<CreateVenueFormValues>();
   const [slugDirty, setSlugDirty] = useState(false);
   const [idDirty, setIdDirty] = useState(false);
@@ -365,6 +368,54 @@ export default function Admin() {
       },
     },
     {
+      title: "Quick actions",
+      width: 220,
+      render: (_, record) => {
+        const venueId = normalizeId(record.id);
+        const isUpdating = quickUpdatingIds.includes(venueId);
+
+        return (
+          <div onClick={(event) => event.stopPropagation()}>
+            <Space direction="vertical" size={8} style={{ width: "100%" }}>
+              <Space size={8} align="center">
+                <Typography.Text type="secondary">Live</Typography.Text>
+                <Switch
+                  size="small"
+                  checked={record.live ?? true}
+                  loading={isUpdating}
+                  disabled={isUpdating || !venueId}
+                  onChange={(checked) => {
+                    void handleQuickUpdate(
+                      record,
+                      { live: checked },
+                      checked
+                        ? "Venue marked live."
+                        : "Venue marked coming soon.",
+                    );
+                  }}
+                />
+              </Space>
+              <Select
+                size="small"
+                value={record.status || "active"}
+                options={statusOptions}
+                loading={isUpdating}
+                disabled={isUpdating || !venueId}
+                style={{ width: "100%" }}
+                onChange={(value) => {
+                  void handleQuickUpdate(
+                    record,
+                    { status: value },
+                    `Status updated to ${value}.`,
+                  );
+                }}
+              />
+            </Space>
+          </div>
+        );
+      },
+    },
+    {
       title: "Updated",
       width: 160,
       render: (_, record) => (
@@ -404,6 +455,56 @@ export default function Admin() {
 
   const refreshVenues = () => {
     setReloadToken((current) => current + 1);
+  };
+
+  const setQuickUpdating = (venueId: string, updating: boolean) => {
+    setQuickUpdatingIds((current) => {
+      if (updating) {
+        return current.includes(venueId) ? current : [...current, venueId];
+      }
+
+      return current.filter((id) => id !== venueId);
+    });
+  };
+
+  const patchVenue = async (payload: Record<string, unknown>) => {
+    const response = await fetch(UPDATE_ENDPOINT, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || data?.ok !== true) {
+      throw new Error(data?.error || `Failed (${response.status})`);
+    }
+
+    return data?.venue as Venue | undefined;
+  };
+
+  const handleQuickUpdate = async (
+    venue: Venue,
+    payload: Partial<Pick<Venue, "live" | "status">>,
+    successMessage: string,
+  ) => {
+    const venueId = normalizeId(venue.id);
+    if (!venueId) {
+      message.error("Missing venue id");
+      return;
+    }
+
+    setQuickUpdating(venueId, true);
+
+    try {
+      const updatedVenue = await patchVenue({ id: venueId, ...payload });
+      if (updatedVenue) handleVenueUpdated(updatedVenue);
+      message.success(successMessage);
+    } catch (updateError) {
+      message.error(String((updateError as Error)?.message || updateError));
+    } finally {
+      setQuickUpdating(venueId, false);
+    }
   };
 
   const handleCreateValuesChange = (
