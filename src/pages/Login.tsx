@@ -126,18 +126,6 @@ export default function Login() {
             }}
           >
             <Space direction="vertical" size={24} style={{ width: "100%" }}>
-              <div>
-                <Typography.Title level={3} style={{ margin: 0 }}>
-                  Sign in
-                </Typography.Title>
-                <Typography.Paragraph
-                  type="secondary"
-                  style={{ margin: "8px 0 0" }}
-                >
-                  Access the Ahangama admin dashboard
-                </Typography.Paragraph>
-              </div>
-
               {errorCode && (
                 <Alert
                   type="error"
@@ -190,7 +178,7 @@ export default function Login() {
                     type="secondary"
                     style={{ margin: "16px 0 0", textAlign: "center" }}
                   >
-                    Authorized staff only
+                    Authorized Team Members Only
                   </Typography.Paragraph>
                 </div>
               )}
@@ -202,7 +190,10 @@ export default function Login() {
           type="secondary"
           style={{ margin: "18px 0 0", textAlign: "center" }}
         >
-          Powered by Ahangama
+          Powered by{" "}
+          <Typography.Link href="https://viji.com" target="_blank">
+            Viji
+          </Typography.Link>
         </Typography.Paragraph>
       </div>
     </div>
