@@ -1,5 +1,6 @@
 import { requireAdmin } from "./_lib/auth.mjs";
 import { query } from "./_lib/db.mjs";
+import { VENUES_TABLE, toVenueDto } from "./_lib/venues260414.mjs";
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -10,47 +11,6 @@ const json = (statusCode, body) => ({
   },
   body: JSON.stringify(body),
 });
-
-function toVenueDto(row) {
-  return {
-    id: row.id,
-    destinationSlug: row.destination_slug,
-    name: row.name,
-    slug: row.slug,
-    status: row.status,
-    live: row.live,
-    editorialTags: row.editorial_tags ?? [],
-    isPassVenue: row.is_pass_venue,
-    staffPick: row.staff_pick,
-    priorityScore: row.priority_score,
-    laptopFriendly: row.laptop_friendly,
-    powerBackup: row.power_backup,
-    categories: row.categories ?? [],
-    emoji: row.emoji ?? [],
-    stars: row.stars,
-    reviews: row.reviews,
-    discount: row.discount,
-    excerpt: row.excerpt,
-    description: row.description,
-    bestFor: row.best_for ?? [],
-    tags: row.tags ?? [],
-    cardPerk: row.card_perk,
-    offers: row.offers ?? [],
-    howToClaim: row.how_to_claim,
-    restrictions: row.restrictions,
-    area: row.area,
-    lat: row.lat,
-    lng: row.lng,
-    logo: row.logo,
-    image: row.image,
-    ogImage: row.og_image,
-    mapUrl: row.map_url,
-    instagramUrl: row.instagram_url,
-    whatsapp: row.whatsapp,
-    updatedAt: row.updated_at,
-    createdAt: row.created_at,
-  };
-}
 
 export async function handler(event) {
   try {
@@ -85,29 +45,29 @@ export async function handler(event) {
     }
 
     if (category) {
-      where.push(`$${idx} = ANY(categories)`);
+      where.push(`lower(category) = $${idx}`);
       params.push(category);
       idx++;
     }
 
     const sql = `
       SELECT
-        id, destination_slug, name, slug, status,
+        id, destination_slug, category, name, slug, status,
         live,
-        editorial_tags, is_pass_venue, staff_pick, priority_score, laptop_friendly, power_backup,
-        categories, emoji,
+        editorial_tags, is_pass_venue, staff_pick, is_featured, priority_score, pass_priority,
         stars, reviews, discount,
         excerpt, description,
         best_for, tags,
-        card_perk, offers,
+        card_perk, offer,
         how_to_claim, restrictions,
-        area, lat, lng,
+        price, hours, area, lat, lng,
         logo, image, og_image,
-        map_url, instagram_url, whatsapp,
+        map_url, google_place_id, email, instagram, whatsapp,
+        created_by, updated_by, last_verified_at, deleted_at, source, notes_internal,
         updated_at, created_at
-      FROM venues
-      WHERE ${where.join(" AND ")}
-      ORDER BY priority_score DESC, staff_pick DESC, stars DESC NULLS LAST
+      FROM ${VENUES_TABLE}
+      WHERE ${where.join(" AND ")} AND deleted_at IS NULL
+      ORDER BY is_featured DESC, priority_score DESC, pass_priority DESC, staff_pick DESC, stars DESC NULLS LAST
       LIMIT 500
     `;
 

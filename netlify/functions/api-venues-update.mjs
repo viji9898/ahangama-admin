@@ -1,5 +1,13 @@
 import { requireAdmin } from "./_lib/auth.mjs";
 import { query } from "./_lib/db.mjs";
+import {
+  VENUES_TABLE,
+  VALID_STATUSES,
+  normalizeCategory,
+  normalizeLowerText,
+  normalizeStringArray,
+  toVenueDto,
+} from "./_lib/venues260414.mjs";
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -7,67 +15,13 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-const ALLOWED_POWER_BACKUP = new Set([
-  "generator",
-  "inverter",
-  "none",
-  "unknown",
-]);
-
-const normalizeStringArray = (value) => {
-  if (!Array.isArray(value)) return [];
-  const out = value.map((s) => String(s).trim()).filter(Boolean);
-  return Array.from(new Set(out));
-};
-
-function toVenueDto(row) {
-  return {
-    id: row.id,
-    destinationSlug: row.destination_slug,
-    name: row.name,
-    slug: row.slug,
-    status: row.status,
-    live: row.live,
-    editorialTags: row.editorial_tags ?? [],
-    isPassVenue: row.is_pass_venue,
-    staffPick: row.staff_pick,
-    priorityScore: row.priority_score,
-    laptopFriendly: row.laptop_friendly,
-    powerBackup: row.power_backup,
-    categories: row.categories ?? [],
-    emoji: row.emoji ?? [],
-    stars: row.stars,
-    reviews: row.reviews,
-    discount: row.discount,
-    excerpt: row.excerpt,
-    description: row.description,
-    bestFor: row.best_for ?? [],
-    tags: row.tags ?? [],
-    cardPerk: row.card_perk,
-    offers: row.offers ?? [],
-    howToClaim: row.how_to_claim,
-    restrictions: row.restrictions,
-    area: row.area,
-    lat: row.lat,
-    lng: row.lng,
-    logo: row.logo,
-    image: row.image,
-    ogImage: row.og_image,
-    mapUrl: row.map_url,
-    instagramUrl: row.instagram_url,
-    whatsapp: row.whatsapp,
-    updatedAt: row.updated_at,
-    createdAt: row.created_at,
-  };
-}
-
 export async function handler(event) {
   try {
     if (event.httpMethod !== "PUT" && event.httpMethod !== "PATCH") {
       return json(405, { ok: false, error: "Method not allowed" });
     }
 
-    requireAdmin(event);
+    const actor = requireAdmin(event);
 
     let body;
     try {
@@ -83,19 +37,6 @@ export async function handler(event) {
 
     // Helper to support PATCH while allowing explicit nulls
     const has = (k) => Object.prototype.hasOwnProperty.call(body, k);
-
-    if (has("powerBackup")) {
-      const v = String(body.powerBackup ?? "")
-        .trim()
-        .toLowerCase();
-      if (!ALLOWED_POWER_BACKUP.has(v)) {
-        return json(400, {
-          ok: false,
-          error:
-            'powerBackup must be one of ["generator", "inverter", "none", "unknown"]',
-        });
-      }
-    }
 
     if (has("priorityScore")) {
       const raw = body.priorityScore;
@@ -114,55 +55,94 @@ export async function handler(event) {
       }
     }
 
+    if (has("passPriority")) {
+      const raw = body.passPriority;
+      if (raw === null) {
+        return json(400, { ok: false, error: "passPriority cannot be null" });
+      }
+      const n = Number(raw);
+      if (!Number.isFinite(n)) {
+        return json(400, { ok: false, error: "passPriority must be a number" });
+      }
+      if (n < 0) {
+        return json(400, { ok: false, error: "passPriority must be >= 0" });
+      }
+    }
+
+    if (has("status")) {
+      const nextStatus = String(body.status || "")
+        .trim()
+        .toLowerCase();
+      if (!VALID_STATUSES.has(nextStatus)) {
+        return json(400, { ok: false, error: "Invalid status" });
+      }
+    }
+
+    const category =
+      has("category") || has("categories")
+        ? normalizeCategory(body.category, body.categories)
+        : null;
+    if ((has("category") || has("categories")) && !category) {
+      return json(400, { ok: false, error: "category is required" });
+    }
+
     const sql = `
-      UPDATE venues
+      UPDATE ${VENUES_TABLE}
       SET
         destination_slug = COALESCE($2, destination_slug),
-        name             = COALESCE($3, name),
-        slug             = COALESCE($4, slug),
-        status           = COALESCE($5, status),
+        category         = COALESCE($3, category),
+        name             = COALESCE($4, name),
+        slug             = COALESCE($5, slug),
+        status           = COALESCE($6, status),
 
-        live             = COALESCE($6::boolean, live),
+        live             = COALESCE($7::boolean, live),
 
-        editorial_tags   = COALESCE($7::text[], editorial_tags),
-        is_pass_venue    = COALESCE($8::boolean, is_pass_venue),
-        staff_pick       = COALESCE($9::boolean, staff_pick),
-        priority_score   = COALESCE($10::numeric, priority_score),
-        laptop_friendly  = COALESCE($11::boolean, laptop_friendly),
-        power_backup     = COALESCE($12::varchar, power_backup),
+        editorial_tags   = COALESCE($8::text[], editorial_tags),
+        is_pass_venue    = COALESCE($9::boolean, is_pass_venue),
+        staff_pick       = COALESCE($10::boolean, staff_pick),
+        is_featured      = COALESCE($11::boolean, is_featured),
+        priority_score   = COALESCE($12::numeric, priority_score),
+        pass_priority    = COALESCE($13::numeric, pass_priority),
 
-        categories       = COALESCE($13::text[], categories),
-        emoji            = COALESCE($14::text[], emoji),
+        stars            = COALESCE($14::numeric, stars),
+        reviews          = COALESCE($15::int, reviews),
+        discount         = COALESCE($16::numeric, discount),
 
-        stars            = COALESCE($15::numeric, stars),
-        reviews          = COALESCE($16::int, reviews),
-        discount         = COALESCE($17::numeric, discount),
+        excerpt          = COALESCE($17, excerpt),
+        description      = COALESCE($18, description),
 
-        excerpt          = COALESCE($18, excerpt),
-        description      = COALESCE($19, description),
+        best_for         = COALESCE($19::text[], best_for),
+        tags             = COALESCE($20::text[], tags),
 
-        best_for         = COALESCE($20::text[], best_for),
-        tags             = COALESCE($21::text[], tags),
+        card_perk        = COALESCE($21, card_perk),
+        offer            = COALESCE($22::jsonb, offer),
 
-        card_perk        = COALESCE($22, card_perk),
-        offers           = COALESCE($23::jsonb, offers),
+        how_to_claim     = COALESCE($23, how_to_claim),
+        restrictions     = COALESCE($24, restrictions),
 
-        how_to_claim     = COALESCE($24, how_to_claim),
-        restrictions     = COALESCE($25, restrictions),
+        price            = COALESCE($25, price),
+        hours            = COALESCE($26, hours),
+        area             = COALESCE($27, area),
+        lat              = COALESCE($28::double precision, lat),
+        lng              = COALESCE($29::double precision, lng),
 
-        area             = COALESCE($26, area),
-        lat              = COALESCE($27::double precision, lat),
-        lng              = COALESCE($28::double precision, lng),
+        logo             = COALESCE($30, logo),
+        image            = COALESCE($31, image),
+        og_image         = COALESCE($32, og_image),
 
-        logo             = COALESCE($29, logo),
-        image            = COALESCE($30, image),
-        og_image         = COALESCE($31, og_image),
-
-        map_url          = COALESCE($32, map_url),
-        instagram_url    = COALESCE($33, instagram_url),
-        whatsapp         = COALESCE($34, whatsapp)
+        map_url          = COALESCE($33, map_url),
+        google_place_id  = COALESCE($34, google_place_id),
+        email            = COALESCE($35, email),
+        instagram        = COALESCE($36, instagram),
+        whatsapp         = COALESCE($37, whatsapp),
+        updated_by       = COALESCE($38, updated_by),
+        last_verified_at = COALESCE($39::timestamptz, last_verified_at),
+        source           = COALESCE($40, source),
+        notes_internal   = COALESCE($41, notes_internal),
+        deleted_at       = COALESCE($42::timestamptz, deleted_at)
 
       WHERE id = $1
+        AND deleted_at IS NULL
       RETURNING *;
     `;
 
@@ -174,21 +154,19 @@ export async function handler(event) {
       has("destinationSlug")
         ? String(body.destinationSlug).trim().toLowerCase()
         : null,
+      category,
       has("name") ? String(body.name).trim() : null,
-      has("slug") ? String(body.slug).trim().toLowerCase() : null,
-      has("status") ? String(body.status).trim().toLowerCase() : null,
+      has("slug") ? normalizeLowerText(body.slug) : null,
+      has("status") ? normalizeLowerText(body.status) : null,
 
       has("live") ? Boolean(body.live) : null,
 
       has("editorialTags") ? normalizeStringArray(body.editorialTags) : null,
       has("isPassVenue") ? Boolean(body.isPassVenue) : null,
       has("staffPick") ? Boolean(body.staffPick) : null,
+      has("isFeatured") ? Boolean(body.isFeatured) : null,
       has("priorityScore") ? Number(body.priorityScore) : null,
-      has("laptopFriendly") ? Boolean(body.laptopFriendly) : null,
-      has("powerBackup") ? String(body.powerBackup).trim().toLowerCase() : null,
-
-      has("categories") ? normalizeStringArray(body.categories) : null,
-      has("emoji") ? normalizeStringArray(body.emoji) : null,
+      has("passPriority") ? Number(body.passPriority) : null,
 
       has("stars") ? (body.stars ?? null) : null,
       has("reviews") ? (body.reviews ?? null) : null,
@@ -203,11 +181,15 @@ export async function handler(event) {
       has("cardPerk") ? (body.cardPerk ?? null) : null,
       has("offers")
         ? JSON.stringify(Array.isArray(body.offers) ? body.offers : [])
-        : null,
+        : has("offer")
+          ? JSON.stringify(Array.isArray(body.offer) ? body.offer : [])
+          : null,
 
       has("howToClaim") ? (body.howToClaim ?? null) : null,
       has("restrictions") ? (body.restrictions ?? null) : null,
 
+      has("price") ? (body.price ?? null) : null,
+      has("hours") ? (body.hours ?? null) : null,
       has("area") ? (body.area ?? null) : null,
       has("lat") ? (body.lat ?? null) : null,
       has("lng") ? (body.lng ?? null) : null,
@@ -217,8 +199,19 @@ export async function handler(event) {
       has("ogImage") ? (body.ogImage ?? null) : null,
 
       has("mapUrl") ? (body.mapUrl ?? null) : null,
-      has("instagramUrl") ? (body.instagramUrl ?? null) : null,
+      has("googlePlaceId") ? (body.googlePlaceId ?? null) : null,
+      has("email") ? (body.email ?? null) : null,
+      has("instagram")
+        ? (body.instagram ?? null)
+        : has("instagramUrl")
+          ? (body.instagramUrl ?? null)
+          : null,
       has("whatsapp") ? (body.whatsapp ?? null) : null,
+      actor?.email ? String(actor.email).trim().toLowerCase() : null,
+      has("lastVerifiedAt") ? (body.lastVerifiedAt ?? null) : null,
+      has("source") ? (body.source ?? null) : null,
+      has("notesInternal") ? (body.notesInternal ?? null) : null,
+      has("deletedAt") ? (body.deletedAt ?? null) : null,
     ];
 
     try {
