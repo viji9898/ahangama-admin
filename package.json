@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "migrate": "dotenv -e .env node scripts/migrate.mjs"
+    "migrate": "dotenv -e .env node scripts/migrate.mjs",
+    "import:venues260414": "dotenv -e .env node scripts/import-venues260414.mjs"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",

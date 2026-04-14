@@ -55,10 +55,9 @@ export default function AdminShell() {
             to="/admin/venues"
             style={{
               color: "#fff",
-              textDecoration:
-                location.pathname.startsWith("/admin/venues")
-                  ? "underline"
-                  : "none",
+              textDecoration: location.pathname.startsWith("/admin/venues")
+                ? "underline"
+                : "none",
             }}
           >
             Venues

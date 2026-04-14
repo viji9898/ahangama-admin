@@ -97,15 +97,23 @@ export default function AdminHome() {
     void fetchVenues();
   }, []);
 
-  const liveCount = venues.filter((venue) => (venue.live ?? true) === true).length;
+  const liveCount = venues.filter(
+    (venue) => (venue.live ?? true) === true,
+  ).length;
   const comingSoonCount = venues.filter((venue) => venue.live === false).length;
-  const staffPickCount = venues.filter((venue) => venue.staffPick === true).length;
+  const staffPickCount = venues.filter(
+    (venue) => venue.staffPick === true,
+  ).length;
 
   const recentVenues = useMemo(() => {
     return [...venues]
       .sort((a, b) => {
-        const aTime = new Date(String(a.updatedAt || a.updated_at || 0)).getTime();
-        const bTime = new Date(String(b.updatedAt || b.updated_at || 0)).getTime();
+        const aTime = new Date(
+          String(a.updatedAt || a.updated_at || 0),
+        ).getTime();
+        const bTime = new Date(
+          String(b.updatedAt || b.updated_at || 0),
+        ).getTime();
         return bTime - aTime;
       })
       .slice(0, 5);
@@ -153,7 +161,9 @@ export default function AdminHome() {
                 type="secondary"
                 style={{ margin: 0, maxWidth: 720 }}
               >
-                This is the operational home page for the admin dashboard. Start from venue management, review the current directory state, or create a new venue entry.
+                This is the operational home page for the admin dashboard. Start
+                from venue management, review the current directory state, or
+                create a new venue entry.
               </Typography.Paragraph>
             </Space>
           </Col>
@@ -188,16 +198,28 @@ export default function AdminHome() {
         <>
           <Row gutter={[16, 16]}>
             <Col xs={12} md={6}>
-              <MetricCard label="Total venues" value={venues.length} accent="#0f172a" />
+              <MetricCard
+                label="Total venues"
+                value={venues.length}
+                accent="#0f172a"
+              />
             </Col>
             <Col xs={12} md={6}>
               <MetricCard label="Live" value={liveCount} accent="#0f766e" />
             </Col>
             <Col xs={12} md={6}>
-              <MetricCard label="Coming soon" value={comingSoonCount} accent="#9a3412" />
+              <MetricCard
+                label="Coming soon"
+                value={comingSoonCount}
+                accent="#9a3412"
+              />
             </Col>
             <Col xs={12} md={6}>
-              <MetricCard label="Staff picks" value={staffPickCount} accent="#7c3aed" />
+              <MetricCard
+                label="Staff picks"
+                value={staffPickCount}
+                accent="#7c3aed"
+              />
             </Col>
           </Row>
 
@@ -222,17 +244,31 @@ export default function AdminHome() {
                     </Link>
                   </Empty>
                 ) : (
-                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  <Space
+                    direction="vertical"
+                    size={12}
+                    style={{ width: "100%" }}
+                  >
                     {recentVenues.map((venue) => (
                       <Card
                         key={venue.id || venue.slug || venue.name}
                         size="small"
                         styles={{ body: { padding: 16 } }}
-                        style={{ borderRadius: 16, background: "rgba(255,255,255,0.72)" }}
+                        style={{
+                          borderRadius: 16,
+                          background: "rgba(255,255,255,0.72)",
+                        }}
                       >
-                        <Row justify="space-between" align="middle" gutter={[12, 12]}>
+                        <Row
+                          justify="space-between"
+                          align="middle"
+                          gutter={[12, 12]}
+                        >
                           <Col flex="auto">
-                            <Typography.Text strong style={{ display: "block" }}>
+                            <Typography.Text
+                              strong
+                              style={{ display: "block" }}
+                            >
                               {venue.name || "Untitled venue"}
                             </Typography.Text>
                             <Typography.Text type="secondary">
@@ -240,10 +276,18 @@ export default function AdminHome() {
                             </Typography.Text>
                             <div style={{ marginTop: 8 }}>
                               <Space size={[8, 8]} wrap>
-                                <Tag color={(venue.live ?? true) ? "green" : "default"}>
-                                  {(venue.live ?? true) ? "Live" : "Coming soon"}
+                                <Tag
+                                  color={
+                                    (venue.live ?? true) ? "green" : "default"
+                                  }
+                                >
+                                  {(venue.live ?? true)
+                                    ? "Live"
+                                    : "Coming soon"}
                                 </Tag>
-                                {venue.status ? <Tag>{venue.status}</Tag> : null}
+                                {venue.status ? (
+                                  <Tag>{venue.status}</Tag>
+                                ) : null}
                                 {venue.area ? <Tag>{venue.area}</Tag> : null}
                               </Space>
                             </div>
@@ -251,9 +295,14 @@ export default function AdminHome() {
                           <Col>
                             <Space direction="vertical" size={8} align="end">
                               <Typography.Text type="secondary">
-                                Updated {formatDateTime(venue.updatedAt || venue.updated_at)}
+                                Updated{" "}
+                                {formatDateTime(
+                                  venue.updatedAt || venue.updated_at,
+                                )}
                               </Typography.Text>
-                              <Link to={`/admin/venues?venue=${encodeURIComponent(String(venue.id || ""))}`}>
+                              <Link
+                                to={`/admin/venues?venue=${encodeURIComponent(String(venue.id || ""))}`}
+                              >
                                 <Button size="small">Open</Button>
                               </Link>
                             </Space>
@@ -277,7 +326,11 @@ export default function AdminHome() {
                     boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
                   }}
                 >
-                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  <Space
+                    direction="vertical"
+                    size={12}
+                    style={{ width: "100%" }}
+                  >
                     <Link to="/admin/venues">
                       <Button block>Open venue management</Button>
                     </Link>
