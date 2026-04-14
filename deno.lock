@@ -11,12 +11,16 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@aws-sdk/client-s3@^3.888.0",
+        "npm:@aws-sdk/s3-presigned-post@^3.888.0",
         "npm:@eslint/js@^9.39.1",
         "npm:@react-oauth/google@~0.13.4",
         "npm:@types/node@^24.10.1",
         "npm:@types/react-dom@^19.2.3",
         "npm:@types/react@^19.2.7",
         "npm:@vitejs/plugin-react@^5.1.1",
+        "npm:antd@^6.3.0",
+        "npm:dotenv-cli@11",
         "npm:eslint-plugin-react-hooks@^7.0.1",
         "npm:eslint-plugin-react-refresh@~0.4.24",
         "npm:eslint@^9.39.1",
@@ -24,6 +28,7 @@
         "npm:google-auth-library@^10.5.0",
         "npm:jsonwebtoken@^9.0.3",
         "npm:netlify-cli@^23.15.1",
+        "npm:pg@^8.18.0",
         "npm:react-dom@^19.2.0",
         "npm:react-router-dom@^7.13.0",
         "npm:react@^19.2.0",
