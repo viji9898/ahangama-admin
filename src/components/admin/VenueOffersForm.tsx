@@ -1,4 +1,5 @@
 import { Form, Input, InputNumber, Row, Col } from "antd";
+import { useEffect, useState } from "react";
 import type { Venue } from "../../types/venue";
 import { getVenueOffersArray, listToText, textToList } from "./venueAdminUtils";
 
@@ -7,7 +8,23 @@ type Props = {
   onPatch: (patch: Partial<Venue>) => void;
 };
 
+const stopTextareaKeyPropagation = (
+  event: React.KeyboardEvent<HTMLTextAreaElement>,
+) => {
+  event.stopPropagation();
+};
+
 export function VenueOffersForm({ venue, onPatch }: Props) {
+  const [offersText, setOffersText] = useState(() =>
+    listToText(getVenueOffersArray(venue.offers)),
+  );
+  const [offersFocused, setOffersFocused] = useState(false);
+
+  useEffect(() => {
+    if (offersFocused) return;
+    setOffersText(listToText(getVenueOffersArray(venue.offers)));
+  }, [offersFocused, venue.offers]);
+
   return (
     <Form layout="vertical" style={{ paddingTop: 8 }}>
       <Row gutter={12}>
@@ -83,6 +100,7 @@ export function VenueOffersForm({ venue, onPatch }: Props) {
           rows={3}
           value={venue.cardPerk || ""}
           onChange={(event) => onPatch({ cardPerk: event.target.value })}
+          onKeyDown={stopTextareaKeyPropagation}
           placeholder="Describe the member perk clearly."
         />
       </Form.Item>
@@ -90,10 +108,14 @@ export function VenueOffersForm({ venue, onPatch }: Props) {
       <Form.Item label="Offers (one per line)">
         <Input.TextArea
           rows={4}
-          value={listToText(getVenueOffersArray(venue.offers))}
-          onChange={(event) =>
-            onPatch({ offers: textToList(event.target.value) })
-          }
+          value={offersText}
+          onChange={(event) => setOffersText(event.target.value)}
+          onFocus={() => setOffersFocused(true)}
+          onBlur={() => {
+            setOffersFocused(false);
+            onPatch({ offers: textToList(offersText) });
+          }}
+          onKeyDown={stopTextareaKeyPropagation}
           placeholder={"10% Off\nWelcome drink"}
         />
       </Form.Item>
@@ -103,6 +125,7 @@ export function VenueOffersForm({ venue, onPatch }: Props) {
           rows={3}
           value={venue.howToClaim || ""}
           onChange={(event) => onPatch({ howToClaim: event.target.value })}
+          onKeyDown={stopTextareaKeyPropagation}
           placeholder="Explain how guests redeem the offer."
         />
       </Form.Item>
@@ -112,6 +135,7 @@ export function VenueOffersForm({ venue, onPatch }: Props) {
           rows={3}
           value={venue.restrictions || ""}
           onChange={(event) => onPatch({ restrictions: event.target.value })}
+          onKeyDown={stopTextareaKeyPropagation}
           placeholder="Add any usage restrictions or terms."
         />
       </Form.Item>

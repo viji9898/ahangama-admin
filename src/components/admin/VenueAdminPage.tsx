@@ -30,10 +30,12 @@ import {
   getVenueInstagramValue,
   getVenueOffersArray,
   getVenuePrimaryCategory,
+  listToText,
   normalizeId,
   normalizeStringArray,
   normalizeText,
   slugify,
+  textToList,
   toNullableInteger,
   toNullableNumber,
 } from "./venueAdminUtils";
@@ -44,6 +46,7 @@ type CreateVenueFormValues = {
   name: string;
   slug: string;
   id?: string;
+  offers?: string;
   discount?: number;
   stars?: number;
   reviews?: number;
@@ -56,6 +59,8 @@ type CreateVenueFormValues = {
   live?: boolean;
   status?: string;
 };
+
+type VenueMediaPatch = Partial<Pick<Venue, "logo" | "image" | "ogImage">>;
 
 function parseCoordinates(value: string) {
   const rawValue = String(value || "").trim();
@@ -183,6 +188,9 @@ export function VenueAdminPage() {
 
   const [venues, setVenues] = useState<Venue[]>([]);
   const [draftVenue, setDraftVenue] = useState<Venue | undefined>(undefined);
+  const [pendingMediaPatch, setPendingMediaPatch] = useState<VenueMediaPatch>(
+    {},
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
@@ -263,6 +271,7 @@ export function VenueAdminPage() {
 
   useEffect(() => {
     setDraftVenue(selectedVenue ? mergeVenueUpdate(selectedVenue) : undefined);
+    setPendingMediaPatch({});
     setSaveState("idle");
   }, [selectedVenue]);
 
@@ -346,13 +355,20 @@ export function VenueAdminPage() {
       });
   }, [categoryFilter, filterKey, search, venues]);
 
+  const draftVenueWithPendingMedia = useMemo(
+    () =>
+      draftVenue
+        ? mergeVenueUpdate({ ...draftVenue, ...pendingMediaPatch })
+        : draftVenue,
+    [draftVenue, pendingMediaPatch],
+  );
   const originalSnapshot = useMemo(
     () => buildEditableSnapshot(selectedVenue),
     [selectedVenue],
   );
   const draftSnapshot = useMemo(
-    () => buildEditableSnapshot(draftVenue),
-    [draftVenue],
+    () => buildEditableSnapshot(draftVenueWithPendingMedia),
+    [draftVenueWithPendingMedia],
   );
   const dirty = Boolean(
     selectedVenue &&
@@ -398,6 +414,7 @@ export function VenueAdminPage() {
       ),
     );
     if (normalizeId(selectedVenue?.id) === updatedId) {
+      setPendingMediaPatch({});
       setDraftVenue(
         mergeVenueUpdate({
           ...(draftVenue || selectedVenue || {}),
@@ -411,22 +428,44 @@ export function VenueAdminPage() {
     setDraftVenue((current) =>
       current ? mergeVenueUpdate({ ...current, ...patch }) : current,
     );
+    if (
+      Object.prototype.hasOwnProperty.call(patch, "logo") ||
+      Object.prototype.hasOwnProperty.call(patch, "image") ||
+      Object.prototype.hasOwnProperty.call(patch, "ogImage")
+    ) {
+      setPendingMediaPatch((current) => ({
+        ...current,
+        ...(Object.prototype.hasOwnProperty.call(patch, "logo")
+          ? { logo: patch.logo }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(patch, "image")
+          ? { image: patch.image }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(patch, "ogImage")
+          ? { ogImage: patch.ogImage }
+          : {}),
+      }));
+    }
     if (saveState !== "idle") setSaveState("idle");
   };
 
   const handleCancelDraft = () => {
     setDraftVenue(selectedVenue ? mergeVenueUpdate(selectedVenue) : undefined);
+    setPendingMediaPatch({});
     setSaveState("idle");
   };
 
   const handleSave = async () => {
     const venueId = normalizeId(selectedVenue?.id);
-    if (!venueId || !selectedVenue || !draftVenue) {
+    if (!venueId || !selectedVenue || !draftVenueWithPendingMedia) {
       message.error("No venue selected.");
       return;
     }
 
-    const payload = buildUpdatePayload(originalSnapshot, draftSnapshot);
+    const payload = buildUpdatePayload(
+      buildEditableSnapshot(selectedVenue),
+      buildEditableSnapshot(draftVenueWithPendingMedia),
+    );
     if (Object.keys(payload).length === 0) {
       message.info("No changes to save.");
       return;
@@ -437,6 +476,7 @@ export function VenueAdminPage() {
     try {
       const updated = await patchVenue({ id: venueId, ...payload });
       updateVenueInState(updated);
+      setPendingMediaPatch({});
       setSaveState("saved");
       message.success("Venue updated.");
     } catch (saveError) {
@@ -570,6 +610,7 @@ export function VenueAdminPage() {
         name: normalizeText(values.name),
         slug: slugify(values.slug || ""),
         id: values.id?.trim() ? slugify(values.id) : undefined,
+        offers: textToList(values.offers || ""),
         discount: values.discount ?? null,
         stars: values.stars ?? null,
         reviews: values.reviews ?? null,
@@ -625,6 +666,7 @@ export function VenueAdminPage() {
       name: `${selectedVenue.name || "Venue"} Copy`,
       slug: baseSlug,
       id: baseSlug,
+      offers: listToText(getVenueOffersArray(selectedVenue.offers)),
       logo: selectedVenue.logo,
       image: selectedVenue.image,
       ogImage: selectedVenue.ogImage,
@@ -782,7 +824,7 @@ export function VenueAdminPage() {
 
         <div style={{ position: screens.xl ? "sticky" : "static", top: 24 }}>
           <VenueEditorPanel
-            venue={draftVenue}
+            venue={draftVenueWithPendingMedia}
             categoryOptions={categoryOptions}
             dirty={dirty}
             saving={saving}
@@ -903,6 +945,14 @@ export function VenueAdminPage() {
 
             <Card size="small" title="Basics" style={{ borderRadius: 18 }}>
               <Row gutter={12}>
+                <Col span={24}>
+                  <Form.Item label="Offers (one per line)" name="offers">
+                    <Input.TextArea
+                      rows={4}
+                      placeholder={"10% Off\nWelcome drink"}
+                    />
+                  </Form.Item>
+                </Col>
                 <Col xs={24} md={8}>
                   <Form.Item label="Discount" name="discount">
                     <InputNumber

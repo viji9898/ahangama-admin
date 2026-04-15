@@ -57,6 +57,20 @@ type Props = {
   onVenueUpdated?: (venue: Partial<Venue>) => void;
 };
 
+const plainTextareaStyle: React.CSSProperties = {
+  width: "100%",
+  minHeight: 96,
+  padding: "8px 11px",
+  borderRadius: 6,
+  border: "1px solid #d9d9d9",
+  outline: "none",
+  resize: "vertical",
+  font: "inherit",
+  lineHeight: 1.5715,
+  background: "#ffffff",
+  boxSizing: "border-box",
+};
+
 export function VenueRatingsOffers({ venue, onVenueUpdated }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -86,7 +100,7 @@ export function VenueRatingsOffers({ venue, onVenueUpdated }: Props) {
     String(venue?.restrictions || ""),
   );
 
-  useEffect(() => {
+  const syncDraftFromVenue = () => {
     setStars(
       typeof venue?.stars === "number" ? venue.stars : (venue?.stars ?? null),
     );
@@ -100,24 +114,17 @@ export function VenueRatingsOffers({ venue, onVenueUpdated }: Props) {
     setOffersText(normalizeOffersText(venue?.offers));
     setHowToClaim(String(venue?.howToClaim || ""));
     setRestrictions(String(venue?.restrictions || ""));
-  }, [venue]);
+  };
+
+  useEffect(() => {
+    if (modalOpen) return;
+    syncDraftFromVenue();
+  }, [modalOpen, venue]);
 
   useEffect(() => {
     if (!modalOpen) return;
-    setStars(
-      typeof venue?.stars === "number" ? venue.stars : (venue?.stars ?? null),
-    );
-    setReviews(
-      typeof venue?.reviews === "number"
-        ? venue.reviews
-        : (venue?.reviews ?? null),
-    );
-    setDiscountPercent(discountDbToPercent(venue?.discount));
-    setCardPerk(String(venue?.cardPerk || ""));
-    setOffersText(normalizeOffersText(venue?.offers));
-    setHowToClaim(String(venue?.howToClaim || ""));
-    setRestrictions(String(venue?.restrictions || ""));
-  }, [modalOpen, venue]);
+    syncDraftFromVenue();
+  }, [modalOpen]);
 
   const baseline = useMemo(() => {
     return {
@@ -362,31 +369,34 @@ export function VenueRatingsOffers({ venue, onVenueUpdated }: Props) {
 
         <div style={{ marginTop: 12 }}>
           <Typography.Text strong>Offers (one per line)</Typography.Text>
-          <Input.TextArea
+          <textarea
             value={offersText}
             onChange={(e) => setOffersText(e.target.value)}
             rows={4}
             placeholder="Offer 1\nOffer 2"
+            style={plainTextareaStyle}
           />
         </div>
 
         <div style={{ marginTop: 12 }}>
           <Typography.Text strong>How to claim</Typography.Text>
-          <Input.TextArea
+          <textarea
             value={howToClaim}
             onChange={(e) => setHowToClaim(e.target.value)}
             rows={3}
             placeholder="How to claim"
+            style={plainTextareaStyle}
           />
         </div>
 
         <div style={{ marginTop: 12 }}>
           <Typography.Text strong>Restrictions</Typography.Text>
-          <Input.TextArea
+          <textarea
             value={restrictions}
             onChange={(e) => setRestrictions(e.target.value)}
             rows={3}
             placeholder="Restrictions"
+            style={plainTextareaStyle}
           />
         </div>
 
