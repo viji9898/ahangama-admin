@@ -33,11 +33,20 @@ export function VenueOffersForm({ venue, onPatch }: Props) {
     listToText(getVenueOffersArray(venue.offers)),
   );
   const [offersFocused, setOffersFocused] = useState(false);
+  const [discountFocused, setDiscountFocused] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState<number | null>(() =>
+    discountDbToPercent(venue.discount),
+  );
 
   useEffect(() => {
     if (offersFocused) return;
     setOffersText(listToText(getVenueOffersArray(venue.offers)));
   }, [offersFocused, venue.offers]);
+
+  useEffect(() => {
+    if (discountFocused) return;
+    setDiscountPercent(discountDbToPercent(venue.discount));
+  }, [discountFocused, venue.discount]);
 
   return (
     <Form layout="vertical" style={{ paddingTop: 8 }}>
@@ -77,16 +86,17 @@ export function VenueOffersForm({ venue, onPatch }: Props) {
               max={100}
               step={0.5}
               controls={false}
-              value={discountDbToPercent(venue.discount)}
+              value={discountPercent}
               style={{ width: "100%" }}
               addonAfter="%"
+              onFocus={() => setDiscountFocused(true)}
               onChange={(value) =>
-                onPatch({
-                  discount: discountPercentToDb(
-                    value === null ? null : Number(value),
-                  ),
-                })
+                setDiscountPercent(value === null ? null : Number(value))
               }
+              onBlur={() => {
+                setDiscountFocused(false);
+                onPatch({ discount: discountPercentToDb(discountPercent) });
+              }}
             />
           </Form.Item>
         </Col>
