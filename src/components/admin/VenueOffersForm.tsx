@@ -8,6 +8,20 @@ type Props = {
   onPatch: (patch: Partial<Venue>) => void;
 };
 
+const discountDbToPercent = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return null;
+  return numericValue <= 1 ? numericValue * 100 : numericValue;
+};
+
+const discountPercentToDb = (value: number | null): number | undefined => {
+  if (value === null || value === undefined) return undefined;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  return numericValue / 100;
+};
+
 const stopTextareaKeyPropagation = (
   event: React.KeyboardEvent<HTMLTextAreaElement>,
 ) => {
@@ -60,13 +74,17 @@ export function VenueOffersForm({ venue, onPatch }: Props) {
           <Form.Item label="Discount">
             <InputNumber
               min={0}
-              step={0.01}
+              max={100}
+              step={0.5}
               controls={false}
-              value={venue.discount ?? null}
+              value={discountDbToPercent(venue.discount)}
               style={{ width: "100%" }}
+              addonAfter="%"
               onChange={(value) =>
                 onPatch({
-                  discount: value === null ? undefined : Number(value),
+                  discount: discountPercentToDb(
+                    value === null ? null : Number(value),
+                  ),
                 })
               }
             />

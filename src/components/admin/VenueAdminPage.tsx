@@ -62,6 +62,20 @@ type CreateVenueFormValues = {
 
 type VenueMediaPatch = Partial<Pick<Venue, "logo" | "image" | "ogImage">>;
 
+function discountDbToPercent(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return null;
+  return numericValue <= 1 ? numericValue * 100 : numericValue;
+}
+
+function discountPercentToDb(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return null;
+  return numericValue / 100;
+}
+
 function parseCoordinates(value: string) {
   const rawValue = String(value || "").trim();
   if (!rawValue) {
@@ -611,7 +625,7 @@ export function VenueAdminPage() {
         slug: slugify(values.slug || ""),
         id: values.id?.trim() ? slugify(values.id) : undefined,
         offers: textToList(values.offers || ""),
-        discount: values.discount ?? null,
+        discount: discountPercentToDb(values.discount),
         stars: values.stars ?? null,
         reviews: values.reviews ?? null,
         lat: values.lat ?? null,
@@ -667,6 +681,7 @@ export function VenueAdminPage() {
       slug: baseSlug,
       id: baseSlug,
       offers: listToText(getVenueOffersArray(selectedVenue.offers)),
+      discount: discountDbToPercent(selectedVenue.discount) ?? undefined,
       logo: selectedVenue.logo,
       image: selectedVenue.image,
       ogImage: selectedVenue.ogImage,
@@ -957,11 +972,12 @@ export function VenueAdminPage() {
                   <Form.Item label="Discount" name="discount">
                     <InputNumber
                       min={0}
-                      max={1}
-                      step={0.01}
+                      max={100}
+                      step={0.5}
                       controls={false}
                       style={{ width: "100%" }}
-                      placeholder="0.1"
+                      placeholder="10"
+                      addonAfter="%"
                     />
                   </Form.Item>
                 </Col>
