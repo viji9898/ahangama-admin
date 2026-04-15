@@ -6,6 +6,7 @@ export type PowerBackup = "generator" | "inverter" | "none" | "unknown";
 export interface Venue {
   id?: string;
   destinationSlug?: string;
+  category?: string;
   name?: string;
   slug?: string;
   status?: string;
@@ -15,7 +16,9 @@ export interface Venue {
   editorialTags?: string[];
   isPassVenue?: boolean;
   staffPick?: boolean;
+  isFeatured?: boolean;
   priorityScore?: number;
+  passPriority?: number;
   laptopFriendly?: boolean;
   powerBackup?: PowerBackup;
 
@@ -33,6 +36,8 @@ export interface Venue {
   offers?: unknown[] | string;
   howToClaim?: string;
   restrictions?: string;
+  price?: string;
+  hours?: string;
 
   // Location/media
   area?: string;
@@ -42,8 +47,19 @@ export interface Venue {
   image?: string;
   ogImage?: string;
   mapUrl?: string;
+  googlePlaceId?: string;
+  email?: string;
+  instagram?: string;
   instagramUrl?: string;
   whatsapp?: string;
+
+  // Audit / lifecycle
+  createdBy?: string;
+  updatedBy?: string;
+  lastVerifiedAt?: string;
+  deletedAt?: string;
+  source?: string;
+  notesInternal?: string;
 
   // Timestamps
   updatedAt?: string;

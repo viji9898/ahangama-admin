@@ -25,8 +25,8 @@ const maxBytesForKind: Record<Kind, number> = {
 };
 
 const requiredDimsForKind: Record<Kind, { w: number; h: number }> = {
-  // logo: max 1000x1000
-  logo: { w: 1000, h: 1000 },
+  // logo: max 1080x1080
+  logo: { w: 1080, h: 1080 },
   // image + ogImage: exact 1200x630
   image: { w: 1200, h: 630 },
   ogImage: { w: 1200, h: 630 },
@@ -371,7 +371,7 @@ export function VenueImages({ venue, onVenueUpdated }: Props) {
             >
               Upload
             </Button>
-            <div style={{ fontSize: 12, color: "#888" }}>≤1000×1000, ≤50KB</div>
+            <div style={{ fontSize: 12, color: "#888" }}>≤1080×1080, ≤50KB</div>
           </Space>
         </Col>
 
