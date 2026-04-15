@@ -16,6 +16,7 @@ type Props = {
 export function VenueCardItem({ venue, isActive, onSelect }: Props) {
   const previewImage = getVenueHeroImage(venue);
   const categories = getVenueCategories(venue).slice(0, 2);
+  const updatedBy = normalizeText(venue.updatedBy);
 
   return (
     <div onClick={onSelect} style={{ cursor: "pointer" }}>
@@ -104,6 +105,7 @@ export function VenueCardItem({ venue, isActive, onSelect }: Props) {
                 </Tag>
               ))}
               {venue.status ? <Tag bordered={false}>{venue.status}</Tag> : null}
+              {updatedBy ? <Tag bordered={false}>{updatedBy}</Tag> : null}
             </Space>
           </Space>
         </Space>
