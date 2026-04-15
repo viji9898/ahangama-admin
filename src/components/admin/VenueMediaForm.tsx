@@ -9,7 +9,10 @@ type Props = {
 };
 
 export function VenueMediaForm({ venue, onPatch }: Props) {
-  const venueId = String(venue.id || "").trim().toLowerCase() || undefined;
+  const venueId =
+    String(venue.id || "")
+      .trim()
+      .toLowerCase() || undefined;
 
   return (
     <Space
@@ -18,11 +21,12 @@ export function VenueMediaForm({ venue, onPatch }: Props) {
       style={{ width: "100%", paddingTop: 8 }}
     >
       <Typography.Text type="secondary">
-        Upload directly to S3, then review the URLs below. Media changes are saved with the rest of the form.
+        Upload directly to S3, then review the URLs below. Media changes are
+        saved with the rest of the form.
       </Typography.Text>
 
       <Row gutter={[12, 12]}>
-        <Col span={24}>
+        <Col xs={24} md={16}>
           <VenueMediaUploadField
             kind="image"
             venueId={venueId}
@@ -30,15 +34,16 @@ export function VenueMediaForm({ venue, onPatch }: Props) {
             onUploaded={(url) => onPatch({ image: url })}
           />
         </Col>
-        <Col xs={24} md={12}>
+        <Col xs={24} md={8}>
           <VenueMediaUploadField
             kind="logo"
             venueId={venueId}
             value={venue.logo || undefined}
+            compact
             onUploaded={(url) => onPatch({ logo: url })}
           />
         </Col>
-        <Col xs={24} md={12}>
+        <Col span={24}>
           <VenueMediaUploadField
             kind="ogImage"
             venueId={venueId}

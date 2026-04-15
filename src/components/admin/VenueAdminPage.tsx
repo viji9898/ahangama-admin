@@ -3,10 +3,13 @@ import {
   Alert,
   Button,
   Card,
+  Col,
   Drawer,
   Form,
   Grid,
   Input,
+  InputNumber,
+  Row,
   Select,
   Space,
   Typography,
@@ -41,12 +44,62 @@ type CreateVenueFormValues = {
   name: string;
   slug: string;
   id?: string;
+  discount?: number;
+  stars?: number;
+  reviews?: number;
+  lat?: number;
+  lng?: number;
+  mapUrl?: string;
   logo?: string;
   image?: string;
   ogImage?: string;
   live?: boolean;
   status?: string;
 };
+
+function parseCoordinates(value: string) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return {
+      ok: false as const,
+      error: "Paste coordinates like: 5.9718, 80.3760",
+    };
+  }
+
+  const parts = rawValue.split(",").map((part) => part.trim());
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    return {
+      ok: false as const,
+      error: "Use the format: latitude, longitude",
+    };
+  }
+
+  const lat = Number(parts[0]);
+  const lng = Number(parts[1]);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return {
+      ok: false as const,
+      error: "Latitude and longitude must both be valid numbers",
+    };
+  }
+
+  if (lat < -90 || lat > 90) {
+    return {
+      ok: false as const,
+      error: "Latitude must be between -90 and 90",
+    };
+  }
+
+  if (lng < -180 || lng > 180) {
+    return {
+      ok: false as const,
+      error: "Longitude must be between -180 and 180",
+    };
+  }
+
+  return { ok: true as const, lat, lng };
+}
 
 const CREATE_ENDPOINT = "/.netlify/functions/api-venues-create";
 const DELETE_ENDPOINT = "/.netlify/functions/api-venues-delete";
@@ -150,6 +203,8 @@ export function VenueAdminPage() {
   const [createForm] = Form.useForm<CreateVenueFormValues>();
   const [slugDirty, setSlugDirty] = useState(false);
   const [idDirty, setIdDirty] = useState(false);
+  const [coordinatesInput, setCoordinatesInput] = useState("");
+  const [coordinatesError, setCoordinatesError] = useState("");
   const createSlug = Form.useWatch("slug", createForm);
   const createId = Form.useWatch("id", createForm);
   const createLogo = Form.useWatch("logo", createForm);
@@ -216,6 +271,8 @@ export function VenueAdminPage() {
       createForm.resetFields();
       setSlugDirty(false);
       setIdDirty(false);
+      setCoordinatesInput("");
+      setCoordinatesError("");
     }
   }, [createForm, createOpen]);
 
@@ -446,6 +503,62 @@ export function VenueAdminPage() {
     }
   };
 
+  const applyParsedCoordinates = (
+    value: string,
+    options?: { clearOnSuccess?: boolean },
+  ) => {
+    const result = parseCoordinates(value);
+    if (!result.ok) {
+      setCoordinatesError(result.error);
+      return false;
+    }
+
+    createForm.setFieldsValue({ lat: result.lat, lng: result.lng });
+    setCoordinatesError("");
+    if (options?.clearOnSuccess) {
+      setCoordinatesInput("");
+    } else {
+      setCoordinatesInput(value);
+    }
+    return true;
+  };
+
+  const handleCoordinatesChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const nextValue = event.target.value;
+    setCoordinatesInput(nextValue);
+
+    if (!nextValue.trim()) {
+      setCoordinatesError("");
+      return;
+    }
+
+    if (nextValue.includes(",")) {
+      void applyParsedCoordinates(nextValue);
+    }
+  };
+
+  const handleCoordinatesPaste = (
+    event: React.ClipboardEvent<HTMLInputElement>,
+  ) => {
+    const pastedValue = event.clipboardData.getData("text");
+    if (!pastedValue) return;
+
+    event.preventDefault();
+    setCoordinatesInput(pastedValue);
+    void applyParsedCoordinates(pastedValue, { clearOnSuccess: true });
+  };
+
+  const handleCoordinatesBlur = () => {
+    if (!coordinatesInput.trim()) {
+      setCoordinatesError("");
+      return;
+    }
+
+    void applyParsedCoordinates(coordinatesInput, { clearOnSuccess: true });
+  };
+
   const handleCreateVenue = async (values: CreateVenueFormValues) => {
     setCreateSubmitting(true);
     try {
@@ -457,6 +570,12 @@ export function VenueAdminPage() {
         name: normalizeText(values.name),
         slug: slugify(values.slug || ""),
         id: values.id?.trim() ? slugify(values.id) : undefined,
+        discount: values.discount ?? null,
+        stars: values.stars ?? null,
+        reviews: values.reviews ?? null,
+        lat: values.lat ?? null,
+        lng: values.lng ?? null,
+        mapUrl: normalizeText(values.mapUrl) || null,
         logo: normalizeText(values.logo) || null,
         image: normalizeText(values.image) || null,
         ogImage: normalizeText(values.ogImage) || null,
@@ -679,7 +798,7 @@ export function VenueAdminPage() {
       <Drawer
         title="Create New Venue"
         placement="right"
-        width={420}
+        width={630}
         open={createOpen}
         onClose={closeCreateDrawer}
         destroyOnClose
@@ -728,54 +847,192 @@ export function VenueAdminPage() {
             />
 
             <Card size="small" title="Identity" style={{ borderRadius: 18 }}>
-              <Form.Item
-                label="Destination slug"
-                name="destinationSlug"
-                rules={[{ required: true, message: "Destination is required" }]}
-              >
-                <Input placeholder="ahangama" />
-              </Form.Item>
-              <Form.Item
-                label="Category"
-                name="category"
-                rules={[{ required: true, message: "Category is required" }]}
-              >
-                <Select options={categoryOptions} />
-              </Form.Item>
-              <Form.Item
-                label="Venue name"
-                name="name"
-                rules={[{ required: true, message: "Name is required" }]}
-              >
-                <Input placeholder="Palm Hotel" />
-              </Form.Item>
-              <Form.Item
-                label="Slug"
-                name="slug"
-                rules={[{ required: true, message: "Slug is required" }]}
-                extra="Auto-generated from the venue name until you edit it manually."
-              >
-                <Input placeholder="palm-hotel" />
-              </Form.Item>
-              <Form.Item
-                label="Venue ID"
-                name="id"
-                extra="Defaults to the slug."
-              >
-                <Input placeholder="palm-hotel" />
-              </Form.Item>
+              <Row gutter={12}>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label="Destination slug"
+                    name="destinationSlug"
+                    rules={[
+                      { required: true, message: "Destination is required" },
+                    ]}
+                  >
+                    <Input placeholder="ahangama" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label="Category"
+                    name="category"
+                    rules={[
+                      { required: true, message: "Category is required" },
+                    ]}
+                  >
+                    <Select options={categoryOptions} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label="Venue name"
+                    name="name"
+                    rules={[{ required: true, message: "Name is required" }]}
+                  >
+                    <Input placeholder="Palm Hotel" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label="Slug"
+                    name="slug"
+                    rules={[{ required: true, message: "Slug is required" }]}
+                    extra="Auto-generated from the venue name until you edit it manually."
+                  >
+                    <Input placeholder="palm-hotel" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label="Venue ID"
+                    name="id"
+                    extra="Defaults to the slug."
+                  >
+                    <Input placeholder="palm-hotel" />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
+
+            <Card size="small" title="Basics" style={{ borderRadius: 18 }}>
+              <Row gutter={12}>
+                <Col xs={24} md={8}>
+                  <Form.Item label="Discount" name="discount">
+                    <InputNumber
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      controls={false}
+                      style={{ width: "100%" }}
+                      placeholder="0.1"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={8}>
+                  <Form.Item label="Stars" name="stars">
+                    <InputNumber
+                      min={0}
+                      max={5}
+                      step={0.1}
+                      controls={false}
+                      style={{ width: "100%" }}
+                      placeholder="4.8"
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} md={8}>
+                  <Form.Item label="Reviews" name="reviews">
+                    <InputNumber
+                      min={0}
+                      controls={false}
+                      style={{ width: "100%" }}
+                      placeholder="120"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={24}>
+                  <div
+                    style={{
+                      padding: 16,
+                      borderRadius: 16,
+                      background: "rgba(241, 245, 249, 0.8)",
+                      border: "1px solid rgba(148, 163, 184, 0.24)",
+                    }}
+                  >
+                    <Typography.Text
+                      type="secondary"
+                      style={{ display: "block", marginBottom: 12 }}
+                    >
+                      Coordinates
+                    </Typography.Text>
+                    <Row gutter={12}>
+                      <Col xs={24} md={12}>
+                        <Form.Item
+                          label="Coordinates"
+                          validateStatus={
+                            coordinatesError ? "error" : undefined
+                          }
+                          help={
+                            coordinatesError ||
+                            "Paste coordinates like: 5.9718, 80.3760"
+                          }
+                          style={{ marginBottom: 12 }}
+                        >
+                          <Input
+                            value={coordinatesInput}
+                            onChange={handleCoordinatesChange}
+                            onPaste={handleCoordinatesPaste}
+                            onBlur={handleCoordinatesBlur}
+                            placeholder="Paste coordinates (lat, lng)"
+                          />
+                        </Form.Item>
+                      </Col>
+
+                      <Col xs={24} md={12}>
+                        <Form.Item
+                          label="Map URL"
+                          name="mapUrl"
+                          style={{ marginBottom: 12 }}
+                        >
+                          <Input placeholder="https://maps.app.goo.gl/..." />
+                        </Form.Item>
+                      </Col>
+
+                      <Col xs={24} md={12}>
+                        <Form.Item
+                          label="Latitude"
+                          name="lat"
+                          style={{ marginBottom: 0 }}
+                        >
+                          <InputNumber
+                            controls={false}
+                            style={{ width: "100%" }}
+                            placeholder="5.97"
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={12}>
+                        <Form.Item
+                          label="Longitude"
+                          name="lng"
+                          style={{ marginBottom: 0 }}
+                        >
+                          <InputNumber
+                            controls={false}
+                            style={{ width: "100%" }}
+                            placeholder="80.36"
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </div>
+                </Col>
+              </Row>
             </Card>
 
             <Card size="small" title="Visibility" style={{ borderRadius: 18 }}>
-              <Form.Item label="Status" name="status">
-                <Select options={VENUE_STATUS_OPTIONS} />
-              </Form.Item>
+              <Row gutter={12}>
+                <Col xs={24} md={12}>
+                  <Form.Item label="Status" name="status">
+                    <Select options={VENUE_STATUS_OPTIONS} />
+                  </Form.Item>
+                </Col>
+              </Row>
             </Card>
 
             <Card size="small" title="Media" style={{ borderRadius: 18 }}>
               <Space direction="vertical" size={16} style={{ width: "100%" }}>
                 <Typography.Text type="secondary">
-                  Uploads use the venue ID shown above. Changing the ID later will not move files that were already uploaded.
+                  Uploads use the venue ID shown above. Changing the ID later
+                  will not move files that were already uploaded.
                 </Typography.Text>
 
                 <VenueMediaUploadField
@@ -783,7 +1040,9 @@ export function VenueAdminPage() {
                   venueId={createVenueId}
                   value={createImage}
                   compact
-                  onUploaded={(url) => createForm.setFieldsValue({ image: url })}
+                  onUploaded={(url) =>
+                    createForm.setFieldsValue({ image: url })
+                  }
                 />
                 <VenueMediaUploadField
                   kind="logo"
@@ -797,18 +1056,10 @@ export function VenueAdminPage() {
                   venueId={createVenueId}
                   value={createOgImage}
                   compact
-                  onUploaded={(url) => createForm.setFieldsValue({ ogImage: url })}
+                  onUploaded={(url) =>
+                    createForm.setFieldsValue({ ogImage: url })
+                  }
                 />
-
-                <Form.Item label="Logo URL" name="logo">
-                  <Input placeholder="https://..." />
-                </Form.Item>
-                <Form.Item label="Hero image URL" name="image">
-                  <Input placeholder="https://..." />
-                </Form.Item>
-                <Form.Item label="OG image URL" name="ogImage">
-                  <Input placeholder="https://..." />
-                </Form.Item>
               </Space>
             </Card>
           </Space>

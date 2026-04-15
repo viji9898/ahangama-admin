@@ -1,5 +1,5 @@
 import { Button, Card, Space, Typography, message } from "antd";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type VenueMediaKind,
   uploadVenueMediaToS3,
@@ -26,12 +26,17 @@ export function VenueMediaUploadField({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [cacheBust, setCacheBust] = useState(Date.now());
+  const [previewSource, setPreviewSource] = useState(value || "");
+
+  useEffect(() => {
+    setPreviewSource(value || "");
+  }, [value]);
 
   const previewUrl = useMemo(() => {
-    if (!value) return "";
-    const separator = value.includes("?") ? "&" : "?";
-    return `${value}${separator}v=${cacheBust}`;
-  }, [cacheBust, value]);
+    if (!previewSource) return "";
+    const separator = previewSource.includes("?") ? "&" : "?";
+    return `${previewSource}${separator}v=${cacheBust}`;
+  }, [cacheBust, previewSource]);
 
   const rules = venueMediaDimensions[kind];
   const helperText = rules.exact
@@ -48,6 +53,7 @@ export function VenueMediaUploadField({
     setUploading(true);
     try {
       const upload = await uploadVenueMediaToS3({ venueId, kind, file });
+      setPreviewSource(upload.publicUrl);
       onUploaded(upload.publicUrl);
       setCacheBust(Date.now());
       message.success(`${venueMediaLabel[kind]} uploaded.`);
@@ -59,7 +65,7 @@ export function VenueMediaUploadField({
   };
 
   const previewHeight = compact ? 88 : kind === "logo" ? 140 : 180;
-  const objectFit = kind === "logo" ? "contain" : "cover";
+  const previewAspectRatio = `${rules.width} / ${rules.height}`;
 
   return (
     <Card
@@ -80,19 +86,29 @@ export function VenueMediaUploadField({
         <div
           style={{
             height: previewHeight,
+            width: "100%",
+            aspectRatio: compact ? undefined : previewAspectRatio,
             borderRadius: 12,
             background: "rgba(226, 232, 240, 0.6)",
-            display: "grid",
-            placeItems: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             overflow: "hidden",
             border: "1px solid rgba(15, 23, 42, 0.06)",
+            padding: compact ? 8 : 12,
+            boxSizing: "border-box",
           }}
         >
           {previewUrl ? (
             <img
               src={previewUrl}
               alt={venueMediaLabel[kind]}
-              style={{ width: "100%", height: "100%", objectFit }}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                display: "block",
+              }}
             />
           ) : (
             <Typography.Text type="secondary">Missing media</Typography.Text>
