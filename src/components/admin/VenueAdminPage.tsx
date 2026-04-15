@@ -362,9 +362,19 @@ export function VenueAdminPage() {
       })
       .slice()
       .sort((a, b) => {
+        const updatedAtA = new Date(
+          String(a.updatedAt || a.updated_at || 0),
+        ).getTime();
+        const updatedAtB = new Date(
+          String(b.updatedAt || b.updated_at || 0),
+        ).getTime();
+        const updatedDelta = updatedAtB - updatedAtA;
+        if (updatedDelta !== 0) return updatedDelta;
+
         const featuredDelta =
           Number(b.isFeatured ?? false) - Number(a.isFeatured ?? false);
         if (featuredDelta !== 0) return featuredDelta;
+
         return String(a.name || "").localeCompare(String(b.name || ""));
       });
   }, [categoryFilter, filterKey, search, venues]);

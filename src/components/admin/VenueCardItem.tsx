@@ -1,6 +1,7 @@
 import { Badge, Card, Space, Tag, Typography } from "antd";
 import type { Venue } from "../../types/venue";
 import {
+  formatDateTime,
   getVenueCategories,
   getVenueHeroImage,
   normalizeText,
@@ -67,6 +68,10 @@ export function VenueCardItem({ venue, isActive, onSelect }: Props) {
           )}
 
           <Space direction="vertical" size={6} style={{ width: "100%" }}>
+            <Typography.Text type="secondary">
+              Updated {formatDateTime(venue.updatedAt || venue.updated_at)}
+            </Typography.Text>
+
             <Space
               size={8}
               wrap
