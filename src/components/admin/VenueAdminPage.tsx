@@ -616,26 +616,32 @@ export function VenueAdminPage() {
   const handleCreateVenue = async (values: CreateVenueFormValues) => {
     setCreateSubmitting(true);
     try {
-      const category = normalizeText(values.category).toLowerCase();
+      const formValues = {
+        ...values,
+        ...createForm.getFieldsValue(true),
+      } as CreateVenueFormValues;
+      const category = normalizeText(formValues.category).toLowerCase();
       const payload = {
-        destinationSlug: normalizeText(values.destinationSlug).toLowerCase(),
+        destinationSlug: normalizeText(
+          formValues.destinationSlug,
+        ).toLowerCase(),
         category,
         categories: category ? [category] : [],
-        name: normalizeText(values.name),
-        slug: slugify(values.slug || ""),
-        id: values.id?.trim() ? slugify(values.id) : undefined,
-        offers: textToList(values.offers || ""),
-        discount: discountPercentToDb(values.discount),
-        stars: values.stars ?? null,
-        reviews: values.reviews ?? null,
-        lat: values.lat ?? null,
-        lng: values.lng ?? null,
-        mapUrl: normalizeText(values.mapUrl) || null,
-        logo: normalizeText(values.logo) || null,
-        image: normalizeText(values.image) || null,
-        ogImage: normalizeText(values.ogImage) || null,
-        live: Boolean(values.live),
-        status: normalizeText(values.status).toLowerCase() || "draft",
+        name: normalizeText(formValues.name),
+        slug: slugify(formValues.slug || ""),
+        id: formValues.id?.trim() ? slugify(formValues.id) : undefined,
+        offers: textToList(formValues.offers || ""),
+        discount: discountPercentToDb(formValues.discount),
+        stars: formValues.stars ?? null,
+        reviews: formValues.reviews ?? null,
+        lat: formValues.lat ?? null,
+        lng: formValues.lng ?? null,
+        mapUrl: normalizeText(formValues.mapUrl) || null,
+        logo: normalizeText(formValues.logo) || null,
+        image: normalizeText(formValues.image) || null,
+        ogImage: normalizeText(formValues.ogImage) || null,
+        live: Boolean(formValues.live),
+        status: normalizeText(formValues.status).toLowerCase() || "draft",
       };
 
       const response = await fetch(CREATE_ENDPOINT, {
@@ -1096,6 +1102,16 @@ export function VenueAdminPage() {
 
             <Card size="small" title="Media" style={{ borderRadius: 18 }}>
               <Space direction="vertical" size={16} style={{ width: "100%" }}>
+                <Form.Item name="image" hidden>
+                  <Input />
+                </Form.Item>
+                <Form.Item name="logo" hidden>
+                  <Input />
+                </Form.Item>
+                <Form.Item name="ogImage" hidden>
+                  <Input />
+                </Form.Item>
+
                 <Typography.Text type="secondary">
                   Uploads use the venue ID shown above. Changing the ID later
                   will not move files that were already uploaded.
