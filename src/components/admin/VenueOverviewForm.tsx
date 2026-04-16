@@ -1,4 +1,5 @@
 import {
+  Card,
   Form,
   Input,
   InputNumber,
@@ -74,15 +75,6 @@ export function VenueOverviewForm({ venue, categoryOptions, onPatch }: Props) {
 
       <Row gutter={12}>
         <Col span={12}>
-          <Form.Item label="Status">
-            <Select
-              value={venue.status || "draft"}
-              options={VENUE_STATUS_OPTIONS}
-              onChange={(value) => onPatch({ status: value })}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
           <Form.Item label="Area">
             <Input
               value={venue.area || ""}
@@ -93,14 +85,30 @@ export function VenueOverviewForm({ venue, categoryOptions, onPatch }: Props) {
         </Col>
       </Row>
 
+      <Card size="small" title="Visibility" style={{ marginBottom: 16, borderRadius: 18 }}>
+        <Row gutter={12}>
+          <Col xs={24} md={12}>
+            <Form.Item label="Status" style={{ marginBottom: 0 }}>
+              <Select
+                value={venue.status || "draft"}
+                options={VENUE_STATUS_OPTIONS}
+                onChange={(value) => onPatch({ status: value })}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Space style={{ minHeight: 56 }}>
+              <Typography.Text strong>Live</Typography.Text>
+              <Switch
+                checked={venue.live ?? false}
+                onChange={(checked) => onPatch({ live: checked })}
+              />
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
       <Space size={24} style={{ marginBottom: 16 }} wrap>
-        <Space>
-          <Typography.Text strong>Live</Typography.Text>
-          <Switch
-            checked={venue.live ?? false}
-            onChange={(checked) => onPatch({ live: checked })}
-          />
-        </Space>
         <Space>
           <Typography.Text strong>Pass venue</Typography.Text>
           <Switch
