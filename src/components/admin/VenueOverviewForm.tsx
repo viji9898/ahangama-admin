@@ -85,7 +85,11 @@ export function VenueOverviewForm({ venue, categoryOptions, onPatch }: Props) {
         </Col>
       </Row>
 
-      <Card size="small" title="Visibility" style={{ marginBottom: 16, borderRadius: 18 }}>
+      <Card
+        size="small"
+        title="Visibility"
+        style={{ marginBottom: 16, borderRadius: 18 }}
+      >
         <Row gutter={12}>
           <Col xs={24} md={12}>
             <Form.Item label="Status" style={{ marginBottom: 0 }}>
@@ -96,41 +100,39 @@ export function VenueOverviewForm({ venue, categoryOptions, onPatch }: Props) {
               />
             </Form.Item>
           </Col>
-          <Col xs={24} md={12}>
-            <Space style={{ minHeight: 56 }}>
-              <Typography.Text strong>Live</Typography.Text>
-              <Switch
-                checked={venue.live ?? false}
-                onChange={(checked) => onPatch({ live: checked })}
-              />
-            </Space>
-          </Col>
+          <Col xs={24} md={12}></Col>
         </Row>
+        <Space size={24} style={{ marginTop: 16 }} wrap>
+          <Space style={{ minHeight: 56 }}>
+            <Typography.Text strong>Live</Typography.Text>
+            <Switch
+              checked={venue.live ?? false}
+              onChange={(checked) => onPatch({ live: checked })}
+            />
+          </Space>
+          <Space>
+            <Typography.Text strong>Pass venue</Typography.Text>
+            <Switch
+              checked={venue.isPassVenue ?? false}
+              onChange={(checked) => onPatch({ isPassVenue: checked })}
+            />
+          </Space>
+          <Space>
+            <Typography.Text strong>Staff pick</Typography.Text>
+            <Switch
+              checked={venue.staffPick ?? false}
+              onChange={(checked) => onPatch({ staffPick: checked })}
+            />
+          </Space>
+          <Space>
+            <Typography.Text strong>Featured</Typography.Text>
+            <Switch
+              checked={venue.isFeatured ?? false}
+              onChange={(checked) => onPatch({ isFeatured: checked })}
+            />
+          </Space>
+        </Space>
       </Card>
-
-      <Space size={24} style={{ marginBottom: 16 }} wrap>
-        <Space>
-          <Typography.Text strong>Pass venue</Typography.Text>
-          <Switch
-            checked={venue.isPassVenue ?? false}
-            onChange={(checked) => onPatch({ isPassVenue: checked })}
-          />
-        </Space>
-        <Space>
-          <Typography.Text strong>Staff pick</Typography.Text>
-          <Switch
-            checked={venue.staffPick ?? false}
-            onChange={(checked) => onPatch({ staffPick: checked })}
-          />
-        </Space>
-        <Space>
-          <Typography.Text strong>Featured</Typography.Text>
-          <Switch
-            checked={venue.isFeatured ?? false}
-            onChange={(checked) => onPatch({ isFeatured: checked })}
-          />
-        </Space>
-      </Space>
 
       <Row gutter={12}>
         <Col span={12}>
