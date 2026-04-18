@@ -13,10 +13,12 @@
     "import:venues260414": "dotenv -e .env node scripts/import-venues260414.mjs"
   },
   "dependencies": {
-    "@react-oauth/google": "^0.13.4",
     "@aws-sdk/client-s3": "^3.888.0",
     "@aws-sdk/s3-presigned-post": "^3.888.0",
+    "@react-oauth/google": "^0.13.4",
     "antd": "^6.3.0",
+    "dayjs": "^1.11.20",
+    "dotenv": "^17.4.2",
     "google-auth-library": "^10.5.0",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.18.0",

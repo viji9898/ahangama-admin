@@ -62,6 +62,17 @@ export default function AdminShell() {
           >
             Venues
           </Link>
+          <Link
+            to="/admin/qr"
+            style={{
+              color: "#fff",
+              textDecoration: location.pathname.startsWith("/admin/qr")
+                ? "underline"
+                : "none",
+            }}
+          >
+            QR Analytics
+          </Link>
           {displayName ? (
             <Typography.Text style={{ color: "#fff" }}>
               {displayName}
