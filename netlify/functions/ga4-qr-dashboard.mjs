@@ -7,6 +7,7 @@ const ANALYTICS_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
 const API_BASE_URL = "https://analyticsdata.googleapis.com/v1beta";
 const DEFAULT_START_DATE = "30daysAgo";
 const DEFAULT_END_DATE = "today";
+const PASS_CTA_CLICK_EVENT_NAME = "pass_cta_click";
 
 loadEnv({ path: resolve(process.cwd(), ".env") });
 
@@ -71,20 +72,56 @@ function buildDimensionFilter(queryStringParameters = {}) {
     },
   ];
 
+  const venueFilter = buildVenueFilter(queryStringParameters);
+
+  if (venueFilter) {
+    expressions.push(venueFilter);
+  }
+
+  return {
+    andGroup: {
+      expressions,
+    },
+  };
+}
+
+function buildVenueFilter(queryStringParameters = {}) {
   const venue = String(queryStringParameters.venue || "")
     .trim()
     .toLowerCase();
 
-  if (venue) {
-    expressions.push({
+  if (!venue) {
+    return null;
+  }
+
+  return {
+    filter: {
+      fieldName: "sessionManualAdContent",
+      stringFilter: {
+        matchType: "BEGINS_WITH",
+        value: `${venue}__`,
+      },
+    },
+  };
+}
+
+function buildEventNameFilter(eventName, queryStringParameters = {}) {
+  const expressions = [
+    {
       filter: {
-        fieldName: "sessionManualAdContent",
+        fieldName: "eventName",
         stringFilter: {
-          matchType: "BEGINS_WITH",
-          value: `${venue}__`,
+          matchType: "EXACT",
+          value: eventName,
         },
       },
-    });
+    },
+  ];
+
+  const venueFilter = buildVenueFilter(queryStringParameters);
+
+  if (venueFilter) {
+    expressions.push(venueFilter);
   }
 
   return {
@@ -169,6 +206,44 @@ async function runReport({ propertyId, startDate, endDate, venue }) {
   return payload;
 }
 
+async function runEventCountByNameReport({
+  propertyId,
+  startDate,
+  endDate,
+  venue,
+  eventName,
+}) {
+  const accessToken = await getAccessToken();
+  const response = await fetch(
+    `${API_BASE_URL}/properties/${propertyId}:runReport`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "eventName" }],
+        metrics: [{ name: "eventCount" }],
+        dimensionFilter: buildEventNameFilter(eventName, { venue }),
+        keepEmptyRows: false,
+        limit: 1,
+      }),
+    },
+  );
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message =
+      payload?.error?.message || `GA4 request failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  return payload;
+}
+
 function mapRows(rows = []) {
   return rows.map((row) => {
     const dimensionValues = row.dimensionValues || [];
@@ -187,6 +262,10 @@ function mapRows(rows = []) {
       landingPage,
     };
   });
+}
+
+function getEventCountFromReport(report) {
+  return Number(report?.rows?.[0]?.metricValues?.[0]?.value || 0);
 }
 
 export async function handler(event) {
@@ -208,14 +287,28 @@ export async function handler(event) {
       .trim()
       .toLowerCase();
 
-    const report = await runReport({
-      propertyId,
-      startDate,
-      endDate,
-      venue,
-    });
+    const [report, passCtaClickReport] = await Promise.all([
+      runReport({
+        propertyId,
+        startDate,
+        endDate,
+        venue,
+      }),
+      runEventCountByNameReport({
+        propertyId,
+        startDate,
+        endDate,
+        venue,
+        eventName: PASS_CTA_CLICK_EVENT_NAME,
+      }),
+    ]);
 
-    return json(200, mapRows(report.rows));
+    return json(200, {
+      rows: mapRows(report.rows),
+      stats: {
+        passCtaClick: getEventCountFromReport(passCtaClickReport),
+      },
+    });
   } catch (error) {
     const statusCode = error?.statusCode || 500;
     return json(statusCode, {

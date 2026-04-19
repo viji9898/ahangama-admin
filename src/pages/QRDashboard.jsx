@@ -28,6 +28,7 @@ const SUMMARY_METRICS = [
   { key: "sessions", title: "Total Sessions", color: "#0f172a" },
   { key: "users", title: "Total Users", color: "#0f766e" },
   { key: "events", title: "Total Events", color: "#9a3412" },
+  { key: "passCtaClick", title: "Pass CTA Clicks", color: "#1d4ed8" },
 ];
 
 function formatLabel(value) {
@@ -52,6 +53,7 @@ export default function QRDashboard() {
   const [selectedVenue, setSelectedVenue] = useState();
   const [sortMetric, setSortMetric] = useState("sessions");
   const [rows, setRows] = useState([]);
+  const [stats, setStats] = useState({ passCtaClick: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -84,7 +86,10 @@ export default function QRDashboard() {
           );
         }
 
-        setRows(Array.isArray(payload) ? payload : []);
+        setRows(Array.isArray(payload) ? payload : payload?.rows || []);
+        setStats({
+          passCtaClick: Number(payload?.stats?.passCtaClick || 0),
+        });
       } catch (fetchError) {
         if (fetchError?.name === "AbortError") {
           return;
@@ -92,6 +97,7 @@ export default function QRDashboard() {
 
         setError(String(fetchError?.message || fetchError));
         setRows([]);
+        setStats({ passCtaClick: 0 });
       } finally {
         setLoading(false);
       }
@@ -341,10 +347,12 @@ export default function QRDashboard() {
               ? totals.totalSessions
               : metric.key === "users"
                 ? totals.totalUsers
-                : totals.totalEvents;
+                : metric.key === "events"
+                  ? totals.totalEvents
+                  : stats.passCtaClick;
 
           return (
-            <Col key={metric.key} xs={24} sm={8}>
+            <Col key={metric.key} xs={24} sm={12} lg={6}>
               <Card
                 styles={{ body: { padding: 20 } }}
                 style={{
