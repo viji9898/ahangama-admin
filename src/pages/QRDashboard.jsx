@@ -44,8 +44,10 @@ function formatLabel(value) {
 
 function formatLandingPages(values) {
   if (!values.length) return "-";
-  if (values.length === 1) return values[0];
-  return `${values[0]} (+${values.length - 1} more)`;
+
+  return values
+    .map((item) => `${item.landingPage} (${item.sessions})`)
+    .join(", ");
 }
 
 export default function QRDashboard() {
@@ -145,14 +147,18 @@ export default function QRDashboard() {
       const landingPage = String(row.landingPage || "").trim();
       const key = `${venue}::${surface}`;
       const existing = grouped.get(key);
+      const rowSessions = Number(row.sessions || 0);
 
       if (existing) {
-        existing.sessions += Number(row.sessions || 0);
+        existing.sessions += rowSessions;
         existing.users += Number(row.users || 0);
         existing.events += Number(row.events || 0);
         existing.creatives.add(creative);
         if (landingPage) {
-          existing.landingPages.add(landingPage);
+          existing.landingPages.set(
+            landingPage,
+            (existing.landingPages.get(landingPage) || 0) + rowSessions,
+          );
         }
         continue;
       }
@@ -161,11 +167,13 @@ export default function QRDashboard() {
         key,
         venue,
         surface,
-        sessions: Number(row.sessions || 0),
+        sessions: rowSessions,
         users: Number(row.users || 0),
         events: Number(row.events || 0),
         creatives: new Set([creative]),
-        landingPages: landingPage ? new Set([landingPage]) : new Set(),
+        landingPages: landingPage
+          ? new Map([[landingPage, rowSessions]])
+          : new Map(),
       });
     }
 
@@ -174,9 +182,13 @@ export default function QRDashboard() {
         const creatives = [...item.creatives].sort((left, right) =>
           left.localeCompare(right),
         );
-        const landingPages = [...item.landingPages].sort((left, right) =>
-          left.localeCompare(right),
-        );
+        const landingPages = [...item.landingPages.entries()]
+          .map(([landingPage, sessions]) => ({ landingPage, sessions }))
+          .sort(
+            (left, right) =>
+              right.sessions - left.sessions ||
+              left.landingPage.localeCompare(right.landingPage),
+          );
 
         return {
           key: item.key,
@@ -263,7 +275,13 @@ export default function QRDashboard() {
         dataIndex: "landingPage",
         key: "landingPage",
         render: (_, record) => (
-          <Typography.Text title={record.landingPages.join("\n") || "-"}>
+          <Typography.Text
+            title={
+              record.landingPages
+                .map((item) => `${item.landingPage} (${item.sessions})`)
+                .join("\n") || "-"
+            }
+          >
             {record.landingPage}
           </Typography.Text>
         ),
