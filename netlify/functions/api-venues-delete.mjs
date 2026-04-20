@@ -2,6 +2,8 @@ import { requireAdmin } from "./_lib/auth.mjs";
 import { query } from "./_lib/db.mjs";
 import { VENUES_TABLE } from "./_lib/venues260414.mjs";
 
+const DELETE_ALLOWED_EMAIL = "viji@viji.com";
+
 const json = (statusCode, body) => ({
   statusCode,
   headers: { "Content-Type": "application/json" },
@@ -15,6 +17,16 @@ export async function handler(event) {
     }
 
     const actor = requireAdmin(event);
+    const actorEmail = String(actor?.email || "")
+      .trim()
+      .toLowerCase();
+
+    if (actorEmail !== DELETE_ALLOWED_EMAIL) {
+      return json(403, {
+        ok: false,
+        error: "Only the primary admin (Viji) can delete venues",
+      });
+    }
 
     // Allow id from querystring or JSON body
     const qs = event.queryStringParameters || {};
@@ -46,7 +58,7 @@ export async function handler(event) {
           AND deleted_at IS NULL
         RETURNING id;
       `,
-      [id, actor?.email ? String(actor.email).trim().toLowerCase() : null],
+      [id, actorEmail || null],
     );
 
     if (r.rowCount === 0) {
