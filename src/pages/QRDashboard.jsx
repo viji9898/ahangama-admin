@@ -271,7 +271,7 @@ export default function QRDashboard() {
         sorter: (left, right) => left.events - right.events,
       },
       {
-        title: "Landing Page",
+        title: "Scan Destination",
         dataIndex: "landingPage",
         key: "landingPage",
         render: (_, record) => (

@@ -36,6 +36,48 @@ function parseUtmContent(value) {
   };
 }
 
+function normalizeLandingPage(value) {
+  const rawValue = String(value || "").trim();
+
+  if (!rawValue) {
+    return "";
+  }
+
+  try {
+    const url = new URL(rawValue, "https://ahangama.example");
+    const keysToDelete = [];
+
+    for (const key of url.searchParams.keys()) {
+      const normalizedKey = key.toLowerCase();
+
+      if (
+        normalizedKey.startsWith("utm_") ||
+        normalizedKey === "fbclid" ||
+        normalizedKey === "gclid" ||
+        normalizedKey === "dclid" ||
+        normalizedKey === "msclkid" ||
+        normalizedKey === "ttclid" ||
+        normalizedKey === "twclid" ||
+        normalizedKey === "mc_cid" ||
+        normalizedKey === "mc_eid"
+      ) {
+        keysToDelete.push(key);
+      }
+    }
+
+    for (const key of keysToDelete) {
+      url.searchParams.delete(key);
+    }
+
+    const pathname = url.pathname || "/";
+    const search = url.searchParams.toString();
+
+    return search ? `${pathname}?${search}` : pathname;
+  } catch {
+    return rawValue.split("?")[0] || rawValue;
+  }
+}
+
 function getDateRange(queryStringParameters = {}) {
   const startDate = String(
     queryStringParameters.startDate || DEFAULT_START_DATE,
@@ -249,7 +291,7 @@ function mapRows(rows = []) {
     const dimensionValues = row.dimensionValues || [];
     const metricValues = row.metricValues || [];
     const utmContent = dimensionValues[0]?.value || "";
-    const landingPage = dimensionValues[1]?.value || "";
+    const landingPage = normalizeLandingPage(dimensionValues[1]?.value || "");
     const parsed = parseUtmContent(utmContent);
 
     return {
