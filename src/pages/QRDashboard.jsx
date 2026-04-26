@@ -13,6 +13,7 @@ import {
   Statistic,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from "antd";
 
@@ -23,6 +24,15 @@ const PERFORMANCE_SORT_OPTIONS = [
   { label: "Sessions", value: "sessions" },
   { label: "Users", value: "users" },
   { label: "Events", value: "events" },
+  { label: "Pass CTA Clicks", value: "passCtaClick" },
+  { label: "Conversion Rate", value: "conversionRate" },
+];
+const CONVERSION_RATE_FILTER_OPTIONS = [
+  { label: "All Rates", value: "all" },
+  { label: "Below 2%", value: "below-2" },
+  { label: "At least 2%", value: "at-least-2" },
+  { label: "Below 10%", value: "below-10" },
+  { label: "At least 10%", value: "at-least-10" },
 ];
 const SUMMARY_METRICS = [
   { key: "sessions", title: "Total Sessions", color: "#0f172a" },
@@ -50,10 +60,54 @@ function formatLandingPages(values) {
     .join(", ");
 }
 
+function formatPercent(value) {
+  return `${(Number(value || 0) * 100).toFixed(1)}%`;
+}
+
+function matchesConversionRateFilter(value, filter) {
+  switch (filter) {
+    case "below-2":
+      return value < 0.02;
+    case "at-least-2":
+      return value >= 0.02;
+    case "below-10":
+      return value < 0.1;
+    case "at-least-10":
+      return value >= 0.1;
+    default:
+      return true;
+  }
+}
+
+function getConversionRateTone(value) {
+  if (value >= 0.1) {
+    return {
+      rowClassName: "qr-dashboard-row--high",
+      tagColor: "success",
+      label: "High",
+    };
+  }
+
+  if (value < 0.02) {
+    return {
+      rowClassName: "qr-dashboard-row--low",
+      tagColor: "error",
+      label: "Low",
+    };
+  }
+
+  return {
+    rowClassName: "qr-dashboard-row--mid",
+    tagColor: "warning",
+    label: "Mid",
+  };
+}
+
 export default function QRDashboard() {
   const [dateRange, setDateRange] = useState(DEFAULT_RANGE);
   const [selectedVenue, setSelectedVenue] = useState();
   const [sortMetric, setSortMetric] = useState("sessions");
+  const [conversionRateFilter, setConversionRateFilter] = useState("all");
   const [rows, setRows] = useState([]);
   const [stats, setStats] = useState({ passCtaClick: 0 });
   const [loading, setLoading] = useState(true);
@@ -153,6 +207,7 @@ export default function QRDashboard() {
         existing.sessions += rowSessions;
         existing.users += Number(row.users || 0);
         existing.events += Number(row.events || 0);
+        existing.passCtaClick += Number(row.passCtaClick || 0);
         existing.creatives.add(creative);
         if (landingPage) {
           existing.landingPages.set(
@@ -170,6 +225,7 @@ export default function QRDashboard() {
         sessions: rowSessions,
         users: Number(row.users || 0),
         events: Number(row.events || 0),
+        passCtaClick: Number(row.passCtaClick || 0),
         creatives: new Set([creative]),
         landingPages: landingPage
           ? new Map([[landingPage, rowSessions]])
@@ -203,6 +259,9 @@ export default function QRDashboard() {
           sessions: item.sessions,
           users: item.users,
           events: item.events,
+          passCtaClick: item.passCtaClick,
+          conversionRate:
+            item.sessions > 0 ? item.passCtaClick / item.sessions : 0,
           landingPage: formatLandingPages(landingPages),
           landingPages,
         };
@@ -212,8 +271,14 @@ export default function QRDashboard() {
       );
   }, [filteredRows, sortMetric]);
 
+  const visibleRows = useMemo(() => {
+    return groupedRows.filter((row) =>
+      matchesConversionRateFilter(row.conversionRate, conversionRateFilter),
+    );
+  }, [groupedRows, conversionRateFilter]);
+
   const totals = useMemo(() => {
-    return groupedRows.reduce(
+    return visibleRows.reduce(
       (accumulator, row) => ({
         totalSessions: accumulator.totalSessions + row.sessions,
         totalUsers: accumulator.totalUsers + row.users,
@@ -221,7 +286,7 @@ export default function QRDashboard() {
       }),
       { totalSessions: 0, totalUsers: 0, totalEvents: 0 },
     );
-  }, [groupedRows]);
+  }, [visibleRows]);
 
   const columns = useMemo(
     () => [
@@ -271,6 +336,32 @@ export default function QRDashboard() {
         sorter: (left, right) => left.events - right.events,
       },
       {
+        title: "Pass CTA Clicks",
+        dataIndex: "passCtaClick",
+        key: "passCtaClick",
+        sorter: (left, right) => left.passCtaClick - right.passCtaClick,
+      },
+      {
+        title: (
+          <Tooltip title="Calculated as Pass CTA Clicks divided by Sessions.">
+            <span>Conversion Rate</span>
+          </Tooltip>
+        ),
+        dataIndex: "conversionRate",
+        key: "conversionRate",
+        sorter: (left, right) => left.conversionRate - right.conversionRate,
+        render: (value, record) => {
+          const tone = getConversionRateTone(value);
+          const detail = `${record.passCtaClick} pass CTA clicks / ${record.sessions} sessions = ${formatPercent(value)}`;
+
+          return (
+            <Tooltip title={detail}>
+              <Tag color={tone.tagColor}>{formatPercent(value)}</Tag>
+            </Tooltip>
+          );
+        },
+      },
+      {
         title: "Scan Destination",
         dataIndex: "landingPage",
         key: "landingPage",
@@ -292,6 +383,21 @@ export default function QRDashboard() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <style>
+        {`
+          .qr-performance-table .ant-table-tbody > tr.qr-dashboard-row--high > td {
+            background: rgba(22, 163, 74, 0.08) !important;
+          }
+
+          .qr-performance-table .ant-table-tbody > tr.qr-dashboard-row--mid > td {
+            background: rgba(245, 158, 11, 0.08) !important;
+          }
+
+          .qr-performance-table .ant-table-tbody > tr.qr-dashboard-row--low > td {
+            background: rgba(220, 38, 38, 0.08) !important;
+          }
+        `}
+      </style>
       <Card
         styles={{ body: { padding: 24 } }}
         style={{
@@ -343,6 +449,12 @@ export default function QRDashboard() {
                 onChange={setSortMetric}
                 options={PERFORMANCE_SORT_OPTIONS}
                 style={{ minWidth: 160 }}
+              />
+              <Select
+                value={conversionRateFilter}
+                onChange={setConversionRateFilter}
+                options={CONVERSION_RATE_FILTER_OPTIONS}
+                style={{ minWidth: 170 }}
               />
             </Space>
           </Col>
@@ -404,18 +516,22 @@ export default function QRDashboard() {
           <div style={{ padding: 40, display: "grid", placeItems: "center" }}>
             <Spin size="large" />
           </div>
-        ) : groupedRows.length === 0 ? (
+        ) : visibleRows.length === 0 ? (
           <div style={{ padding: 32 }}>
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="No QR sessions found for the selected filters."
+              description="No QR rows match the selected filters."
             />
           </div>
         ) : (
           <Table
+            className="qr-performance-table"
             columns={columns}
-            dataSource={groupedRows}
+            dataSource={visibleRows}
             pagination={{ pageSize: 12, showSizeChanger: false }}
+            rowClassName={(record) =>
+              getConversionRateTone(record.conversionRate).rowClassName
+            }
             scroll={{ x: 960 }}
           />
         )}

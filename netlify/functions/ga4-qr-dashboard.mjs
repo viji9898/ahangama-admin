@@ -92,7 +92,7 @@ function getDateRange(queryStringParameters = {}) {
   };
 }
 
-function buildDimensionFilter(queryStringParameters = {}) {
+function buildBaseExpressions(queryStringParameters = {}) {
   const expressions = [
     {
       filter: {
@@ -120,9 +120,13 @@ function buildDimensionFilter(queryStringParameters = {}) {
     expressions.push(venueFilter);
   }
 
+  return expressions;
+}
+
+function buildDimensionFilter(queryStringParameters = {}) {
   return {
     andGroup: {
-      expressions,
+      expressions: buildBaseExpressions(queryStringParameters),
     },
   };
 }
@@ -148,29 +152,75 @@ function buildVenueFilter(queryStringParameters = {}) {
 }
 
 function buildEventNameFilter(eventName, queryStringParameters = {}) {
-  const expressions = [
-    {
-      filter: {
-        fieldName: "eventName",
-        stringFilter: {
-          matchType: "EXACT",
-          value: eventName,
-        },
-      },
-    },
-  ];
-
-  const venueFilter = buildVenueFilter(queryStringParameters);
-
-  if (venueFilter) {
-    expressions.push(venueFilter);
-  }
-
   return {
     andGroup: {
-      expressions,
+      expressions: [
+        ...buildBaseExpressions(queryStringParameters),
+        {
+          filter: {
+            fieldName: "eventName",
+            stringFilter: {
+              matchType: "EXACT",
+              value: eventName,
+            },
+          },
+        },
+      ],
     },
   };
+}
+
+function buildRowKey(utmContent, landingPage) {
+  return `${String(utmContent || "").trim()}::${String(landingPage || "").trim()}`;
+}
+
+async function runEventBreakdownReport({
+  propertyId,
+  startDate,
+  endDate,
+  venue,
+  eventName,
+}) {
+  const accessToken = await getAccessToken();
+  const response = await fetch(
+    `${API_BASE_URL}/properties/${propertyId}:runReport`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [
+          { name: "sessionManualAdContent" },
+          { name: "landingPagePlusQueryString" },
+        ],
+        metrics: [{ name: "eventCount" }],
+        dimensionFilter: buildEventNameFilter(eventName, { venue }),
+        keepEmptyRows: false,
+        limit: 1000,
+        orderBys: [
+          {
+            metric: {
+              metricName: "eventCount",
+            },
+            desc: true,
+          },
+        ],
+      }),
+    },
+  );
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message =
+      payload?.error?.message || `GA4 request failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  return payload;
 }
 
 async function getAccessToken() {
@@ -286,13 +336,29 @@ async function runEventCountByNameReport({
   return payload;
 }
 
-function mapRows(rows = []) {
+function mapEventCountRows(rows = []) {
+  const eventCounts = new Map();
+
+  for (const row of rows) {
+    const dimensionValues = row.dimensionValues || [];
+    const utmContent = dimensionValues[0]?.value || "";
+    const landingPage = normalizeLandingPage(dimensionValues[1]?.value || "");
+    const key = buildRowKey(utmContent, landingPage);
+
+    eventCounts.set(key, Number(row.metricValues?.[0]?.value || 0));
+  }
+
+  return eventCounts;
+}
+
+function mapRows(rows = [], passCtaClicksByRow = new Map()) {
   return rows.map((row) => {
     const dimensionValues = row.dimensionValues || [];
     const metricValues = row.metricValues || [];
     const utmContent = dimensionValues[0]?.value || "";
     const landingPage = normalizeLandingPage(dimensionValues[1]?.value || "");
     const parsed = parseUtmContent(utmContent);
+    const key = buildRowKey(utmContent, landingPage);
 
     return {
       venue: parsed.venue,
@@ -301,6 +367,7 @@ function mapRows(rows = []) {
       sessions: Number(metricValues[0]?.value || 0),
       users: Number(metricValues[1]?.value || 0),
       events: Number(metricValues[2]?.value || 0),
+      passCtaClick: Number(passCtaClicksByRow.get(key) || 0),
       landingPage,
     };
   });
@@ -329,7 +396,7 @@ export async function handler(event) {
       .trim()
       .toLowerCase();
 
-    const [report, passCtaClickReport] = await Promise.all([
+    const [report, passCtaClickReport, passCtaClickBreakdownReport] = await Promise.all([
       runReport({
         propertyId,
         startDate,
@@ -343,10 +410,19 @@ export async function handler(event) {
         venue,
         eventName: PASS_CTA_CLICK_EVENT_NAME,
       }),
+      runEventBreakdownReport({
+        propertyId,
+        startDate,
+        endDate,
+        venue,
+        eventName: PASS_CTA_CLICK_EVENT_NAME,
+      }),
     ]);
 
+    const passCtaClicksByRow = mapEventCountRows(passCtaClickBreakdownReport.rows);
+
     return json(200, {
-      rows: mapRows(report.rows),
+      rows: mapRows(report.rows, passCtaClicksByRow),
       stats: {
         passCtaClick: getEventCountFromReport(passCtaClickReport),
       },
