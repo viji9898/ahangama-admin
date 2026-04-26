@@ -24,7 +24,7 @@ const PERFORMANCE_SORT_OPTIONS = [
   { label: "Sessions", value: "sessions" },
   { label: "Users", value: "users" },
   { label: "Events", value: "events" },
-  { label: "Pass CTA Clicks", value: "passCtaClick" },
+  { label: "CTA Clicks", value: "ctaClick" },
   { label: "Conversion Rate", value: "conversionRate" },
 ];
 const CONVERSION_RATE_FILTER_OPTIONS = [
@@ -38,7 +38,7 @@ const SUMMARY_METRICS = [
   { key: "sessions", title: "Total Sessions", color: "#0f172a" },
   { key: "users", title: "Total Users", color: "#0f766e" },
   { key: "events", title: "Total Events", color: "#9a3412" },
-  { key: "passCtaClick", title: "Pass CTA Clicks", color: "#1d4ed8" },
+  { key: "ctaClick", title: "CTA Clicks", color: "#2563eb" },
 ];
 
 function formatLabel(value) {
@@ -109,7 +109,7 @@ export default function QRDashboard() {
   const [sortMetric, setSortMetric] = useState("sessions");
   const [conversionRateFilter, setConversionRateFilter] = useState("all");
   const [rows, setRows] = useState([]);
-  const [stats, setStats] = useState({ passCtaClick: 0 });
+  const [stats, setStats] = useState({ ctaClick: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -144,7 +144,7 @@ export default function QRDashboard() {
 
         setRows(Array.isArray(payload) ? payload : payload?.rows || []);
         setStats({
-          passCtaClick: Number(payload?.stats?.passCtaClick || 0),
+          ctaClick: Number(payload?.stats?.ctaClick || 0),
         });
       } catch (fetchError) {
         if (fetchError?.name === "AbortError") {
@@ -153,7 +153,7 @@ export default function QRDashboard() {
 
         setError(String(fetchError?.message || fetchError));
         setRows([]);
-        setStats({ passCtaClick: 0 });
+        setStats({ ctaClick: 0 });
       } finally {
         setLoading(false);
       }
@@ -207,7 +207,7 @@ export default function QRDashboard() {
         existing.sessions += rowSessions;
         existing.users += Number(row.users || 0);
         existing.events += Number(row.events || 0);
-        existing.passCtaClick += Number(row.passCtaClick || 0);
+        existing.ctaClick += Number(row.ctaClick || 0);
         existing.creatives.add(creative);
         if (landingPage) {
           existing.landingPages.set(
@@ -225,7 +225,7 @@ export default function QRDashboard() {
         sessions: rowSessions,
         users: Number(row.users || 0),
         events: Number(row.events || 0),
-        passCtaClick: Number(row.passCtaClick || 0),
+        ctaClick: Number(row.ctaClick || 0),
         creatives: new Set([creative]),
         landingPages: landingPage
           ? new Map([[landingPage, rowSessions]])
@@ -259,9 +259,8 @@ export default function QRDashboard() {
           sessions: item.sessions,
           users: item.users,
           events: item.events,
-          passCtaClick: item.passCtaClick,
-          conversionRate:
-            item.sessions > 0 ? item.passCtaClick / item.sessions : 0,
+          ctaClick: item.ctaClick,
+          conversionRate: item.sessions > 0 ? item.ctaClick / item.sessions : 0,
           landingPage: formatLandingPages(landingPages),
           landingPages,
         };
@@ -336,14 +335,14 @@ export default function QRDashboard() {
         sorter: (left, right) => left.events - right.events,
       },
       {
-        title: "Pass CTA Clicks",
-        dataIndex: "passCtaClick",
-        key: "passCtaClick",
-        sorter: (left, right) => left.passCtaClick - right.passCtaClick,
+        title: "CTA Clicks",
+        dataIndex: "ctaClick",
+        key: "ctaClick",
+        sorter: (left, right) => left.ctaClick - right.ctaClick,
       },
       {
         title: (
-          <Tooltip title="Calculated as Pass CTA Clicks divided by Sessions.">
+          <Tooltip title="Calculated as CTA Clicks divided by Sessions.">
             <span>Conversion Rate</span>
           </Tooltip>
         ),
@@ -352,7 +351,7 @@ export default function QRDashboard() {
         sorter: (left, right) => left.conversionRate - right.conversionRate,
         render: (value, record) => {
           const tone = getConversionRateTone(value);
-          const detail = `${record.passCtaClick} pass CTA clicks / ${record.sessions} sessions = ${formatPercent(value)}`;
+          const detail = `${record.ctaClick} CTA clicks / ${record.sessions} sessions = ${formatPercent(value)}`;
 
           return (
             <Tooltip title={detail}>
@@ -479,7 +478,7 @@ export default function QRDashboard() {
                 ? totals.totalUsers
                 : metric.key === "events"
                   ? totals.totalEvents
-                  : stats.passCtaClick;
+                  : stats.ctaClick;
 
           return (
             <Col key={metric.key} xs={24} sm={12} lg={6}>

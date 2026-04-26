@@ -7,7 +7,7 @@ const ANALYTICS_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
 const API_BASE_URL = "https://analyticsdata.googleapis.com/v1beta";
 const DEFAULT_START_DATE = "30daysAgo";
 const DEFAULT_END_DATE = "today";
-const PASS_CTA_CLICK_EVENT_NAME = "pass_cta_click";
+const CTA_CLICK_EVENT_NAME_PATTERN = "(^|_)cta_click$";
 
 loadEnv({ path: resolve(process.cwd(), ".env") });
 
@@ -151,20 +151,37 @@ function buildVenueFilter(queryStringParameters = {}) {
   };
 }
 
-function buildEventNameFilter(eventName, queryStringParameters = {}) {
+function buildEventNameFilter(
+  { eventName, eventNamePattern },
+  queryStringParameters = {},
+) {
+  const eventNameFilter = eventName
+    ? {
+        filter: {
+          fieldName: "eventName",
+          stringFilter: {
+            matchType: "EXACT",
+            value: eventName,
+          },
+        },
+      }
+    : eventNamePattern
+      ? {
+          filter: {
+            fieldName: "eventName",
+            stringFilter: {
+              matchType: "PARTIAL_REGEXP",
+              value: eventNamePattern,
+            },
+          },
+        }
+      : null;
+
   return {
     andGroup: {
       expressions: [
         ...buildBaseExpressions(queryStringParameters),
-        {
-          filter: {
-            fieldName: "eventName",
-            stringFilter: {
-              matchType: "EXACT",
-              value: eventName,
-            },
-          },
-        },
+        ...(eventNameFilter ? [eventNameFilter] : []),
       ],
     },
   };
@@ -180,6 +197,7 @@ async function runEventBreakdownReport({
   endDate,
   venue,
   eventName,
+  eventNamePattern,
 }) {
   const accessToken = await getAccessToken();
   const response = await fetch(
@@ -197,7 +215,10 @@ async function runEventBreakdownReport({
           { name: "landingPagePlusQueryString" },
         ],
         metrics: [{ name: "eventCount" }],
-        dimensionFilter: buildEventNameFilter(eventName, { venue }),
+        dimensionFilter: buildEventNameFilter(
+          { eventName, eventNamePattern },
+          { venue },
+        ),
         keepEmptyRows: false,
         limit: 1000,
         orderBys: [
@@ -298,12 +319,13 @@ async function runReport({ propertyId, startDate, endDate, venue }) {
   return payload;
 }
 
-async function runEventCountByNameReport({
+async function runEventCountReport({
   propertyId,
   startDate,
   endDate,
   venue,
   eventName,
+  eventNamePattern,
 }) {
   const accessToken = await getAccessToken();
   const response = await fetch(
@@ -316,9 +338,11 @@ async function runEventCountByNameReport({
       },
       body: JSON.stringify({
         dateRanges: [{ startDate, endDate }],
-        dimensions: [{ name: "eventName" }],
         metrics: [{ name: "eventCount" }],
-        dimensionFilter: buildEventNameFilter(eventName, { venue }),
+        dimensionFilter: buildEventNameFilter(
+          { eventName, eventNamePattern },
+          { venue },
+        ),
         keepEmptyRows: false,
         limit: 1,
       }),
@@ -345,32 +369,49 @@ function mapEventCountRows(rows = []) {
     const landingPage = normalizeLandingPage(dimensionValues[1]?.value || "");
     const key = buildRowKey(utmContent, landingPage);
 
-    eventCounts.set(key, Number(row.metricValues?.[0]?.value || 0));
+    eventCounts.set(
+      key,
+      Number(eventCounts.get(key) || 0) +
+        Number(row.metricValues?.[0]?.value || 0),
+    );
   }
 
   return eventCounts;
 }
 
-function mapRows(rows = [], passCtaClicksByRow = new Map()) {
-  return rows.map((row) => {
+function mapRows(rows = [], ctaClicksByRow = new Map()) {
+  const groupedRows = new Map();
+
+  for (const row of rows) {
     const dimensionValues = row.dimensionValues || [];
     const metricValues = row.metricValues || [];
     const utmContent = dimensionValues[0]?.value || "";
     const landingPage = normalizeLandingPage(dimensionValues[1]?.value || "");
-    const parsed = parseUtmContent(utmContent);
     const key = buildRowKey(utmContent, landingPage);
+    const existing = groupedRows.get(key);
 
-    return {
+    if (existing) {
+      existing.sessions += Number(metricValues[0]?.value || 0);
+      existing.users += Number(metricValues[1]?.value || 0);
+      existing.events += Number(metricValues[2]?.value || 0);
+      continue;
+    }
+
+    const parsed = parseUtmContent(utmContent);
+
+    groupedRows.set(key, {
       venue: parsed.venue,
       surface: parsed.surface,
       creative: parsed.creative,
       sessions: Number(metricValues[0]?.value || 0),
       users: Number(metricValues[1]?.value || 0),
       events: Number(metricValues[2]?.value || 0),
-      passCtaClick: Number(passCtaClicksByRow.get(key) || 0),
+      ctaClick: Number(ctaClicksByRow.get(key) || 0),
       landingPage,
-    };
-  });
+    });
+  }
+
+  return [...groupedRows.values()];
 }
 
 function getEventCountFromReport(report) {
@@ -396,35 +437,37 @@ export async function handler(event) {
       .trim()
       .toLowerCase();
 
-    const [report, passCtaClickReport, passCtaClickBreakdownReport] = await Promise.all([
-      runReport({
-        propertyId,
-        startDate,
-        endDate,
-        venue,
-      }),
-      runEventCountByNameReport({
-        propertyId,
-        startDate,
-        endDate,
-        venue,
-        eventName: PASS_CTA_CLICK_EVENT_NAME,
-      }),
-      runEventBreakdownReport({
-        propertyId,
-        startDate,
-        endDate,
-        venue,
-        eventName: PASS_CTA_CLICK_EVENT_NAME,
-      }),
-    ]);
+    const [report, ctaClickReport, ctaClickBreakdownReport] = await Promise.all(
+      [
+        runReport({
+          propertyId,
+          startDate,
+          endDate,
+          venue,
+        }),
+        runEventCountReport({
+          propertyId,
+          startDate,
+          endDate,
+          venue,
+          eventNamePattern: CTA_CLICK_EVENT_NAME_PATTERN,
+        }),
+        runEventBreakdownReport({
+          propertyId,
+          startDate,
+          endDate,
+          venue,
+          eventNamePattern: CTA_CLICK_EVENT_NAME_PATTERN,
+        }),
+      ],
+    );
 
-    const passCtaClicksByRow = mapEventCountRows(passCtaClickBreakdownReport.rows);
+    const ctaClicksByRow = mapEventCountRows(ctaClickBreakdownReport.rows);
 
     return json(200, {
-      rows: mapRows(report.rows, passCtaClicksByRow),
+      rows: mapRows(report.rows, ctaClicksByRow),
       stats: {
-        passCtaClick: getEventCountFromReport(passCtaClickReport),
+        ctaClick: getEventCountFromReport(ctaClickReport),
       },
     });
   } catch (error) {
