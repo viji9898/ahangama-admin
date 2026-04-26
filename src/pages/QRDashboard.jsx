@@ -146,10 +146,14 @@ export default function QRDashboard() {
 
         setRows(Array.isArray(payload) ? payload : payload?.rows || []);
         setRootTrafficRows(
-          Array.isArray(payload?.rootTrafficRows) ? payload.rootTrafficRows : [],
+          Array.isArray(payload?.rootTrafficRows)
+            ? payload.rootTrafficRows
+            : [],
         );
         setPassTrafficRows(
-          Array.isArray(payload?.passTrafficRows) ? payload.passTrafficRows : [],
+          Array.isArray(payload?.passTrafficRows)
+            ? payload.passTrafficRows
+            : [],
         );
         setStats({
           ctaClick: Number(payload?.stats?.ctaClick || 0),
@@ -270,8 +274,7 @@ export default function QRDashboard() {
           users: item.users,
           events: item.events,
           ctaClick: item.ctaClick,
-          conversionRate:
-            item.sessions > 0 ? item.ctaClick / item.sessions : 0,
+          conversionRate: item.sessions > 0 ? item.ctaClick / item.sessions : 0,
           landingPage: formatLandingPages(landingPages),
           landingPages,
         };
@@ -618,10 +621,9 @@ export default function QRDashboard() {
             type="secondary"
             style={{ margin: 0, maxWidth: 880 }}
           >
-            This shows how much QR-attributed traffic reached <strong>
-              ahangama.com
-            </strong>
-            . Use <strong>Sessions</strong> to understand visits,
+            This shows how much QR-attributed traffic reached{" "}
+            <strong>ahangama.com</strong>. Use <strong>Sessions</strong> to
+            understand visits,
             <strong> Users</strong> to estimate how many people came through,
             and <strong>Page Views</strong> to see whether visitors explored
             beyond the first page.

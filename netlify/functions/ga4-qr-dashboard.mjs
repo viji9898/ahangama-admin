@@ -362,7 +362,12 @@ async function runEventCountReport({
   return payload;
 }
 
-async function runHostTrafficReport({ propertyId, startDate, endDate, hostName }) {
+async function runHostTrafficReport({
+  propertyId,
+  startDate,
+  endDate,
+  hostName,
+}) {
   const accessToken = await getAccessToken();
   const response = await fetch(
     `${API_BASE_URL}/properties/${propertyId}:runReport`,
@@ -511,39 +516,39 @@ export async function handler(event) {
       rootTrafficReport,
       passTrafficReport,
     ] = await Promise.all([
-        runReport({
-          propertyId,
-          startDate,
-          endDate,
-          venue,
-        }),
-        runEventCountReport({
-          propertyId,
-          startDate,
-          endDate,
-          venue,
-          eventNamePattern: CTA_CLICK_EVENT_NAME_PATTERN,
-        }),
-        runEventBreakdownReport({
-          propertyId,
-          startDate,
-          endDate,
-          venue,
-          eventNamePattern: CTA_CLICK_EVENT_NAME_PATTERN,
-        }),
-        runHostTrafficReport({
-          propertyId,
-          startDate,
-          endDate,
-          hostName: ROOT_HOSTNAME,
-        }),
-        runHostTrafficReport({
-          propertyId,
-          startDate,
-          endDate,
-          hostName: PASS_HOSTNAME,
-        }),
-      ]);
+      runReport({
+        propertyId,
+        startDate,
+        endDate,
+        venue,
+      }),
+      runEventCountReport({
+        propertyId,
+        startDate,
+        endDate,
+        venue,
+        eventNamePattern: CTA_CLICK_EVENT_NAME_PATTERN,
+      }),
+      runEventBreakdownReport({
+        propertyId,
+        startDate,
+        endDate,
+        venue,
+        eventNamePattern: CTA_CLICK_EVENT_NAME_PATTERN,
+      }),
+      runHostTrafficReport({
+        propertyId,
+        startDate,
+        endDate,
+        hostName: ROOT_HOSTNAME,
+      }),
+      runHostTrafficReport({
+        propertyId,
+        startDate,
+        endDate,
+        hostName: PASS_HOSTNAME,
+      }),
+    ]);
 
     const ctaClicksByRow = mapEventCountRows(ctaClickBreakdownReport.rows);
 
