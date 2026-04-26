@@ -109,6 +109,8 @@ export default function QRDashboard() {
   const [sortMetric, setSortMetric] = useState("sessions");
   const [conversionRateFilter, setConversionRateFilter] = useState("all");
   const [rows, setRows] = useState([]);
+  const [rootTrafficRows, setRootTrafficRows] = useState([]);
+  const [passTrafficRows, setPassTrafficRows] = useState([]);
   const [stats, setStats] = useState({ ctaClick: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -143,6 +145,12 @@ export default function QRDashboard() {
         }
 
         setRows(Array.isArray(payload) ? payload : payload?.rows || []);
+        setRootTrafficRows(
+          Array.isArray(payload?.rootTrafficRows) ? payload.rootTrafficRows : [],
+        );
+        setPassTrafficRows(
+          Array.isArray(payload?.passTrafficRows) ? payload.passTrafficRows : [],
+        );
         setStats({
           ctaClick: Number(payload?.stats?.ctaClick || 0),
         });
@@ -153,6 +161,8 @@ export default function QRDashboard() {
 
         setError(String(fetchError?.message || fetchError));
         setRows([]);
+        setRootTrafficRows([]);
+        setPassTrafficRows([]);
         setStats({ ctaClick: 0 });
       } finally {
         setLoading(false);
@@ -260,7 +270,8 @@ export default function QRDashboard() {
           users: item.users,
           events: item.events,
           ctaClick: item.ctaClick,
-          conversionRate: item.sessions > 0 ? item.ctaClick / item.sessions : 0,
+          conversionRate:
+            item.sessions > 0 ? item.ctaClick / item.sessions : 0,
           landingPage: formatLandingPages(landingPages),
           landingPages,
         };
@@ -375,6 +386,46 @@ export default function QRDashboard() {
             {record.landingPage}
           </Typography.Text>
         ),
+      },
+    ],
+    [],
+  );
+
+  const hostTrafficColumns = useMemo(
+    () => [
+      {
+        title: "Host",
+        dataIndex: "hostName",
+        key: "hostName",
+      },
+      {
+        title: "Source",
+        dataIndex: "source",
+        key: "source",
+      },
+      {
+        title: "Medium",
+        dataIndex: "medium",
+        key: "medium",
+      },
+      {
+        title: "Sessions",
+        dataIndex: "sessions",
+        key: "sessions",
+        sorter: (left, right) => left.sessions - right.sessions,
+        defaultSortOrder: "descend",
+      },
+      {
+        title: "Users",
+        dataIndex: "users",
+        key: "users",
+        sorter: (left, right) => left.users - right.users,
+      },
+      {
+        title: "Page Views",
+        dataIndex: "pageViews",
+        key: "pageViews",
+        sorter: (left, right) => left.pageViews - right.pageViews,
       },
     ],
     [],
@@ -511,6 +562,18 @@ export default function QRDashboard() {
           boxShadow: "0 18px 40px rgba(15, 23, 42, 0.05)",
         }}
       >
+        <div style={{ padding: "16px 24px 0" }}>
+          <Typography.Paragraph
+            type="secondary"
+            style={{ margin: 0, maxWidth: 880 }}
+          >
+            This table shows which QR placements are bringing people in and
+            which ones are driving action. Use <strong>Sessions</strong> to see
+            traffic volume, <strong>CTA Clicks</strong> to see action taken, and
+            <strong> Conversion Rate</strong> to spot the most efficient venues
+            and surfaces.
+          </Typography.Paragraph>
+        </div>
         {loading ? (
           <div style={{ padding: 40, display: "grid", placeItems: "center" }}>
             <Spin size="large" />
@@ -532,6 +595,101 @@ export default function QRDashboard() {
               getConversionRateTone(record.conversionRate).rowClassName
             }
             scroll={{ x: 960 }}
+          />
+        )}
+      </Card>
+
+      <Card
+        title="ahangama.com Traffic"
+        extra={
+          <Typography.Text type="secondary">
+            Manual QR attribution, aligned with the QR dashboard
+          </Typography.Text>
+        }
+        styles={{ body: { padding: 0 } }}
+        style={{
+          borderRadius: 24,
+          border: "1px solid rgba(15, 23, 42, 0.06)",
+          boxShadow: "0 18px 40px rgba(15, 23, 42, 0.05)",
+        }}
+      >
+        <div style={{ padding: "16px 24px 0" }}>
+          <Typography.Paragraph
+            type="secondary"
+            style={{ margin: 0, maxWidth: 880 }}
+          >
+            This shows how much QR-attributed traffic reached <strong>
+              ahangama.com
+            </strong>
+            . Use <strong>Sessions</strong> to understand visits,
+            <strong> Users</strong> to estimate how many people came through,
+            and <strong>Page Views</strong> to see whether visitors explored
+            beyond the first page.
+          </Typography.Paragraph>
+        </div>
+        {loading ? (
+          <div style={{ padding: 40, display: "grid", placeItems: "center" }}>
+            <Spin size="large" />
+          </div>
+        ) : rootTrafficRows.length === 0 ? (
+          <div style={{ padding: 32 }}>
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No ahangama.com traffic found for the selected date range."
+            />
+          </div>
+        ) : (
+          <Table
+            columns={hostTrafficColumns}
+            dataSource={rootTrafficRows}
+            pagination={{ pageSize: 10, showSizeChanger: false }}
+            scroll={{ x: 720 }}
+          />
+        )}
+      </Card>
+
+      <Card
+        title="pass.ahangama.com Traffic"
+        extra={
+          <Typography.Text type="secondary">
+            Manual QR attribution, aligned with the QR dashboard
+          </Typography.Text>
+        }
+        styles={{ body: { padding: 0 } }}
+        style={{
+          borderRadius: 24,
+          border: "1px solid rgba(15, 23, 42, 0.06)",
+          boxShadow: "0 18px 40px rgba(15, 23, 42, 0.05)",
+        }}
+      >
+        <div style={{ padding: "16px 24px 0" }}>
+          <Typography.Paragraph
+            type="secondary"
+            style={{ margin: 0, maxWidth: 880 }}
+          >
+            This shows how much QR-attributed traffic made it through to
+            <strong> pass.ahangama.com</strong>. Compare this with the main site
+            table above to see whether visitors are moving deeper into the pass
+            journey after landing on Ahangama.
+          </Typography.Paragraph>
+        </div>
+        {loading ? (
+          <div style={{ padding: 40, display: "grid", placeItems: "center" }}>
+            <Spin size="large" />
+          </div>
+        ) : passTrafficRows.length === 0 ? (
+          <div style={{ padding: 32 }}>
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No pass.ahangama.com traffic found for the selected date range."
+            />
+          </div>
+        ) : (
+          <Table
+            columns={hostTrafficColumns}
+            dataSource={passTrafficRows}
+            pagination={{ pageSize: 10, showSizeChanger: false }}
+            scroll={{ x: 720 }}
           />
         )}
       </Card>

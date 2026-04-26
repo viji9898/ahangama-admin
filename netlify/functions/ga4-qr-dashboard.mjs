@@ -8,6 +8,8 @@ const API_BASE_URL = "https://analyticsdata.googleapis.com/v1beta";
 const DEFAULT_START_DATE = "30daysAgo";
 const DEFAULT_END_DATE = "today";
 const CTA_CLICK_EVENT_NAME_PATTERN = "(^|_)cta_click$";
+const ROOT_HOSTNAME = "ahangama.com";
+const PASS_HOSTNAME = "pass.ahangama.com";
 
 loadEnv({ path: resolve(process.cwd(), ".env") });
 
@@ -360,6 +362,57 @@ async function runEventCountReport({
   return payload;
 }
 
+async function runHostTrafficReport({ propertyId, startDate, endDate, hostName }) {
+  const accessToken = await getAccessToken();
+  const response = await fetch(
+    `${API_BASE_URL}/properties/${propertyId}:runReport`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "hostName" }],
+        metrics: [
+          { name: "sessions" },
+          { name: "activeUsers" },
+          { name: "screenPageViews" },
+        ],
+        dimensionFilter: {
+          andGroup: {
+            expressions: [
+              ...buildBaseExpressions(),
+              {
+                filter: {
+                  fieldName: "hostName",
+                  stringFilter: {
+                    matchType: "EXACT",
+                    value: hostName,
+                  },
+                },
+              },
+            ],
+          },
+        },
+        keepEmptyRows: false,
+        limit: 1,
+      }),
+    },
+  );
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message =
+      payload?.error?.message || `GA4 request failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  return payload;
+}
+
 function mapEventCountRows(rows = []) {
   const eventCounts = new Map();
 
@@ -418,6 +471,20 @@ function getEventCountFromReport(report) {
   return Number(report?.rows?.[0]?.metricValues?.[0]?.value || 0);
 }
 
+function mapHostTrafficReport(report, hostName) {
+  const row = report?.rows?.[0];
+
+  return {
+    key: hostName,
+    hostName,
+    source: "qr",
+    medium: "offline",
+    sessions: Number(row?.metricValues?.[0]?.value || 0),
+    users: Number(row?.metricValues?.[1]?.value || 0),
+    pageViews: Number(row?.metricValues?.[2]?.value || 0),
+  };
+}
+
 export async function handler(event) {
   try {
     if (event.httpMethod !== "GET") {
@@ -437,8 +504,13 @@ export async function handler(event) {
       .trim()
       .toLowerCase();
 
-    const [report, ctaClickReport, ctaClickBreakdownReport] = await Promise.all(
-      [
+    const [
+      report,
+      ctaClickReport,
+      ctaClickBreakdownReport,
+      rootTrafficReport,
+      passTrafficReport,
+    ] = await Promise.all([
         runReport({
           propertyId,
           startDate,
@@ -459,13 +531,26 @@ export async function handler(event) {
           venue,
           eventNamePattern: CTA_CLICK_EVENT_NAME_PATTERN,
         }),
-      ],
-    );
+        runHostTrafficReport({
+          propertyId,
+          startDate,
+          endDate,
+          hostName: ROOT_HOSTNAME,
+        }),
+        runHostTrafficReport({
+          propertyId,
+          startDate,
+          endDate,
+          hostName: PASS_HOSTNAME,
+        }),
+      ]);
 
     const ctaClicksByRow = mapEventCountRows(ctaClickBreakdownReport.rows);
 
     return json(200, {
       rows: mapRows(report.rows, ctaClicksByRow),
+      rootTrafficRows: [mapHostTrafficReport(rootTrafficReport, ROOT_HOSTNAME)],
+      passTrafficRows: [mapHostTrafficReport(passTrafficReport, PASS_HOSTNAME)],
       stats: {
         ctaClick: getEventCountFromReport(ctaClickReport),
       },
