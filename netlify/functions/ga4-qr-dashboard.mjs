@@ -8,6 +8,8 @@ const API_BASE_URL = "https://analyticsdata.googleapis.com/v1beta";
 const DEFAULT_START_DATE = "30daysAgo";
 const DEFAULT_END_DATE = "today";
 const CTA_CLICK_EVENT_NAME_PATTERN = "(^|_)cta_click$";
+const PURCHASE_EVENT_NAME = "purchase";
+const PURCHASE_LOOKBACK_DAYS = 7;
 const ROOT_HOSTNAME = "ahangama.com";
 const PASS_HOSTNAME = "pass.ahangama.com";
 
@@ -133,6 +135,42 @@ function buildDimensionFilter(queryStringParameters = {}) {
   };
 }
 
+function buildPurchaseDimensionFilter(queryStringParameters = {}) {
+  const expressions = [
+    {
+      filter: {
+        fieldName: "eventName",
+        stringFilter: {
+          matchType: "EXACT",
+          value: PURCHASE_EVENT_NAME,
+        },
+      },
+    },
+  ];
+
+  const venue = String(queryStringParameters.venue || "")
+    .trim()
+    .toLowerCase();
+
+  if (venue) {
+    expressions.push({
+      filter: {
+        fieldName: "customEvent:qr_content",
+        stringFilter: {
+          matchType: "BEGINS_WITH",
+          value: `${venue}__`,
+        },
+      },
+    });
+  }
+
+  return {
+    andGroup: {
+      expressions,
+    },
+  };
+}
+
 function buildVenueFilter(queryStringParameters = {}) {
   const venue = String(queryStringParameters.venue || "")
     .trim()
@@ -244,6 +282,92 @@ async function runEventBreakdownReport({
   }
 
   return payload;
+}
+
+async function runPurchaseBreakdownReport({
+  propertyId,
+  startDate,
+  endDate,
+  venue,
+}) {
+  const accessToken = await getAccessToken();
+  const response = await fetch(
+    `${API_BASE_URL}/properties/${propertyId}:runReport`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [
+          { name: "date" },
+          { name: "customEvent:qr_content" },
+          { name: "customEvent:qr_landing_page" },
+        ],
+        metrics: [{ name: "transactions" }, { name: "purchaseRevenue" }],
+        dimensionFilter: buildPurchaseDimensionFilter({ venue }),
+        keepEmptyRows: false,
+        limit: 1000,
+        orderBys: [
+          {
+            metric: {
+              metricName: "purchaseRevenue",
+            },
+            desc: true,
+          },
+        ],
+      }),
+    },
+  );
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message =
+      payload?.error?.message || `GA4 request failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  return payload;
+}
+
+function isIsoDateString(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "").trim());
+}
+
+function toIsoDateString(value) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function getPurchaseQueryStartDate(startDate, endDate) {
+  if (!isIsoDateString(startDate) || !isIsoDateString(endDate)) {
+    return startDate;
+  }
+
+  const todayIso = toIsoDateString(Date.now());
+
+  if (startDate !== todayIso || endDate !== todayIso) {
+    return startDate;
+  }
+
+  const lookbackDate = new Date(`${todayIso}T00:00:00Z`);
+  lookbackDate.setUTCDate(lookbackDate.getUTCDate() - PURCHASE_LOOKBACK_DAYS);
+
+  return toIsoDateString(lookbackDate);
+}
+
+function isDateWithinRange(dateValue, startDate, endDate) {
+  if (!isIsoDateString(dateValue)) {
+    return true;
+  }
+
+  if (!isIsoDateString(startDate) || !isIsoDateString(endDate)) {
+    return true;
+  }
+
+  return dateValue >= startDate && dateValue <= endDate;
 }
 
 async function getAccessToken() {
@@ -437,7 +561,39 @@ function mapEventCountRows(rows = []) {
   return eventCounts;
 }
 
-function mapRows(rows = [], ctaClicksByRow = new Map()) {
+function mapPurchaseRows(rows = [], startDate, endDate) {
+  const purchases = new Map();
+
+  for (const row of rows) {
+    const dimensionValues = row.dimensionValues || [];
+    const purchaseDateRaw = String(dimensionValues[0]?.value || "").trim();
+    const purchaseDate = /^\d{8}$/.test(purchaseDateRaw)
+      ? `${purchaseDateRaw.slice(0, 4)}-${purchaseDateRaw.slice(4, 6)}-${purchaseDateRaw.slice(6, 8)}`
+      : purchaseDateRaw;
+
+    if (!isDateWithinRange(purchaseDate, startDate, endDate)) {
+      continue;
+    }
+
+    const utmContent = dimensionValues[1]?.value || "";
+    const landingPage = normalizeLandingPage(dimensionValues[2]?.value || "");
+    const key = buildRowKey(utmContent, landingPage);
+    const existing = purchases.get(key) || { count: 0, revenue: 0 };
+
+    purchases.set(key, {
+      count: existing.count + Number(row.metricValues?.[0]?.value || 0),
+      revenue: existing.revenue + Number(row.metricValues?.[1]?.value || 0),
+    });
+  }
+
+  return purchases;
+}
+
+function mapRows(
+  rows = [],
+  ctaClicksByRow = new Map(),
+  purchasesByRow = new Map(),
+) {
   const groupedRows = new Map();
 
   for (const row of rows) {
@@ -465,6 +621,8 @@ function mapRows(rows = [], ctaClicksByRow = new Map()) {
       users: Number(metricValues[1]?.value || 0),
       events: Number(metricValues[2]?.value || 0),
       ctaClick: Number(ctaClicksByRow.get(key) || 0),
+      purchases: Number(purchasesByRow.get(key)?.count || 0),
+      revenue: Number(purchasesByRow.get(key)?.revenue || 0),
       landingPage,
     });
   }
@@ -505,6 +663,7 @@ export async function handler(event) {
 
     const queryStringParameters = event.queryStringParameters || {};
     const { startDate, endDate } = getDateRange(queryStringParameters);
+    const purchaseStartDate = getPurchaseQueryStartDate(startDate, endDate);
     const venue = String(queryStringParameters.venue || "")
       .trim()
       .toLowerCase();
@@ -513,6 +672,7 @@ export async function handler(event) {
       report,
       ctaClickReport,
       ctaClickBreakdownReport,
+      purchaseBreakdownReport,
       rootTrafficReport,
       passTrafficReport,
     ] = await Promise.all([
@@ -536,6 +696,12 @@ export async function handler(event) {
         venue,
         eventNamePattern: CTA_CLICK_EVENT_NAME_PATTERN,
       }),
+      runPurchaseBreakdownReport({
+        propertyId,
+        startDate: purchaseStartDate,
+        endDate,
+        venue,
+      }),
       runHostTrafficReport({
         propertyId,
         startDate,
@@ -551,9 +717,14 @@ export async function handler(event) {
     ]);
 
     const ctaClicksByRow = mapEventCountRows(ctaClickBreakdownReport.rows);
+    const purchasesByRow = mapPurchaseRows(
+      purchaseBreakdownReport.rows,
+      startDate,
+      endDate,
+    );
 
     return json(200, {
-      rows: mapRows(report.rows, ctaClicksByRow),
+      rows: mapRows(report.rows, ctaClicksByRow, purchasesByRow),
       rootTrafficRows: [mapHostTrafficReport(rootTrafficReport, ROOT_HOSTNAME)],
       passTrafficRows: [mapHostTrafficReport(passTrafficReport, PASS_HOSTNAME)],
       stats: {

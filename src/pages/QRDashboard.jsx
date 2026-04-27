@@ -25,7 +25,10 @@ const PERFORMANCE_SORT_OPTIONS = [
   { label: "Users", value: "users" },
   { label: "Events", value: "events" },
   { label: "CTA Clicks", value: "ctaClick" },
+  { label: "Purchases", value: "purchases" },
+  { label: "Revenue", value: "revenue" },
   { label: "Conversion Rate", value: "conversionRate" },
+  { label: "Purchase Rate", value: "purchaseRate" },
 ];
 const CONVERSION_RATE_FILTER_OPTIONS = [
   { label: "All Rates", value: "all" },
@@ -39,6 +42,8 @@ const SUMMARY_METRICS = [
   { key: "users", title: "Total Users", color: "#0f766e" },
   { key: "events", title: "Total Events", color: "#9a3412" },
   { key: "ctaClick", title: "CTA Clicks", color: "#2563eb" },
+  { key: "purchases", title: "Purchases", color: "#7c3aed" },
+  { key: "revenue", title: "Revenue", color: "#15803d" },
 ];
 
 function formatLabel(value) {
@@ -62,6 +67,14 @@ function formatLandingPages(values) {
 
 function formatPercent(value) {
   return `${(Number(value || 0) * 100).toFixed(1)}%`;
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
 }
 
 function matchesConversionRateFilter(value, filter) {
@@ -222,6 +235,8 @@ export default function QRDashboard() {
         existing.users += Number(row.users || 0);
         existing.events += Number(row.events || 0);
         existing.ctaClick += Number(row.ctaClick || 0);
+        existing.purchases += Number(row.purchases || 0);
+        existing.revenue += Number(row.revenue || 0);
         existing.creatives.add(creative);
         if (landingPage) {
           existing.landingPages.set(
@@ -240,6 +255,8 @@ export default function QRDashboard() {
         users: Number(row.users || 0),
         events: Number(row.events || 0),
         ctaClick: Number(row.ctaClick || 0),
+        purchases: Number(row.purchases || 0),
+        revenue: Number(row.revenue || 0),
         creatives: new Set([creative]),
         landingPages: landingPage
           ? new Map([[landingPage, rowSessions]])
@@ -274,7 +291,12 @@ export default function QRDashboard() {
           users: item.users,
           events: item.events,
           ctaClick: item.ctaClick,
+          purchases: item.purchases,
+          revenue: item.revenue,
           conversionRate: item.sessions > 0 ? item.ctaClick / item.sessions : 0,
+          purchaseRate: item.sessions > 0 ? item.purchases / item.sessions : 0,
+          revenuePerSession:
+            item.sessions > 0 ? item.revenue / item.sessions : 0,
           landingPage: formatLandingPages(landingPages),
           landingPages,
         };
@@ -296,8 +318,18 @@ export default function QRDashboard() {
         totalSessions: accumulator.totalSessions + row.sessions,
         totalUsers: accumulator.totalUsers + row.users,
         totalEvents: accumulator.totalEvents + row.events,
+        totalCtaClicks: accumulator.totalCtaClicks + row.ctaClick,
+        totalPurchases: accumulator.totalPurchases + row.purchases,
+        totalRevenue: accumulator.totalRevenue + row.revenue,
       }),
-      { totalSessions: 0, totalUsers: 0, totalEvents: 0 },
+      {
+        totalSessions: 0,
+        totalUsers: 0,
+        totalEvents: 0,
+        totalCtaClicks: 0,
+        totalPurchases: 0,
+        totalRevenue: 0,
+      },
     );
   }, [visibleRows]);
 
@@ -355,6 +387,19 @@ export default function QRDashboard() {
         sorter: (left, right) => left.ctaClick - right.ctaClick,
       },
       {
+        title: "Purchases",
+        dataIndex: "purchases",
+        key: "purchases",
+        sorter: (left, right) => left.purchases - right.purchases,
+      },
+      {
+        title: "Revenue",
+        dataIndex: "revenue",
+        key: "revenue",
+        sorter: (left, right) => left.revenue - right.revenue,
+        render: (value) => formatCurrency(value),
+      },
+      {
         title: (
           <Tooltip title="Calculated as CTA Clicks divided by Sessions.">
             <span>Conversion Rate</span>
@@ -372,6 +417,21 @@ export default function QRDashboard() {
               <Tag color={tone.tagColor}>{formatPercent(value)}</Tag>
             </Tooltip>
           );
+        },
+      },
+      {
+        title: (
+          <Tooltip title="Calculated as Purchases divided by Sessions.">
+            <span>Purchase Rate</span>
+          </Tooltip>
+        ),
+        dataIndex: "purchaseRate",
+        key: "purchaseRate",
+        sorter: (left, right) => left.purchaseRate - right.purchaseRate,
+        render: (value, record) => {
+          const detail = `${record.purchases} purchases / ${record.sessions} sessions = ${formatPercent(value)}`;
+
+          return <Tooltip title={detail}>{formatPercent(value)}</Tooltip>;
         },
       },
       {
@@ -532,7 +592,11 @@ export default function QRDashboard() {
                 ? totals.totalUsers
                 : metric.key === "events"
                   ? totals.totalEvents
-                  : stats.ctaClick;
+                  : metric.key === "ctaClick"
+                    ? totals.totalCtaClicks
+                    : metric.key === "purchases"
+                      ? totals.totalPurchases
+                      : totals.totalRevenue;
 
           return (
             <Col key={metric.key} xs={24} sm={12} lg={6}>
@@ -548,6 +612,8 @@ export default function QRDashboard() {
                   title={metric.title}
                   value={value}
                   loading={loading}
+                  precision={metric.key === "revenue" ? 2 : 0}
+                  prefix={metric.key === "revenue" ? "$" : undefined}
                   valueStyle={{ color: metric.color, fontWeight: 650 }}
                 />
               </Card>
@@ -571,10 +637,12 @@ export default function QRDashboard() {
             style={{ margin: 0, maxWidth: 880 }}
           >
             This table shows which QR placements are bringing people in and
-            which ones are driving action. Use <strong>Sessions</strong> to see
-            traffic volume, <strong>CTA Clicks</strong> to see action taken, and
-            <strong> Conversion Rate</strong> to spot the most efficient venues
-            and surfaces.
+            which ones are driving action and paid outcomes. Use
+            <strong> Sessions</strong> to see traffic volume,
+            <strong> CTA Clicks</strong> to see action taken,
+            <strong> Purchases</strong> and <strong>Revenue</strong> to see paid
+            performance, and <strong>Purchase Rate</strong> to spot the most
+            efficient venues and surfaces.
           </Typography.Paragraph>
         </div>
         {loading ? (
