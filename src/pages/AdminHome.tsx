@@ -170,6 +170,12 @@ export default function AdminHome() {
 
           <Col>
             <Space wrap>
+              <Link to="/admin/links">
+                <Button>Generate Instagram Link</Button>
+              </Link>
+              <Link to="/admin/qr-links">
+                <Button>Generate QR Link</Button>
+              </Link>
               <Link to="/admin/venues?addVenue=1">
                 <Button type="primary">Create New Venue</Button>
               </Link>
@@ -224,6 +230,49 @@ export default function AdminHome() {
           </Row>
 
           <Row gutter={[24, 24]}>
+            <Col xs={24} xl={10}>
+              <Card
+                title="QR link generator"
+                styles={{ body: { padding: 20 } }}
+                style={{
+                  borderRadius: 20,
+                  border: "1px solid rgba(15, 23, 42, 0.06)",
+                  boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+                }}
+              >
+                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+                    Build the canonical UTM destination links used behind QR
+                    codes so scans land on the correct page with the right
+                    attribution payload.
+                  </Typography.Paragraph>
+                  <Link to="/admin/qr-links">
+                    <Button type="primary">Open QR Link Generator</Button>
+                  </Link>
+                </Space>
+              </Card>
+            </Col>
+            <Col xs={24} xl={10}>
+              <Card
+                title="IG Link generator"
+                styles={{ body: { padding: 20 } }}
+                style={{
+                  borderRadius: 20,
+                  border: "1px solid rgba(15, 23, 42, 0.06)",
+                  boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+                }}
+              >
+                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+                    Create tracked Instagram links for the pass, guides, or
+                    venue posts without rebuilding the path manually.
+                  </Typography.Paragraph>
+                  <Link to="/admin/links">
+                    <Button type="primary">Open Link Generator</Button>
+                  </Link>
+                </Space>
+              </Card>
+            </Col>
             <Col xs={24} xl={14}>
               <Card
                 title="Recent venue activity"

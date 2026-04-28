@@ -52,6 +52,28 @@ export default function AdminShell() {
             Home
           </Link>
           <Link
+            to="/admin/links"
+            style={{
+              color: "#fff",
+              textDecoration: location.pathname.startsWith("/admin/links")
+                ? "underline"
+                : "none",
+            }}
+          >
+            Link Generator
+          </Link>
+          <Link
+            to="/admin/qr-links"
+            style={{
+              color: "#fff",
+              textDecoration: location.pathname.startsWith("/admin/qr-links")
+                ? "underline"
+                : "none",
+            }}
+          >
+            QR Links
+          </Link>
+          <Link
             to="/admin/venues"
             style={{
               color: "#fff",
