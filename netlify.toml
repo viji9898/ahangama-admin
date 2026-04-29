@@ -10,6 +10,9 @@
   targetPort = 5173
   functions = "netlify/functions"
 
+[functions."daily-team-email"]
+  schedule = "0 0,1 * * *"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
