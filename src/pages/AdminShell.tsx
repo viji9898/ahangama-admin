@@ -60,7 +60,7 @@ export default function AdminShell() {
                 : "none",
             }}
           >
-            Link Generator
+            IG Link Generator
           </Link>
           <Link
             to="/admin/qr-links"
