@@ -74,7 +74,9 @@ function normalizeLandingPage(value) {
 }
 
 function buildVenueFilter(venue = "") {
-  const normalizedVenue = String(venue || "").trim().toLowerCase();
+  const normalizedVenue = String(venue || "")
+    .trim()
+    .toLowerCase();
 
   if (!normalizedVenue) {
     return null;
@@ -143,7 +145,9 @@ function buildPurchaseDimensionFilter(venue = "") {
     },
   ];
 
-  const normalizedVenue = String(venue || "").trim().toLowerCase();
+  const normalizedVenue = String(venue || "")
+    .trim()
+    .toLowerCase();
 
   if (normalizedVenue) {
     expressions.push({
@@ -323,7 +327,13 @@ async function runReport({ startDate, endDate, venue }) {
   });
 }
 
-async function runEventCountReport({ startDate, endDate, venue, eventName, eventNamePattern }) {
+async function runEventCountReport({
+  startDate,
+  endDate,
+  venue,
+  eventName,
+  eventNamePattern,
+}) {
   return runGaReport({
     dateRanges: [{ startDate, endDate }],
     metrics: [{ name: "eventCount" }],
@@ -336,7 +346,13 @@ async function runEventCountReport({ startDate, endDate, venue, eventName, event
   });
 }
 
-async function runEventBreakdownReport({ startDate, endDate, venue, eventName, eventNamePattern }) {
+async function runEventBreakdownReport({
+  startDate,
+  endDate,
+  venue,
+  eventName,
+  eventNamePattern,
+}) {
   return runGaReport({
     dateRanges: [{ startDate, endDate }],
     dimensions: [
@@ -461,7 +477,11 @@ function mapPurchaseRows(rows = [], startDate, endDate) {
   return purchases;
 }
 
-function mapRows(rows = [], ctaClicksByRow = new Map(), purchasesByRow = new Map()) {
+function mapRows(
+  rows = [],
+  ctaClicksByRow = new Map(),
+  purchasesByRow = new Map(),
+) {
   const groupedRows = new Map();
 
   for (const row of rows) {
@@ -521,7 +541,9 @@ export async function getQrDashboardSummary({
   endDate = DEFAULT_END_DATE,
   venue = "",
 } = {}) {
-  const normalizedVenue = String(venue || "").trim().toLowerCase();
+  const normalizedVenue = String(venue || "")
+    .trim()
+    .toLowerCase();
   const purchaseStartDate = getPurchaseQueryStartDate(startDate, endDate);
 
   const [

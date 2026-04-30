@@ -116,7 +116,9 @@ function getRecipientEmails() {
 }
 
 function getSenderEmail() {
-  return String(process.env.DAILY_REPORT_FROM_EMAIL || DEFAULT_FROM_EMAIL).trim();
+  return String(
+    process.env.DAILY_REPORT_FROM_EMAIL || DEFAULT_FROM_EMAIL,
+  ).trim();
 }
 
 function enrichRows(rows = []) {
@@ -212,22 +214,35 @@ function formatRowSummary(row) {
   return `${formatLabel(row.venue)} / ${formatLabel(row.surface)} - ${formatInteger(row.sessions)} sessions, ${formatInteger(row.ctaClick)} CTA clicks, ${formatInteger(row.purchases)} purchases, ${formatCurrency(row.revenue)}, ${formatPercent(row.purchaseRate)} purchase rate`;
 }
 
-function buildThoughts({ totals, performers, watchouts, rootTraffic, passTraffic, venueStats }) {
+function formatRowSummaryHtml(row) {
+  return `<strong>${escapeHtml(formatLabel(row.venue))}</strong> / ${escapeHtml(formatLabel(row.surface))} - ${escapeHtml(formatInteger(row.sessions))} sessions, ${escapeHtml(formatInteger(row.ctaClick))} CTA clicks, ${escapeHtml(formatInteger(row.purchases))} purchases, ${escapeHtml(formatCurrency(row.revenue))}, ${escapeHtml(formatPercent(row.purchaseRate))} purchase rate`;
+}
+
+function buildThoughts({
+  totals,
+  performers,
+  watchouts,
+  rootTraffic,
+  passTraffic,
+  venueStats,
+}) {
   const thoughts = [];
-  const overallPurchaseRate = totals.sessions > 0 ? totals.purchases / totals.sessions : 0;
+  const overallPurchaseRate =
+    totals.sessions > 0 ? totals.purchases / totals.sessions : 0;
   const bestPerformer = performers[0];
   const biggestWatchout = watchouts[0];
-  const passShare = rootTraffic.sessions > 0 ? passTraffic.sessions / rootTraffic.sessions : 0;
+  const passShare =
+    rootTraffic.sessions > 0 ? passTraffic.sessions / rootTraffic.sessions : 0;
 
   if (bestPerformer) {
     thoughts.push(
-      `${formatLabel(bestPerformer.venue)} / ${formatLabel(bestPerformer.surface)} is the strongest QR placement right now with ${formatInteger(bestPerformer.purchases)} purchases from ${formatInteger(bestPerformer.sessions)} sessions.`
+      `${formatLabel(bestPerformer.venue)} / ${formatLabel(bestPerformer.surface)} is the strongest QR placement right now with ${formatInteger(bestPerformer.purchases)} purchases from ${formatInteger(bestPerformer.sessions)} sessions.`,
     );
   }
 
   if (biggestWatchout) {
     thoughts.push(
-      `${formatLabel(biggestWatchout.venue)} / ${formatLabel(biggestWatchout.surface)} needs attention: ${formatInteger(biggestWatchout.sessions)} sessions are only producing a ${formatPercent(biggestWatchout.purchaseRate)} purchase rate.`
+      `${formatLabel(biggestWatchout.venue)} / ${formatLabel(biggestWatchout.surface)} needs attention: ${formatInteger(biggestWatchout.sessions)} sessions are only producing a ${formatPercent(biggestWatchout.purchaseRate)} purchase rate.`,
     );
   }
 
@@ -235,17 +250,17 @@ function buildThoughts({ totals, performers, watchouts, rootTraffic, passTraffic
     thoughts.push(
       passShare >= 0.5
         ? `${formatPercent(passShare)} of QR traffic that reached ahangama.com also reached pass.ahangama.com, so the downstream journey is holding up.`
-        : `Only ${formatPercent(passShare)} of QR traffic that reached ahangama.com made it to pass.ahangama.com, so there is visible drop-off after the first landing.`
+        : `Only ${formatPercent(passShare)} of QR traffic that reached ahangama.com made it to pass.ahangama.com, so there is visible drop-off after the first landing.`,
     );
   }
 
   if (venueStats.venuesAddedThisWeek > 0) {
     thoughts.push(
-      `${formatInteger(venueStats.venuesAddedThisWeek)} venues were added this week and ${formatInteger(venueStats.totalLiveVenues)} are currently live.`
+      `${formatInteger(venueStats.venuesAddedThisWeek)} venues were added this week and ${formatInteger(venueStats.totalLiveVenues)} are currently live.`,
     );
   } else if (overallPurchaseRate > 0) {
     thoughts.push(
-      `Overall purchase efficiency for the day was ${formatPercent(overallPurchaseRate)} across all QR traffic.`
+      `Overall purchase efficiency for the day was ${formatPercent(overallPurchaseRate)} across all QR traffic.`,
     );
   }
 
@@ -296,7 +311,9 @@ export function shouldRunDailyTeamEmail(now = new Date()) {
   return londonNow.hour === 1;
 }
 
-export async function getDailyTeamEmailReport({ reportDate = getPreviousDayReportDate() } = {}) {
+export async function getDailyTeamEmailReport({
+  reportDate = getPreviousDayReportDate(),
+} = {}) {
   const qrSummary = await getQrDashboardSummary({
     startDate: reportDate,
     endDate: reportDate,
@@ -391,9 +408,9 @@ export function buildDailyTeamEmailMessage(report) {
         <li>pass.ahangama.com: ${escapeHtml(formatInteger(report.passTraffic.sessions))} sessions, ${escapeHtml(formatInteger(report.passTraffic.users))} users, ${escapeHtml(formatInteger(report.passTraffic.pageViews))} page views</li>
       </ul>
       <h3>Top 10 performers</h3>
-      <ol>${report.performers.map((row) => `<li>${escapeHtml(formatRowSummary(row))}</li>`).join("") || "<li>None</li>"}</ol>
+      <ol>${report.performers.map((row) => `<li>${formatRowSummaryHtml(row)}</li>`).join("") || "<li>None</li>"}</ol>
       <h3>Top 10 watchouts</h3>
-      <ol>${report.watchouts.map((row) => `<li>${escapeHtml(formatRowSummary(row))}</li>`).join("") || "<li>None</li>"}</ol>
+      <ol>${report.watchouts.map((row) => `<li>${formatRowSummaryHtml(row)}</li>`).join("") || "<li>None</li>"}</ol>
       <h3>Thoughts</h3>
       <ul>${report.thoughts.map((line) => `<li>${escapeHtml(line)}</li>`).join("") || "<li>No strong signal yet.</li>"}</ul>
     </div>
@@ -420,7 +437,12 @@ export async function hasDailyTeamEmailBeenSent(reportDate) {
   return Boolean(result.rows[0]);
 }
 
-async function recordDailyTeamEmailSend({ reportDate, recipients, subject, report }) {
+async function recordDailyTeamEmailSend({
+  reportDate,
+  recipients,
+  subject,
+  report,
+}) {
   await query(
     `
       INSERT INTO ${EMAIL_LOG_TABLE} (
