@@ -1,6 +1,8 @@
 import { GoogleAuth } from "google-auth-library";
 import { config as loadEnv } from "dotenv";
 import { resolve } from "node:path";
+import { query } from "./db.mjs";
+import { VENUES_TABLE } from "./venues260414.mjs";
 
 const ANALYTICS_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
 const API_BASE_URL = "https://analyticsdata.googleapis.com/v1beta";
@@ -11,6 +13,37 @@ const PURCHASE_EVENT_NAME = "purchase";
 const PURCHASE_LOOKBACK_DAYS = 7;
 const ROOT_HOSTNAME = "ahangama.com";
 const PASS_HOSTNAME = "pass.ahangama.com";
+const QR_SCAN_VENUE_ALIASES = {
+  abrazo: "abrazo-ahangama",
+  aliikai: "aliikai-ahangama",
+  "cinnamon-trails": "the-cinnamon-trails-ahangama",
+  "co-live": "colive",
+  donna: "donna-ahangama",
+  "folklore-ag": "folklore-ahangama",
+  frostys: "frostys-recovery-centre-hangout",
+  "hakuna-matata": "hakuna-matata-ahangama",
+  "jam-house": "jam-house-ahangama",
+  kaffi: "kaffi-ahangama",
+  "kaffi-ag": "kaffi-ahangama",
+  "kaffi-pr-cmb": "kaffi-ahangama",
+  "kaffi-pr-colombo": "kaffi-ahangama",
+  "makai-cafe": "makai-cafe-ahangama",
+  "mana-villa": "mana",
+  "maria-bonita": "maria-bonita-sri-lanka",
+  "mora-rooftop": "mora-rooftop-lounge",
+  "mudra-herbal": "mudra-herbal-spicy-tea-shop",
+  "o-yummy": "oyummy",
+  "palm-g": "ayurveda-palm-garden-resort",
+  "paradise-cove": "paradise-cove-midigama",
+  "pura-pilates": "pura-pilates-ahangama",
+  "roaming-retreat": "roaming-retreat-cafe-hostel-villa",
+  "sama-1": "sama",
+  "sama-2": "sama",
+  "sama-4": "sama",
+  samba: "samba-ahangama",
+  unu: "unu-boutique-hotel",
+  "younger-villas": "younger-villas-resorts",
+};
 
 loadEnv({ path: resolve(process.cwd(), ".env") });
 
@@ -29,6 +62,14 @@ function parseUtmContent(value) {
     surface: parts[1] || "unknown",
     creative: parts.slice(2).join("__") || "unknown",
   };
+}
+
+function resolveVenueSlug(value = "") {
+  const normalizedValue = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  return QR_SCAN_VENUE_ALIASES[normalizedValue] || normalizedValue;
 }
 
 function normalizeLandingPage(value) {
@@ -518,6 +559,127 @@ function mapRows(
   return [...groupedRows.values()];
 }
 
+async function getVenueDirectory() {
+  const result = await query(
+    `
+      SELECT slug, name, area, lat, lng
+      FROM ${VENUES_TABLE}
+      WHERE deleted_at IS NULL
+        AND lat IS NOT NULL
+        AND lng IS NOT NULL
+    `,
+  );
+
+  return new Map(
+    result.rows.map((row) => [
+      String(row.slug || "")
+        .trim()
+        .toLowerCase(),
+      {
+        slug: String(row.slug || "")
+          .trim()
+          .toLowerCase(),
+        name: String(row.name || "").trim(),
+        area: String(row.area || "").trim(),
+        lat: Number(row.lat),
+        lng: Number(row.lng),
+      },
+    ]),
+  );
+}
+
+function buildScanMapRows(rows = [], venueDirectory = new Map()) {
+  const groupedRows = new Map();
+
+  for (const row of rows) {
+    const sourceVenue = String(row.venue || "")
+      .trim()
+      .toLowerCase();
+
+    if (!sourceVenue) {
+      continue;
+    }
+
+    const resolvedVenueSlug = resolveVenueSlug(sourceVenue);
+    const venueRecord = venueDirectory.get(resolvedVenueSlug);
+
+    if (!venueRecord) {
+      continue;
+    }
+
+    const existing = groupedRows.get(resolvedVenueSlug);
+    const sessions = Number(row.sessions || 0);
+    const users = Number(row.users || 0);
+    const events = Number(row.events || 0);
+    const ctaClick = Number(row.ctaClick || 0);
+    const purchases = Number(row.purchases || 0);
+    const revenue = Number(row.revenue || 0);
+    const surface = String(row.surface || "unknown")
+      .trim()
+      .toLowerCase() || "unknown";
+
+    if (existing) {
+      existing.sessions += sessions;
+      existing.users += users;
+      existing.events += events;
+      existing.ctaClick += ctaClick;
+      existing.purchases += purchases;
+      existing.revenue += revenue;
+      existing.sourceVenues.add(sourceVenue);
+      existing.surfaces.set(
+        surface,
+        Number(existing.surfaces.get(surface) || 0) + sessions,
+      );
+      continue;
+    }
+
+    groupedRows.set(resolvedVenueSlug, {
+      slug: venueRecord.slug,
+      label: venueRecord.name || resolvedVenueSlug,
+      area: venueRecord.area,
+      lat: venueRecord.lat,
+      lng: venueRecord.lng,
+      sessions,
+      users,
+      events,
+      ctaClick,
+      purchases,
+      revenue,
+      sourceVenues: new Set([sourceVenue]),
+      surfaces: new Map([[surface, sessions]]),
+    });
+  }
+
+  return [...groupedRows.values()]
+    .map((row) => ({
+      slug: row.slug,
+      label: row.label,
+      area: row.area,
+      lat: row.lat,
+      lng: row.lng,
+      sessions: row.sessions,
+      users: row.users,
+      events: row.events,
+      ctaClick: row.ctaClick,
+      purchases: row.purchases,
+      revenue: row.revenue,
+      conversionRate: row.sessions > 0 ? row.ctaClick / row.sessions : 0,
+      purchaseRate: row.sessions > 0 ? row.purchases / row.sessions : 0,
+      sourceVenues: [...row.sourceVenues].sort((left, right) =>
+        left.localeCompare(right),
+      ),
+      topSurfaces: [...row.surfaces.entries()]
+        .map(([surface, surfaceSessions]) => ({ surface, sessions: surfaceSessions }))
+        .sort(
+          (left, right) =>
+            right.sessions - left.sessions ||
+            left.surface.localeCompare(right.surface),
+        )
+        .slice(0, 4),
+    }))
+    .sort((left, right) => right.sessions - left.sessions);
+}
+
 function getEventCountFromReport(report) {
   return Number(report?.rows?.[0]?.metricValues?.[0]?.value || 0);
 }
@@ -553,6 +715,7 @@ export async function getQrDashboardSummary({
     purchaseBreakdownReport,
     rootTrafficReport,
     passTrafficReport,
+    venueDirectory,
   ] = await Promise.all([
     runReport({
       startDate,
@@ -586,6 +749,7 @@ export async function getQrDashboardSummary({
       endDate,
       hostName: PASS_HOSTNAME,
     }),
+    getVenueDirectory(),
   ]);
 
   const ctaClicksByRow = mapEventCountRows(ctaClickBreakdownReport.rows);
@@ -594,9 +758,11 @@ export async function getQrDashboardSummary({
     startDate,
     endDate,
   );
+  const rows = mapRows(report.rows, ctaClicksByRow, purchasesByRow);
 
   return {
-    rows: mapRows(report.rows, ctaClicksByRow, purchasesByRow),
+    rows,
+    scanMapRows: buildScanMapRows(rows, venueDirectory),
     rootTrafficRows: [mapHostTrafficReport(rootTrafficReport, ROOT_HOSTNAME)],
     passTrafficRows: [mapHostTrafficReport(passTrafficReport, PASS_HOSTNAME)],
     stats: {

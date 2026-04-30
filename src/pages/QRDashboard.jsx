@@ -16,6 +16,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
+import QRScanMap from "../components/QRScanMap";
 
 const { RangePicker } = DatePicker;
 const DASHBOARD_ENDPOINT = "/.netlify/functions/ga4-qr-dashboard";
@@ -44,6 +45,15 @@ const SUMMARY_METRICS = [
   { key: "ctaClick", title: "CTA Clicks", color: "#2563eb" },
   { key: "purchases", title: "Purchases", color: "#7c3aed" },
   { key: "revenue", title: "Revenue", color: "#15803d" },
+];
+const MAP_SIZE_METRIC_OPTIONS = [
+  { label: "Sessions", value: "sessions" },
+  { label: "CTA Clicks", value: "ctaClick" },
+  { label: "Purchases", value: "purchases" },
+];
+const MAP_COLOR_METRIC_OPTIONS = [
+  { label: "Purchase Rate", value: "purchaseRate" },
+  { label: "Conversion Rate", value: "conversionRate" },
 ];
 
 function formatLabel(value) {
@@ -122,11 +132,14 @@ export default function QRDashboard() {
   const [sortMetric, setSortMetric] = useState("sessions");
   const [conversionRateFilter, setConversionRateFilter] = useState("all");
   const [rows, setRows] = useState([]);
+  const [scanMapRows, setScanMapRows] = useState([]);
   const [rootTrafficRows, setRootTrafficRows] = useState([]);
   const [passTrafficRows, setPassTrafficRows] = useState([]);
   const [stats, setStats] = useState({ ctaClick: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [mapSizeMetric, setMapSizeMetric] = useState("sessions");
+  const [mapColorMetric, setMapColorMetric] = useState("purchaseRate");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -158,6 +171,9 @@ export default function QRDashboard() {
         }
 
         setRows(Array.isArray(payload) ? payload : payload?.rows || []);
+        setScanMapRows(
+          Array.isArray(payload?.scanMapRows) ? payload.scanMapRows : [],
+        );
         setRootTrafficRows(
           Array.isArray(payload?.rootTrafficRows)
             ? payload.rootTrafficRows
@@ -178,6 +194,7 @@ export default function QRDashboard() {
 
         setError(String(fetchError?.message || fetchError));
         setRows([]);
+        setScanMapRows([]);
         setRootTrafficRows([]);
         setPassTrafficRows([]);
         setStats({ ctaClick: 0 });
@@ -311,6 +328,31 @@ export default function QRDashboard() {
       matchesConversionRateFilter(row.conversionRate, conversionRateFilter),
     );
   }, [groupedRows, conversionRateFilter]);
+
+  const visibleScanMapRows = useMemo(() => {
+    return scanMapRows.filter((row) => {
+      if (
+        selectedVenue &&
+        !Array.isArray(row.sourceVenues) &&
+        row.sourceVenues !== selectedVenue
+      ) {
+        return false;
+      }
+
+      if (
+        selectedVenue &&
+        Array.isArray(row.sourceVenues) &&
+        !row.sourceVenues.includes(selectedVenue)
+      ) {
+        return false;
+      }
+
+      return matchesConversionRateFilter(
+        Number(row.conversionRate || 0),
+        conversionRateFilter,
+      );
+    });
+  }, [conversionRateFilter, scanMapRows, selectedVenue]);
 
   const totals = useMemo(() => {
     return visibleRows.reduce(
@@ -667,6 +709,64 @@ export default function QRDashboard() {
             }
             scroll={{ x: 960 }}
           />
+        )}
+      </Card>
+
+      <Card
+        title="QR Scan Map"
+        extra={
+          <Space wrap size={12}>
+            <Select
+              value={mapSizeMetric}
+              onChange={setMapSizeMetric}
+              options={MAP_SIZE_METRIC_OPTIONS}
+              style={{ minWidth: 150 }}
+            />
+            <Select
+              value={mapColorMetric}
+              onChange={setMapColorMetric}
+              options={MAP_COLOR_METRIC_OPTIONS}
+              style={{ minWidth: 170 }}
+            />
+          </Space>
+        }
+        styles={{ body: { padding: 0 } }}
+        style={{
+          borderRadius: 24,
+          border: "1px solid rgba(15, 23, 42, 0.06)",
+          boxShadow: "0 18px 40px rgba(15, 23, 42, 0.05)",
+        }}
+      >
+        <div style={{ padding: "16px 24px 0" }}>
+          <Typography.Paragraph
+            type="secondary"
+            style={{ margin: 0, maxWidth: 880 }}
+          >
+            This map plots resolved QR scan volume at venue locations. Circle
+            size reflects the selected traffic metric, and circle color reflects
+            the selected efficiency metric so you can spot both high-volume and
+            high-conversion venues quickly.
+          </Typography.Paragraph>
+        </div>
+        {loading ? (
+          <div style={{ padding: 40, display: "grid", placeItems: "center" }}>
+            <Spin size="large" />
+          </div>
+        ) : visibleScanMapRows.length === 0 ? (
+          <div style={{ padding: 32 }}>
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No resolved venue coordinates match the selected filters."
+            />
+          </div>
+        ) : (
+          <div style={{ padding: 24 }}>
+            <QRScanMap
+              rows={visibleScanMapRows}
+              sizeMetric={mapSizeMetric}
+              colorMetric={mapColorMetric}
+            />
+          </div>
         )}
       </Card>
 

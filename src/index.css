@@ -54,6 +54,19 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+.leaflet-container {
+  font: inherit;
+}
+
+.qr-scan-map-tooltip {
+  min-width: 220px;
+}
+
+.qr-scan-map-tooltip strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
