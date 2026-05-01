@@ -307,8 +307,7 @@ export function getDefaultDailyReportDate(now = new Date()) {
 }
 
 export function shouldRunDailyTeamEmail(now = new Date()) {
-  const londonNow = getTimeZoneParts(now);
-  return londonNow.hour === 1;
+  return now.getUTCHours() === 0;
 }
 
 export async function getDailyTeamEmailReport({
@@ -553,7 +552,7 @@ export async function runScheduledDailyTeamEmail({ now = new Date() } = {}) {
   if (!shouldRunDailyTeamEmail(now)) {
     return {
       skipped: true,
-      reason: "outside-london-midnight-window",
+      reason: "outside-utc-midnight-window",
       londonNow: getTimeZoneParts(now),
     };
   }

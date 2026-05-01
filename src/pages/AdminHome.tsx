@@ -10,12 +10,31 @@ import {
   Space,
   Tag,
   Typography,
+  message,
 } from "antd";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import type { Venue } from "../types/venue";
 
 const LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
+const DAILY_TEAM_EMAIL_ENDPOINT =
+  "/.netlify/functions/api-daily-team-email-preview";
+
+type DailyTeamEmailResponse = {
+  ok?: boolean;
+  error?: string;
+  reportDate?: string;
+  alreadySent?: boolean;
+  preview?: {
+    subject?: string;
+  };
+  sendResult?: {
+    skipped?: boolean;
+    reason?: string;
+    reportDate?: string;
+    recipientEmails?: string[];
+  };
+};
 
 function formatDateTime(value: unknown) {
   if (!value) return "—";
@@ -28,6 +47,19 @@ function formatDateTime(value: unknown) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+  }).format(date);
+}
+
+function formatReportDate(value?: string) {
+  if (!value) return "yesterday";
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
   }).format(date);
 }
 
@@ -70,6 +102,37 @@ export default function AdminHome() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dailyEmailLoading, setDailyEmailLoading] = useState(true);
+  const [dailyEmailSending, setDailyEmailSending] = useState(false);
+  const [dailyEmailError, setDailyEmailError] = useState("");
+  const [dailyEmailData, setDailyEmailData] =
+    useState<DailyTeamEmailResponse | null>(null);
+
+  const loadDailyTeamEmail = async ({ send = false } = {}) => {
+    const params = new URLSearchParams();
+    if (send) params.set("send", "1");
+    const query = params.toString();
+
+    const response = await fetch(
+      query
+        ? `${DAILY_TEAM_EMAIL_ENDPOINT}?${query}`
+        : DAILY_TEAM_EMAIL_ENDPOINT,
+      {
+        credentials: "include",
+      },
+    );
+    const data = (await response
+      .json()
+      .catch(() => ({}))) as DailyTeamEmailResponse;
+
+    if (!response.ok || data?.ok === false) {
+      throw new Error(data?.error || `Failed (${response.status})`);
+    }
+
+    setDailyEmailData(data);
+    setDailyEmailError("");
+    return data;
+  };
 
   useEffect(() => {
     const fetchVenues = async () => {
@@ -96,6 +159,47 @@ export default function AdminHome() {
 
     void fetchVenues();
   }, []);
+
+  useEffect(() => {
+    const fetchDailyEmail = async () => {
+      setDailyEmailLoading(true);
+      setDailyEmailError("");
+
+      try {
+        await loadDailyTeamEmail();
+      } catch (fetchError) {
+        setDailyEmailError(
+          String((fetchError as Error)?.message || fetchError),
+        );
+      } finally {
+        setDailyEmailLoading(false);
+      }
+    };
+
+    void fetchDailyEmail();
+  }, []);
+
+  const handleRunDailyTeamEmail = async () => {
+    setDailyEmailSending(true);
+    setDailyEmailError("");
+
+    try {
+      const data = await loadDailyTeamEmail({ send: true });
+      if (data.sendResult?.skipped) {
+        message.warning(
+          "Daily team email was already sent for this report date.",
+        );
+      } else {
+        message.success("Daily team email sent.");
+      }
+    } catch (sendError) {
+      const nextError = String((sendError as Error)?.message || sendError);
+      setDailyEmailError(nextError);
+      message.error(nextError);
+    } finally {
+      setDailyEmailSending(false);
+    }
+  };
 
   const liveCount = venues.filter(
     (venue) => (venue.live ?? true) === true,
@@ -137,6 +241,11 @@ export default function AdminHome() {
   }, [venues]);
 
   const displayName = (user?.name || user?.email || "team").toString();
+  const dailyEmailReportDate = formatReportDate(dailyEmailData?.reportDate);
+  const dailyEmailSubject =
+    dailyEmailData?.preview?.subject || "Daily team email";
+  const dailyEmailRecipients =
+    dailyEmailData?.sendResult?.recipientEmails?.length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -388,6 +497,76 @@ export default function AdminHome() {
                         Create new venue
                       </Button>
                     </Link>
+                  </Space>
+                </Card>
+
+                <Card
+                  title="Daily team email"
+                  styles={{ body: { padding: 20 } }}
+                  style={{
+                    borderRadius: 20,
+                    border: "1px solid rgba(15, 23, 42, 0.06)",
+                    boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+                  }}
+                >
+                  <Space
+                    direction="vertical"
+                    size={12}
+                    style={{ width: "100%" }}
+                  >
+                    <Typography.Paragraph
+                      type="secondary"
+                      style={{ margin: 0 }}
+                    >
+                      Send the daily ops summary for {dailyEmailReportDate}{" "}
+                      using the current dashboard email report.
+                    </Typography.Paragraph>
+
+                    {dailyEmailLoading ? (
+                      <Skeleton active paragraph={{ rows: 2 }} />
+                    ) : null}
+
+                    {!dailyEmailLoading ? (
+                      <>
+                        <Space size={[8, 8]} wrap>
+                          <Tag
+                            color={
+                              dailyEmailData?.alreadySent ? "gold" : "green"
+                            }
+                          >
+                            {dailyEmailData?.alreadySent
+                              ? "Already sent"
+                              : "Ready to send"}
+                          </Tag>
+                          <Tag>{dailyEmailReportDate}</Tag>
+                          {dailyEmailRecipients ? (
+                            <Tag>{dailyEmailRecipients} recipients</Tag>
+                          ) : null}
+                        </Space>
+
+                        <Typography.Text type="secondary">
+                          {dailyEmailSubject}
+                        </Typography.Text>
+
+                        {dailyEmailError ? (
+                          <Alert
+                            type="error"
+                            showIcon
+                            message="Daily team email unavailable"
+                            description={dailyEmailError}
+                          />
+                        ) : null}
+
+                        <Button
+                          type="primary"
+                          block
+                          onClick={() => void handleRunDailyTeamEmail()}
+                          loading={dailyEmailSending}
+                        >
+                          Send Daily Team Email
+                        </Button>
+                      </>
+                    ) : null}
                   </Space>
                 </Card>
 

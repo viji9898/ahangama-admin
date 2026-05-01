@@ -1,9 +1,8 @@
 import { Client } from "pg";
+import { getDatabaseConfig } from "./_lib/db.mjs";
 
 export async function handler() {
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-  });
+  const client = new Client(getDatabaseConfig());
 
   try {
     await client.connect();
