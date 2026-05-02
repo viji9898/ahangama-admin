@@ -313,6 +313,10 @@ export function shouldRunDailyTeamEmail(now = new Date()) {
 export async function getDailyTeamEmailReport({
   reportDate = getPreviousDayReportDate(),
 } = {}) {
+  console.info("[daily-team-email] building report", {
+    reportDate,
+  });
+
   const qrSummary = await getQrDashboardSummary({
     startDate: reportDate,
     endDate: reportDate,
@@ -433,7 +437,15 @@ export async function hasDailyTeamEmailBeenSent(reportDate) {
     [REPORT_NAME, reportDate],
   );
 
-  return Boolean(result.rows[0]);
+  const alreadySent = Boolean(result.rows[0]);
+
+  console.info("[daily-team-email] checked send ledger", {
+    reportDate,
+    alreadySent,
+    sentAt: result.rows[0]?.sent_at || null,
+  });
+
+  return alreadySent;
 }
 
 async function recordDailyTeamEmailSend({
@@ -488,7 +500,20 @@ export async function sendDailyTeamEmail({ report, force = false } = {}) {
     throw new Error("Missing recipient emails for daily report");
   }
 
+  console.info("[daily-team-email] preparing send", {
+    reportDate: report.reportDate,
+    force,
+    recipientCount: recipientEmails.length,
+    senderEmail,
+  });
+
   if (!force && (await hasDailyTeamEmailBeenSent(report.reportDate))) {
+    console.info("[daily-team-email] send skipped", {
+      reportDate: report.reportDate,
+      reason: "already-sent",
+      force,
+    });
+
     return {
       skipped: true,
       reason: "already-sent",
@@ -498,6 +523,13 @@ export async function sendDailyTeamEmail({ report, force = false } = {}) {
   }
 
   const message = buildDailyTeamEmailMessage(report);
+
+  console.info("[daily-team-email] sending via sendgrid", {
+    reportDate: report.reportDate,
+    recipientEmails,
+    subject: message.subject,
+  });
+
   const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
     method: "POST",
     headers: {
@@ -530,14 +562,32 @@ export async function sendDailyTeamEmail({ report, force = false } = {}) {
 
   if (!response.ok) {
     const payload = await response.text();
+
+    console.error("[daily-team-email] sendgrid request failed", {
+      reportDate: report.reportDate,
+      status: response.status,
+      payload,
+    });
+
     throw new Error(`SendGrid request failed (${response.status}): ${payload}`);
   }
+
+  console.info("[daily-team-email] sendgrid request accepted", {
+    reportDate: report.reportDate,
+    status: response.status,
+  });
 
   await recordDailyTeamEmailSend({
     reportDate: report.reportDate,
     recipients: recipientEmails,
     subject: message.subject,
     report,
+  });
+
+  console.info("[daily-team-email] send recorded", {
+    reportDate: report.reportDate,
+    recipientEmails,
+    subject: message.subject,
   });
 
   return {
@@ -549,16 +599,34 @@ export async function sendDailyTeamEmail({ report, force = false } = {}) {
 }
 
 export async function runScheduledDailyTeamEmail({ now = new Date() } = {}) {
+  console.info("[daily-team-email] evaluating scheduled run", {
+    nowIso: now.toISOString(),
+    utcHour: now.getUTCHours(),
+  });
+
   if (!shouldRunDailyTeamEmail(now)) {
+    const londonNow = getTimeZoneParts(now);
+
+    console.info("[daily-team-email] scheduled run skipped", {
+      reason: "outside-utc-midnight-window",
+      londonNow,
+    });
+
     return {
       skipped: true,
       reason: "outside-utc-midnight-window",
-      londonNow: getTimeZoneParts(now),
+      londonNow,
     };
   }
 
+  const reportDate = getPreviousDayReportDate(now);
+
+  console.info("[daily-team-email] scheduled run generating report", {
+    reportDate,
+  });
+
   const report = await getDailyTeamEmailReport({
-    reportDate: getPreviousDayReportDate(now),
+    reportDate,
   });
 
   return sendDailyTeamEmail({ report, force: false });
