@@ -306,10 +306,6 @@ export function getDefaultDailyReportDate(now = new Date()) {
   return getPreviousDayReportDate(now);
 }
 
-export function shouldRunDailyTeamEmail(now = new Date()) {
-  return now.getUTCHours() === 0;
-}
-
 export async function getDailyTeamEmailReport({
   reportDate = getPreviousDayReportDate(),
 } = {}) {
@@ -599,27 +595,13 @@ export async function sendDailyTeamEmail({ report, force = false } = {}) {
 }
 
 export async function runScheduledDailyTeamEmail({ now = new Date() } = {}) {
+  const reportDate = getPreviousDayReportDate(now);
+
   console.info("[daily-team-email] evaluating scheduled run", {
     nowIso: now.toISOString(),
-    utcHour: now.getUTCHours(),
+    londonNow: getTimeZoneParts(now),
+    reportDate,
   });
-
-  if (!shouldRunDailyTeamEmail(now)) {
-    const londonNow = getTimeZoneParts(now);
-
-    console.info("[daily-team-email] scheduled run skipped", {
-      reason: "outside-utc-midnight-window",
-      londonNow,
-    });
-
-    return {
-      skipped: true,
-      reason: "outside-utc-midnight-window",
-      londonNow,
-    };
-  }
-
-  const reportDate = getPreviousDayReportDate(now);
 
   console.info("[daily-team-email] scheduled run generating report", {
     reportDate,
