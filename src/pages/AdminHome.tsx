@@ -27,6 +27,29 @@ type DailyTeamEmailResponse = {
   alreadySent?: boolean;
   preview?: {
     subject?: string;
+    aiSummary?: {
+      summary?: string;
+      changes?: string[];
+      issues?: string[];
+      reviewTargets?: string[];
+    };
+    aiSummaryError?: string;
+    venueReview?: {
+      updatedVenues?: Array<{
+        id?: string;
+        name?: string;
+        slug?: string;
+        area?: string;
+        status?: string;
+        live?: boolean;
+      }>;
+      incompleteVenues?: Array<{
+        id?: string;
+        name?: string;
+        slug?: string;
+        missingFields?: string[];
+      }>;
+    };
   };
   sendResult?: {
     skipped?: boolean;
@@ -246,6 +269,8 @@ export default function AdminHome() {
     dailyEmailData?.preview?.subject || "Daily team email";
   const dailyEmailRecipients =
     dailyEmailData?.sendResult?.recipientEmails?.length;
+  const dailyAiSummary = dailyEmailData?.preview?.aiSummary;
+  const dailyVenueReview = dailyEmailData?.preview?.venueReview;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -547,6 +572,180 @@ export default function AdminHome() {
                         <Typography.Text type="secondary">
                           {dailyEmailSubject}
                         </Typography.Text>
+
+                        {dailyAiSummary?.summary ? (
+                          <Card
+                            size="small"
+                            styles={{ body: { padding: 16 } }}
+                            style={{
+                              borderRadius: 16,
+                              background: "rgba(248,250,252,0.8)",
+                            }}
+                          >
+                            <Space
+                              direction="vertical"
+                              size={10}
+                              style={{ width: "100%" }}
+                            >
+                              <Typography.Text strong>
+                                AI Admin Summary
+                              </Typography.Text>
+                              <Typography.Paragraph style={{ margin: 0 }}>
+                                {dailyAiSummary.summary}
+                              </Typography.Paragraph>
+
+                              {dailyAiSummary.changes?.length ? (
+                                <div>
+                                  <Typography.Text strong>
+                                    What changed
+                                  </Typography.Text>
+                                  <ul
+                                    style={{
+                                      margin: "8px 0 0",
+                                      paddingLeft: 18,
+                                    }}
+                                  >
+                                    {dailyAiSummary.changes.map((item) => (
+                                      <li key={item}>{item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
+
+                              {dailyAiSummary.issues?.length ? (
+                                <div>
+                                  <Typography.Text strong>
+                                    Needs attention
+                                  </Typography.Text>
+                                  <ul
+                                    style={{
+                                      margin: "8px 0 0",
+                                      paddingLeft: 18,
+                                    }}
+                                  >
+                                    {dailyAiSummary.issues.map((item) => (
+                                      <li key={item}>{item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
+
+                              {dailyAiSummary.reviewTargets?.length ? (
+                                <div>
+                                  <Typography.Text strong>
+                                    Review targets
+                                  </Typography.Text>
+                                  <Space
+                                    size={[8, 8]}
+                                    wrap
+                                    style={{ display: "flex", marginTop: 8 }}
+                                  >
+                                    {dailyAiSummary.reviewTargets.map(
+                                      (item) => (
+                                        <Tag key={item} color="gold">
+                                          {item}
+                                        </Tag>
+                                      ),
+                                    )}
+                                  </Space>
+                                </div>
+                              ) : null}
+                            </Space>
+                          </Card>
+                        ) : null}
+
+                        {dailyEmailData?.preview?.aiSummaryError ? (
+                          <Alert
+                            type="warning"
+                            showIcon
+                            message="AI summary unavailable"
+                            description={dailyEmailData.preview.aiSummaryError}
+                          />
+                        ) : null}
+
+                        {dailyVenueReview ? (
+                          <Card
+                            size="small"
+                            styles={{ body: { padding: 16 } }}
+                            style={{ borderRadius: 16 }}
+                          >
+                            <Space
+                              direction="vertical"
+                              size={10}
+                              style={{ width: "100%" }}
+                            >
+                              <Typography.Text strong>
+                                Venue review snapshot
+                              </Typography.Text>
+                              <div>
+                                <Typography.Text strong>
+                                  Updated venues
+                                </Typography.Text>
+                                <div style={{ marginTop: 8 }}>
+                                  <Space size={[8, 8]} wrap>
+                                    {dailyVenueReview.updatedVenues?.length ? (
+                                      dailyVenueReview.updatedVenues.map(
+                                        (venue) => (
+                                          <Tag
+                                            key={
+                                              venue.id ||
+                                              venue.slug ||
+                                              venue.name
+                                            }
+                                          >
+                                            {venue.name ||
+                                              venue.slug ||
+                                              venue.id}
+                                          </Tag>
+                                        ),
+                                      )
+                                    ) : (
+                                      <Typography.Text type="secondary">
+                                        No venue updates captured for this day.
+                                      </Typography.Text>
+                                    )}
+                                  </Space>
+                                </div>
+                              </div>
+                              <div>
+                                <Typography.Text strong>
+                                  Incomplete venues
+                                </Typography.Text>
+                                <div style={{ marginTop: 8 }}>
+                                  <Space
+                                    direction="vertical"
+                                    size={8}
+                                    style={{ width: "100%" }}
+                                  >
+                                    {dailyVenueReview.incompleteVenues
+                                      ?.length ? (
+                                      dailyVenueReview.incompleteVenues.map(
+                                        (venue) => (
+                                          <Typography.Text
+                                            key={
+                                              venue.id ||
+                                              venue.slug ||
+                                              venue.name
+                                            }
+                                          >
+                                            {venue.name ||
+                                              venue.slug ||
+                                              venue.id}
+                                            : {venue.missingFields?.join(", ")}
+                                          </Typography.Text>
+                                        ),
+                                      )
+                                    ) : (
+                                      <Typography.Text type="secondary">
+                                        No incomplete venue flags for this day.
+                                      </Typography.Text>
+                                    )}
+                                  </Space>
+                                </div>
+                              </div>
+                            </Space>
+                          </Card>
+                        ) : null}
 
                         {dailyEmailError ? (
                           <Alert

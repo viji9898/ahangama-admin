@@ -11,6 +11,8 @@ const DEFAULT_DESTINATION_SLUG = "ahangama";
 const MIN_RANKING_SESSIONS = 20;
 const WATCHOUT_MAX_CONVERSION_RATE = 0.05;
 const WATCHOUT_MAX_PURCHASE_RATE = 0.02;
+const MAX_UPDATED_VENUES = 6;
+const MAX_INCOMPLETE_VENUES = 6;
 
 function formatLabel(value) {
   const normalized = String(value || "unknown").trim();
@@ -218,6 +220,43 @@ function formatRowSummaryHtml(row) {
   return `<strong>${escapeHtml(formatLabel(row.venue))}</strong> / ${escapeHtml(formatLabel(row.surface))} - ${escapeHtml(formatInteger(row.sessions))} sessions, ${escapeHtml(formatInteger(row.ctaClick))} CTA clicks, ${escapeHtml(formatInteger(row.purchases))} purchases, ${escapeHtml(formatCurrency(row.revenue))}, ${escapeHtml(formatPercent(row.purchaseRate))} purchase rate`;
 }
 
+function normalizeText(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) return [];
+  return Array.from(
+    new Set(value.map((item) => normalizeText(item)).filter(Boolean)),
+  );
+}
+
+function collectOutputText(content) {
+  if (!Array.isArray(content)) return "";
+
+  return content
+    .filter((item) => item?.type === "output_text" && item?.text)
+    .map((item) => item.text)
+    .join("\n")
+    .trim();
+}
+
+function parseJsonResponse(data) {
+  const outputItems = Array.isArray(data?.output) ? data.output : [];
+  const messageText = outputItems
+    .filter((item) => item?.type === "message")
+    .map((item) => collectOutputText(item?.content))
+    .find(Boolean);
+
+  const text = messageText || normalizeText(data?.output_text);
+  if (!text) {
+    throw new Error("OpenAI returned an empty response");
+  }
+
+  return JSON.parse(text);
+}
+
 function buildThoughts({
   totals,
   performers,
@@ -297,6 +336,200 @@ async function getVenueStats(reportDate) {
   };
 }
 
+function computeMissingFields(row) {
+  const missingFields = [];
+  if (!normalizeText(row.excerpt)) missingFields.push("excerpt");
+  if (!normalizeText(row.description)) missingFields.push("description");
+  if (
+    !normalizeText(row.image) &&
+    !normalizeText(row.og_image) &&
+    !normalizeText(row.logo)
+  ) {
+    missingFields.push("hero_image");
+  }
+  if (!normalizeText(row.map_url)) missingFields.push("map_url");
+  if (!normalizeText(row.hours)) missingFields.push("hours");
+
+  const bestFor = normalizeStringArray(row.best_for);
+  if (!bestFor.length) missingFields.push("best_for");
+
+  const tags = normalizeStringArray(row.tags);
+  if (!tags.length) missingFields.push("tags");
+
+  return missingFields;
+}
+
+async function getVenueReviewSnapshot(reportDate) {
+  const destinationSlug = String(
+    process.env.DAILY_REPORT_DESTINATION_SLUG || DEFAULT_DESTINATION_SLUG,
+  ).trim();
+  const reportDateExclusive = shiftIsoDate(reportDate, 1);
+
+  const result = await query(
+    `
+      SELECT
+        id,
+        name,
+        slug,
+        area,
+        status,
+        live,
+        updated_at,
+        created_at,
+        excerpt,
+        description,
+        image,
+        og_image,
+        logo,
+        map_url,
+        hours,
+        best_for,
+        tags
+      FROM ${VENUES_TABLE}
+      WHERE destination_slug = $1
+        AND deleted_at IS NULL
+      ORDER BY updated_at DESC NULLS LAST
+    `,
+    [destinationSlug],
+  );
+
+  const rows = result.rows || [];
+
+  const updatedVenues = rows
+    .filter((row) => {
+      const updatedAt = normalizeText(row.updated_at);
+      return (
+        updatedAt &&
+        updatedAt >= `${reportDate}T00:00:00` &&
+        updatedAt < `${reportDateExclusive}T00:00:00`
+      );
+    })
+    .slice(0, MAX_UPDATED_VENUES)
+    .map((row) => ({
+      id: normalizeText(row.id),
+      name: normalizeText(row.name),
+      slug: normalizeText(row.slug),
+      area: normalizeText(row.area),
+      status: normalizeText(row.status),
+      live: Boolean(row.live),
+      updatedAt: normalizeText(row.updated_at),
+    }));
+
+  const incompleteVenues = rows
+    .map((row) => ({
+      id: normalizeText(row.id),
+      name: normalizeText(row.name),
+      slug: normalizeText(row.slug),
+      area: normalizeText(row.area),
+      status: normalizeText(row.status),
+      live: Boolean(row.live),
+      updatedAt: normalizeText(row.updated_at),
+      missingFields: computeMissingFields(row),
+    }))
+    .filter((row) => row.missingFields.length > 0)
+    .sort((left, right) => {
+      return (
+        right.missingFields.length - left.missingFields.length ||
+        Number(Boolean(right.live)) - Number(Boolean(left.live)) ||
+        String(right.updatedAt).localeCompare(String(left.updatedAt))
+      );
+    })
+    .slice(0, MAX_INCOMPLETE_VENUES);
+
+  return {
+    updatedVenues,
+    incompleteVenues,
+  };
+}
+
+async function generateAiDailySummary(report) {
+  const apiKey = String(process.env.OPENAI_API_KEY || "").trim();
+  if (!apiKey) return null;
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_MODEL || "gpt-5-mini",
+      input: [
+        {
+          role: "system",
+          content: [
+            {
+              type: "input_text",
+              text: "You write concise internal admin summaries for an operations dashboard. Stay grounded in the supplied metrics and venue data. Do not invent causes, venue changes, or recommendations beyond the provided evidence. Return strict JSON only.",
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: `Summarize this daily admin report for internal use:\n${JSON.stringify(
+                {
+                  reportDate: report.reportDate,
+                  totals: report.totals,
+                  venueStats: report.venueStats,
+                  topPerformers: report.performers.slice(0, 3),
+                  topWatchouts: report.watchouts.slice(0, 3),
+                  venueReview: report.venueReview,
+                },
+                null,
+                2,
+              )}\n\nReturn JSON with exactly these keys: summary, changes, issues, reviewTargets.\nRules:\n- summary: 1 short paragraph, max 320 characters.\n- changes: array of 1 to 3 concise bullets describing what changed or moved.\n- issues: array of 1 to 3 concise bullets describing incomplete records or weak signals.\n- reviewTargets: array of up to 3 venue names that deserve manual review today.\n- Be specific. Use only the provided data.`,
+            },
+          ],
+        },
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "daily_admin_summary",
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["summary", "changes", "issues", "reviewTargets"],
+            properties: {
+              summary: { type: "string" },
+              changes: {
+                type: "array",
+                items: { type: "string" },
+              },
+              issues: {
+                type: "array",
+                items: { type: "string" },
+              },
+              reviewTargets: {
+                type: "array",
+                items: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      data?.error?.message || `OpenAI request failed (${response.status})`,
+    );
+  }
+
+  const summary = parseJsonResponse(data);
+  return {
+    summary: normalizeText(summary?.summary),
+    changes: normalizeStringArray(summary?.changes).slice(0, 3),
+    issues: normalizeStringArray(summary?.issues).slice(0, 3),
+    reviewTargets: normalizeStringArray(summary?.reviewTargets).slice(0, 3),
+  };
+}
+
 export function getPreviousDayReportDate(now = new Date()) {
   const londonNow = getTimeZoneParts(now);
   return shiftIsoDate(londonNow.dateIso, -1);
@@ -318,6 +551,7 @@ export async function getDailyTeamEmailReport({
     endDate: reportDate,
   });
   const venueStats = await getVenueStats(reportDate);
+  const venueReview = await getVenueReviewSnapshot(reportDate);
   const totals = summarizeTotals(qrSummary.rows, qrSummary.stats);
   const performers = getTopPerformers(qrSummary.rows);
   const watchouts = getTopWatchouts(qrSummary.rows);
@@ -340,6 +574,25 @@ export async function getDailyTeamEmailReport({
     venueStats,
   });
 
+  let aiSummary = null;
+  let aiSummaryError = null;
+  try {
+    aiSummary = await generateAiDailySummary({
+      reportDate,
+      totals,
+      venueStats,
+      performers,
+      watchouts,
+      venueReview,
+    });
+  } catch (error) {
+    aiSummaryError = String(error?.message || error);
+    console.error("[daily-team-email] ai summary failed", {
+      reportDate,
+      error: aiSummaryError,
+    });
+  }
+
   return {
     reportDate,
     reportDateLabel: formatDisplayDate(reportDate),
@@ -350,6 +603,9 @@ export async function getDailyTeamEmailReport({
     thoughts,
     rootTraffic,
     passTraffic,
+    venueReview,
+    aiSummary,
+    aiSummaryError,
     qrSummary,
   };
 }
@@ -373,6 +629,20 @@ export function buildDailyTeamEmailMessage(report) {
     (row, index) => `${index + 1}. ${formatRowSummary(row)}`,
   );
   const thoughtLines = report.thoughts.map((line) => `- ${line}`);
+  const aiChangeLines =
+    report.aiSummary?.changes?.map((line) => `- ${line}`) || [];
+  const aiIssueLines =
+    report.aiSummary?.issues?.map((line) => `- ${line}`) || [];
+  const aiReviewTargets =
+    report.aiSummary?.reviewTargets?.map((line) => `- ${line}`) || [];
+  const updatedVenueLines = (report.venueReview?.updatedVenues || []).map(
+    (venue) =>
+      `- ${venue.name || venue.slug || venue.id} (${venue.status || "unknown"}${venue.live ? ", live" : ""}${venue.area ? `, ${venue.area}` : ""})`,
+  );
+  const incompleteVenueLines = (report.venueReview?.incompleteVenues || []).map(
+    (venue) =>
+      `- ${venue.name || venue.slug || venue.id}: missing ${venue.missingFields.join(", ")}`,
+  );
   const text = [
     `Team,`,
     ``,
@@ -390,6 +660,21 @@ export function buildDailyTeamEmailMessage(report) {
     ``,
     `Top 10 watchouts`,
     ...(watchoutLines.length ? watchoutLines : ["None"]),
+    ``,
+    `AI admin summary`,
+    report.aiSummary?.summary || "- No AI summary available.",
+    ...(aiChangeLines.length ? ["", `What changed`, ...aiChangeLines] : []),
+    ...(aiIssueLines.length ? ["", `Needs attention`, ...aiIssueLines] : []),
+    ...(aiReviewTargets.length
+      ? ["", `Review targets`, ...aiReviewTargets]
+      : []),
+    ``,
+    `Venue review snapshot`,
+    `Updated venues`,
+    ...(updatedVenueLines.length ? updatedVenueLines : ["- None"]),
+    ``,
+    `Incomplete venues`,
+    ...(incompleteVenueLines.length ? incompleteVenueLines : ["- None"]),
     ``,
     `Thoughts`,
     ...(thoughtLines.length ? thoughtLines : ["- No strong signal yet."]),
@@ -410,6 +695,19 @@ export function buildDailyTeamEmailMessage(report) {
       <ol>${report.performers.map((row) => `<li>${formatRowSummaryHtml(row)}</li>`).join("") || "<li>None</li>"}</ol>
       <h3>Top 10 watchouts</h3>
       <ol>${report.watchouts.map((row) => `<li>${formatRowSummaryHtml(row)}</li>`).join("") || "<li>None</li>"}</ol>
+      <h3>AI admin summary</h3>
+      <p>${escapeHtml(report.aiSummary?.summary || "No AI summary available.")}</p>
+      <h4>What changed</h4>
+      <ul>${(report.aiSummary?.changes || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("") || "<li>No notable changes captured.</li>"}</ul>
+      <h4>Needs attention</h4>
+      <ul>${(report.aiSummary?.issues || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("") || "<li>No notable issues captured.</li>"}</ul>
+      <h4>Review targets</h4>
+      <ul>${(report.aiSummary?.reviewTargets || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("") || "<li>No review targets suggested.</li>"}</ul>
+      <h3>Venue review snapshot</h3>
+      <h4>Updated venues</h4>
+      <ul>${(report.venueReview?.updatedVenues || []).map((venue) => `<li>${escapeHtml(venue.name || venue.slug || venue.id)} (${escapeHtml(venue.status || "unknown")}${venue.live ? ", live" : ""}${venue.area ? `, ${escapeHtml(venue.area)}` : ""})</li>`).join("") || "<li>None</li>"}</ul>
+      <h4>Incomplete venues</h4>
+      <ul>${(report.venueReview?.incompleteVenues || []).map((venue) => `<li>${escapeHtml(venue.name || venue.slug || venue.id)}: missing ${escapeHtml(venue.missingFields.join(", "))}</li>`).join("") || "<li>None</li>"}</ul>
       <h3>Thoughts</h3>
       <ul>${report.thoughts.map((line) => `<li>${escapeHtml(line)}</li>`).join("") || "<li>No strong signal yet.</li>"}</ul>
     </div>
@@ -472,6 +770,7 @@ async function recordDailyTeamEmailSend({
         venueStats: report.venueStats,
         topPerformer: report.performers[0] || null,
         topWatchout: report.watchouts[0] || null,
+        aiSummary: report.aiSummary || null,
       }),
     ],
   );
@@ -626,6 +925,9 @@ export function getDailyTeamEmailPreview(report) {
     performers: report.performers,
     watchouts: report.watchouts,
     thoughts: report.thoughts,
+    venueReview: report.venueReview,
+    aiSummary: report.aiSummary,
+    aiSummaryError: report.aiSummaryError,
   };
 }
 
