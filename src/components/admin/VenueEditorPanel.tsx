@@ -10,7 +10,9 @@ type Props = {
   dirty: boolean;
   saving: boolean;
   saveState: "idle" | "saving" | "saved";
+  generatingContent: boolean;
   onPatch: (patch: Partial<Venue>) => void;
+  onGenerateContent: () => Promise<void>;
   onCancel: () => void;
   onSave: () => void;
   onCreate: () => void;
@@ -22,7 +24,9 @@ export function VenueEditorPanel({
   dirty,
   saving,
   saveState,
+  generatingContent,
   onPatch,
+  onGenerateContent,
   onCancel,
   onSave,
   onCreate,
@@ -66,6 +70,8 @@ export function VenueEditorPanel({
               venue={venue}
               categoryOptions={categoryOptions}
               onPatch={onPatch}
+              onGenerateContent={onGenerateContent}
+              generatingContent={generatingContent}
             />
             <StickySaveBar
               dirty={dirty}

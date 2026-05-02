@@ -10,9 +10,17 @@ type Props = {
   venue: Venue;
   categoryOptions: Array<{ label: string; value: string }>;
   onPatch: (patch: Partial<Venue>) => void;
+  onGenerateContent: () => Promise<void>;
+  generatingContent: boolean;
 };
 
-export function VenueEditorTabs({ venue, categoryOptions, onPatch }: Props) {
+export function VenueEditorTabs({
+  venue,
+  categoryOptions,
+  onPatch,
+  onGenerateContent,
+  generatingContent,
+}: Props) {
   return (
     <Tabs
       defaultActiveKey="overview"
@@ -31,7 +39,14 @@ export function VenueEditorTabs({ venue, categoryOptions, onPatch }: Props) {
         {
           key: "content",
           label: "Content",
-          children: <VenueContentForm venue={venue} onPatch={onPatch} />,
+          children: (
+            <VenueContentForm
+              venue={venue}
+              onPatch={onPatch}
+              onGenerateContent={onGenerateContent}
+              generatingContent={generatingContent}
+            />
+          ),
         },
         {
           key: "media",

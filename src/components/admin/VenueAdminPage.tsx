@@ -124,6 +124,7 @@ const CREATE_ENDPOINT = "/.netlify/functions/api-venues-create";
 const DELETE_ENDPOINT = "/.netlify/functions/api-venues-delete";
 const LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
 const UPDATE_ENDPOINT = "/.netlify/functions/api-venues-update";
+const AI_ASSIST_ENDPOINT = "/.netlify/functions/api-venues-ai-assist";
 
 function buildEditableSnapshot(venue?: Venue) {
   return {
@@ -207,6 +208,7 @@ export function VenueAdminPage() {
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [generatingContent, setGeneratingContent] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
@@ -471,6 +473,56 @@ export function VenueAdminPage() {
       }));
     }
     if (saveState !== "idle") setSaveState("idle");
+  };
+
+  const handleGenerateContent = async () => {
+    if (!draftVenueWithPendingMedia) {
+      message.error("No venue selected.");
+      return;
+    }
+
+    setGeneratingContent(true);
+    try {
+      const response = await fetch(AI_ASSIST_ENDPOINT, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          venue: draftVenueWithPendingMedia,
+          task: "venue-copy",
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data?.ok !== true) {
+        throw new Error(data?.error || `Failed (${response.status})`);
+      }
+
+      const suggestionPatch = {
+        ...(typeof data?.suggestions?.excerpt === "string"
+          ? { excerpt: data.suggestions.excerpt }
+          : {}),
+        ...(typeof data?.suggestions?.description === "string"
+          ? { description: data.suggestions.description }
+          : {}),
+        ...(Array.isArray(data?.suggestions?.bestFor)
+          ? { bestFor: normalizeStringArray(data.suggestions.bestFor) }
+          : {}),
+        ...(Array.isArray(data?.suggestions?.tags)
+          ? { tags: normalizeStringArray(data.suggestions.tags) }
+          : {}),
+      } satisfies Partial<Venue>;
+
+      if (Object.keys(suggestionPatch).length === 0) {
+        throw new Error("No content suggestions returned.");
+      }
+
+      handleDraftPatch(suggestionPatch);
+      message.success("Content draft generated.");
+    } catch (generateError) {
+      message.error(String((generateError as Error)?.message || generateError));
+    } finally {
+      setGeneratingContent(false);
+    }
   };
 
   const handleCancelDraft = () => {
@@ -860,7 +912,9 @@ export function VenueAdminPage() {
             dirty={dirty}
             saving={saving}
             saveState={saveState}
+            generatingContent={generatingContent}
             onPatch={handleDraftPatch}
+            onGenerateContent={handleGenerateContent}
             onCancel={handleCancelDraft}
             onSave={handleSave}
             onCreate={() => openCreateDrawer()}

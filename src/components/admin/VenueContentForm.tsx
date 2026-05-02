@@ -1,15 +1,46 @@
-import { Form, Input } from "antd";
+import { Alert, Button, Form, Input, Space, Typography } from "antd";
 import type { Venue } from "../../types/venue";
 import { listToText, textToList } from "./venueAdminUtils";
 
 type Props = {
   venue: Venue;
   onPatch: (patch: Partial<Venue>) => void;
+  onGenerateContent: () => Promise<void>;
+  generatingContent: boolean;
 };
 
-export function VenueContentForm({ venue, onPatch }: Props) {
+export function VenueContentForm({
+  venue,
+  onPatch,
+  onGenerateContent,
+  generatingContent,
+}: Props) {
   return (
     <Form layout="vertical" style={{ paddingTop: 8 }}>
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="AI Content Assistant"
+        description={
+          <Space direction="vertical" size={10} style={{ width: "100%" }}>
+            <Typography.Text type="secondary">
+              Generate a stronger excerpt, description, best-for list, and tags
+              from the venue details already in this record. Review the draft
+              before saving.
+            </Typography.Text>
+            <div>
+              <Button
+                loading={generatingContent}
+                onClick={() => void onGenerateContent()}
+              >
+                Generate Content
+              </Button>
+            </div>
+          </Space>
+        }
+      />
+
       <Form.Item label="Excerpt">
         <Input.TextArea
           rows={3}
