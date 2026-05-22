@@ -12,7 +12,6 @@ const CTA_CLICK_EVENT_NAME_PATTERN = "(^|_)cta_click$";
 const PURCHASE_EVENT_NAME = "purchase";
 const QR_FUNNEL_VIEW_EVENT_NAME = "qr_venue_page_view";
 const QR_FUNNEL_CLICK_EVENT_NAME = "qr_pass_cta_click";
-const QR_FUNNEL_PURCHASE_FLOW_TYPE = "promo";
 const PURCHASE_LOOKBACK_DAYS = 7;
 const ROOT_HOSTNAME = "ahangama.com";
 const PASS_HOSTNAME = "pass.ahangama.com";
@@ -1100,12 +1099,6 @@ async function getQrFunnelSummary({
         eventName: PURCHASE_EVENT_NAME,
         dimensionName: "customEvent:qr_venue",
         metrics: [{ name: "transactions" }, { name: "purchaseRevenue" }],
-        extraExpressions: [
-          buildCustomEventFilter(
-            "customEvent:flow_type",
-            QR_FUNNEL_PURCHASE_FLOW_TYPE,
-          ),
-        ],
         orderByMetricName: "transactions",
       }),
     ]);

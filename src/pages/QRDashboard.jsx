@@ -899,10 +899,10 @@ export default function QRDashboard() {
             type="secondary"
             style={{ margin: 0, maxWidth: 880 }}
           >
-            This section follows the strict QR promo funnel in GA4: venue page
-            view, QR pass CTA click, and purchase. Use it to see which venues
-            are generating intent and which ones are carrying that intent all
-            the way through to paid conversion.
+            This section follows the QR venue funnel in GA4: venue page view,
+            QR pass CTA click, and purchase grouped by <strong>qr_venue</strong>.
+            Use it to see which venues are generating intent and which ones are
+            carrying that intent through to paid conversion.
           </Typography.Paragraph>
         </div>
         {loading ? (
