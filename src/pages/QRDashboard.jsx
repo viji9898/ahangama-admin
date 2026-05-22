@@ -195,12 +195,11 @@ export default function QRDashboard() {
   const [rootTrafficRows, setRootTrafficRows] = useState([]);
   const [passTrafficRows, setPassTrafficRows] = useState([]);
   const [funnel, setFunnel] = useState(EMPTY_FUNNEL);
-  const [stats, setStats] = useState({ ctaClick: 0 });
-    const [stats, setStats] = useState({
-      ctaClick: 0,
-      totalPurchases: 0,
-      totalRevenue: 0,
-    });
+  const [stats, setStats] = useState({
+    ctaClick: 0,
+    totalPurchases: 0,
+    totalRevenue: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [mapSizeMetric, setMapSizeMetric] = useState("sessions");
