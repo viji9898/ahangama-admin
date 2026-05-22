@@ -46,6 +46,43 @@ const SUMMARY_METRICS = [
   { key: "purchases", title: "Purchases", color: "#7c3aed" },
   { key: "revenue", title: "Revenue", color: "#15803d" },
 ];
+const EMPTY_FUNNEL = {
+  available: false,
+  error: "",
+  totals: {
+    views: 0,
+    clicks: 0,
+    purchases: 0,
+    revenue: 0,
+    viewToClickRate: 0,
+    clickToPurchaseRate: 0,
+    viewToPurchaseRate: 0,
+  },
+  rows: [],
+};
+const FUNNEL_SUMMARY_METRICS = [
+  { key: "views", title: "Venue Views", color: "#0f172a", kind: "count" },
+  { key: "clicks", title: "CTA Clicks", color: "#2563eb", kind: "count" },
+  { key: "purchases", title: "Purchases", color: "#7c3aed", kind: "count" },
+  {
+    key: "viewToClickRate",
+    title: "View to Click",
+    color: "#b45309",
+    kind: "percent",
+  },
+  {
+    key: "clickToPurchaseRate",
+    title: "Click to Purchase",
+    color: "#15803d",
+    kind: "percent",
+  },
+  {
+    key: "viewToPurchaseRate",
+    title: "View to Purchase",
+    color: "#be123c",
+    kind: "percent",
+  },
+];
 const MAP_SIZE_METRIC_OPTIONS = [
   { label: "Sessions", value: "sessions" },
   { label: "CTA Clicks", value: "ctaClick" },
@@ -85,6 +122,28 @@ function formatCurrency(value) {
     currency: "USD",
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
+}
+
+function formatInteger(value) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function normalizeFunnel(payload) {
+  if (!payload || typeof payload !== "object") {
+    return EMPTY_FUNNEL;
+  }
+
+  return {
+    available: Boolean(payload.available),
+    error: String(payload.error || ""),
+    totals: {
+      ...EMPTY_FUNNEL.totals,
+      ...(payload.totals || {}),
+    },
+    rows: Array.isArray(payload.rows) ? payload.rows : [],
+  };
 }
 
 function matchesConversionRateFilter(value, filter) {
@@ -135,6 +194,7 @@ export default function QRDashboard() {
   const [scanMapRows, setScanMapRows] = useState([]);
   const [rootTrafficRows, setRootTrafficRows] = useState([]);
   const [passTrafficRows, setPassTrafficRows] = useState([]);
+  const [funnel, setFunnel] = useState(EMPTY_FUNNEL);
   const [stats, setStats] = useState({ ctaClick: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -184,6 +244,7 @@ export default function QRDashboard() {
             ? payload.passTrafficRows
             : [],
         );
+        setFunnel(normalizeFunnel(payload?.funnel));
         setStats({
           ctaClick: Number(payload?.stats?.ctaClick || 0),
         });
@@ -197,6 +258,7 @@ export default function QRDashboard() {
         setScanMapRows([]);
         setRootTrafficRows([]);
         setPassTrafficRows([]);
+        setFunnel(EMPTY_FUNNEL);
         setStats({ ctaClick: 0 });
       } finally {
         setLoading(false);
@@ -375,6 +437,41 @@ export default function QRDashboard() {
     );
   }, [visibleRows]);
 
+  const visibleFunnelRows = useMemo(() => {
+    return funnel.rows.filter((row) => {
+      if (!selectedVenue) {
+        return true;
+      }
+
+      return (
+        row.qrVenue === selectedVenue ||
+        row.venueSlug === selectedVenue ||
+        (Array.isArray(row.sourceVenues) && row.sourceVenues.includes(selectedVenue))
+      );
+    });
+  }, [funnel.rows, selectedVenue]);
+
+  const funnelSummary = useMemo(() => {
+    const totals = visibleFunnelRows.reduce(
+      (accumulator, row) => ({
+        views: accumulator.views + Number(row.views || 0),
+        clicks: accumulator.clicks + Number(row.clicks || 0),
+        purchases: accumulator.purchases + Number(row.purchases || 0),
+        revenue: accumulator.revenue + Number(row.revenue || 0),
+      }),
+      { views: 0, clicks: 0, purchases: 0, revenue: 0 },
+    );
+
+    return {
+      ...totals,
+      viewToClickRate: totals.views > 0 ? totals.clicks / totals.views : 0,
+      clickToPurchaseRate:
+        totals.clicks > 0 ? totals.purchases / totals.clicks : 0,
+      viewToPurchaseRate:
+        totals.views > 0 ? totals.purchases / totals.views : 0,
+    };
+  }, [visibleFunnelRows]);
+
   const columns = useMemo(
     () => [
       {
@@ -531,6 +628,74 @@ export default function QRDashboard() {
         dataIndex: "pageViews",
         key: "pageViews",
         sorter: (left, right) => left.pageViews - right.pageViews,
+      },
+    ],
+    [],
+  );
+
+  const funnelColumns = useMemo(
+    () => [
+      {
+        title: "Venue",
+        dataIndex: "label",
+        key: "label",
+      },
+      {
+        title: "QR Venue",
+        dataIndex: "qrVenue",
+        key: "qrVenue",
+        render: (value) => formatLabel(value),
+      },
+      {
+        title: "Views",
+        dataIndex: "views",
+        key: "views",
+        sorter: (left, right) => left.views - right.views,
+        defaultSortOrder: "descend",
+        render: (value) => formatInteger(value),
+      },
+      {
+        title: "CTA Clicks",
+        dataIndex: "clicks",
+        key: "clicks",
+        sorter: (left, right) => left.clicks - right.clicks,
+        render: (value) => formatInteger(value),
+      },
+      {
+        title: "Purchases",
+        dataIndex: "purchases",
+        key: "purchases",
+        sorter: (left, right) => left.purchases - right.purchases,
+        render: (value) => formatInteger(value),
+      },
+      {
+        title: "Revenue",
+        dataIndex: "revenue",
+        key: "revenue",
+        sorter: (left, right) => left.revenue - right.revenue,
+        render: (value) => formatCurrency(value),
+      },
+      {
+        title: "View to Click",
+        dataIndex: "viewToClickRate",
+        key: "viewToClickRate",
+        sorter: (left, right) => left.viewToClickRate - right.viewToClickRate,
+        render: (value, record) => (
+          <Tooltip title={`${formatInteger(record.clicks)} clicks / ${formatInteger(record.views)} views`}>
+            {formatPercent(value)}
+          </Tooltip>
+        ),
+      },
+      {
+        title: "Click to Purchase",
+        dataIndex: "clickToPurchaseRate",
+        key: "clickToPurchaseRate",
+        sorter: (left, right) => left.clickToPurchaseRate - right.clickToPurchaseRate,
+        render: (value, record) => (
+          <Tooltip title={`${formatInteger(record.purchases)} purchases / ${formatInteger(record.clicks)} clicks`}>
+            {formatPercent(value)}
+          </Tooltip>
+        ),
       },
     ],
     [],
@@ -709,6 +874,89 @@ export default function QRDashboard() {
             }
             scroll={{ x: 960 }}
           />
+        )}
+      </Card>
+
+      <Card
+        title="QR Funnel"
+        styles={{ body: { padding: 0 } }}
+        style={{
+          borderRadius: 24,
+          border: "1px solid rgba(15, 23, 42, 0.06)",
+          boxShadow: "0 18px 40px rgba(15, 23, 42, 0.05)",
+        }}
+      >
+        <div style={{ padding: "16px 24px 0" }}>
+          <Typography.Paragraph
+            type="secondary"
+            style={{ margin: 0, maxWidth: 880 }}
+          >
+            This section follows the strict QR promo funnel in GA4: venue page
+            view, QR pass CTA click, and purchase. Use it to see which venues
+            are generating intent and which ones are carrying that intent all
+            the way through to paid conversion.
+          </Typography.Paragraph>
+        </div>
+        {loading ? (
+          <div style={{ padding: 40, display: "grid", placeItems: "center" }}>
+            <Spin size="large" />
+          </div>
+        ) : !funnel.available ? (
+          <div style={{ padding: 24 }}>
+            <Alert
+              type="warning"
+              showIcon
+              message="Funnel data unavailable"
+              description={
+                funnel.error ||
+                "The QR funnel query could not be loaded from GA4 for this property."
+              }
+            />
+          </div>
+        ) : visibleFunnelRows.length === 0 ? (
+          <div style={{ padding: 32 }}>
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No funnel rows match the selected filters."
+            />
+          </div>
+        ) : (
+          <>
+            <div style={{ padding: 24, paddingBottom: 8 }}>
+              <Row gutter={[16, 16]}>
+                {FUNNEL_SUMMARY_METRICS.map((metric) => {
+                  const value = Number(funnelSummary[metric.key] || 0);
+
+                  return (
+                    <Col key={metric.key} xs={24} sm={12} lg={8} xl={4}>
+                      <Card
+                        styles={{ body: { padding: 18 } }}
+                        style={{
+                          borderRadius: 18,
+                          border: "1px solid rgba(15, 23, 42, 0.06)",
+                          boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
+                        }}
+                      >
+                        <Statistic
+                          title={metric.title}
+                          value={metric.kind === "percent" ? value * 100 : value}
+                          precision={metric.kind === "percent" ? 1 : 0}
+                          suffix={metric.kind === "percent" ? "%" : undefined}
+                          valueStyle={{ color: metric.color, fontWeight: 650 }}
+                        />
+                      </Card>
+                    </Col>
+                  );
+                })}
+              </Row>
+            </div>
+            <Table
+              columns={funnelColumns}
+              dataSource={visibleFunnelRows}
+              pagination={{ pageSize: 10, showSizeChanger: false }}
+              scroll={{ x: 920 }}
+            />
+          </>
         )}
       </Card>
 

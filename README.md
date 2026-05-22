@@ -10,6 +10,7 @@ Currently, two official plugins are available:
 ## Project docs
 
 - Database migrations (adding new fields): [migrations/README.md](migrations/README.md)
+- Daily team email: [README_DAILY_TEAM_EMAIL.md](README_DAILY_TEAM_EMAIL.md)
 
 ## React Compiler
 

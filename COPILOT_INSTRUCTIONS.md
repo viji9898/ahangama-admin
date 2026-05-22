@@ -10,6 +10,14 @@ Stack:
 - pg driver
 - Google Identity Services auth
 
+Bootstrap:
+
+- Initialize a new app with: `npm create vite@latest my-app -- --template react-ts`
+- Install dependencies with: `npm install`
+- Add stack packages with: `npm install react-router-dom antd dayjs @react-oauth/google leaflet react-leaflet pg jsonwebtoken google-auth-library dotenv @aws-sdk/client-s3 @aws-sdk/s3-presigned-post`
+- Add Netlify CLI with: `npm install -D netlify-cli`
+- Run local development with: `npm run dev`
+
 Rules:
 
 - NEVER access database from frontend.

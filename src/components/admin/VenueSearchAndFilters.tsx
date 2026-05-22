@@ -144,41 +144,60 @@ export function VenueSearchAndFilters({
         onChange={(value) => onCategoryChange(value)}
       />
 
-      <div
-        style={{
-          display: "grid",
-          gap: 10,
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-        }}
-      >
-        <Card
-          size="small"
-          styles={{ body: { padding: 14 } }}
-          style={{ borderRadius: 16 }}
+      <div style={{ overflowX: "auto" }}>
+        <div
+          style={{
+            display: "grid",
+            gap: 10,
+            gridTemplateColumns: "repeat(4, minmax(92px, 1fr))",
+            minWidth: 430,
+          }}
         >
-          <Statistic title="Results" value={counts.results} />
-        </Card>
-        <Card
-          size="small"
-          styles={{ body: { padding: 14 } }}
-          style={{ borderRadius: 16 }}
-        >
-          <Statistic title="Total" value={counts.total} />
-        </Card>
-        <Card
-          size="small"
-          styles={{ body: { padding: 14 } }}
-          style={{ borderRadius: 16 }}
-        >
-          <Statistic title="Live" value={counts.live} />
-        </Card>
-        <Card
-          size="small"
-          styles={{ body: { padding: 14 } }}
-          style={{ borderRadius: 16 }}
-        >
-          <Statistic title="Coming Soon" value={counts.comingSoon} />
-        </Card>
+          <Card
+            size="small"
+            styles={{ body: { padding: 10 } }}
+            style={{ borderRadius: 16 }}
+          >
+            <Statistic
+              title="Results"
+              value={counts.results}
+              valueStyle={{ fontSize: 22 }}
+            />
+          </Card>
+          <Card
+            size="small"
+            styles={{ body: { padding: 10 } }}
+            style={{ borderRadius: 16 }}
+          >
+            <Statistic
+              title="Total"
+              value={counts.total}
+              valueStyle={{ fontSize: 22 }}
+            />
+          </Card>
+          <Card
+            size="small"
+            styles={{ body: { padding: 10 } }}
+            style={{ borderRadius: 16 }}
+          >
+            <Statistic
+              title="Live"
+              value={counts.live}
+              valueStyle={{ fontSize: 22 }}
+            />
+          </Card>
+          <Card
+            size="small"
+            styles={{ body: { padding: 10 } }}
+            style={{ borderRadius: 16 }}
+          >
+            <Statistic
+              title="Coming Soon"
+              value={counts.comingSoon}
+              valueStyle={{ fontSize: 22 }}
+            />
+          </Card>
+        </div>
       </div>
     </Space>
   );

@@ -10,6 +10,9 @@ const DEFAULT_START_DATE = "30daysAgo";
 const DEFAULT_END_DATE = "today";
 const CTA_CLICK_EVENT_NAME_PATTERN = "(^|_)cta_click$";
 const PURCHASE_EVENT_NAME = "purchase";
+const QR_FUNNEL_VIEW_EVENT_NAME = "qr_venue_page_view";
+const QR_FUNNEL_CLICK_EVENT_NAME = "qr_pass_cta_click";
+const QR_FUNNEL_PURCHASE_FLOW_TYPE = "promo";
 const PURCHASE_LOOKBACK_DAYS = 7;
 const ROOT_HOSTNAME = "ahangama.com";
 const PASS_HOSTNAME = "pass.ahangama.com";
@@ -242,6 +245,43 @@ function buildEventNameFilter({ eventName, eventNamePattern }, venue = "") {
   };
 }
 
+function buildCustomEventFilter(fieldName, value, matchType = "EXACT") {
+  const normalizedValue = String(value || "").trim();
+
+  if (!normalizedValue) {
+    return null;
+  }
+
+  return {
+    filter: {
+      fieldName,
+      stringFilter: {
+        matchType,
+        value: normalizedValue,
+      },
+    },
+  };
+}
+
+function buildQrFunnelEventFilter({ eventName, extraExpressions = [] }) {
+  return {
+    andGroup: {
+      expressions: [
+        {
+          filter: {
+            fieldName: "eventName",
+            stringFilter: {
+              matchType: "EXACT",
+              value: eventName,
+            },
+          },
+        },
+        ...extraExpressions.filter(Boolean),
+      ],
+    },
+  };
+}
+
 function buildRowKey(utmContent, landingPage) {
   return `${String(utmContent || "").trim()}::${String(landingPage || "").trim()}`;
 }
@@ -438,6 +478,38 @@ async function runPurchaseBreakdownReport({ startDate, endDate, venue }) {
         desc: true,
       },
     ],
+  });
+}
+
+async function runQrFunnelBreakdownReport({
+  startDate,
+  endDate,
+  eventName,
+  dimensionName,
+  metrics,
+  extraExpressions = [],
+  orderByMetricName,
+}) {
+  return runGaReport({
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: dimensionName }],
+    metrics,
+    dimensionFilter: buildQrFunnelEventFilter({
+      eventName,
+      extraExpressions,
+    }),
+    keepEmptyRows: false,
+    limit: 1000,
+    orderBys: orderByMetricName
+      ? [
+          {
+            metric: {
+              metricName: orderByMetricName,
+            },
+            desc: true,
+          },
+        ]
+      : [],
   });
 }
 
@@ -698,6 +770,216 @@ function mapHostTrafficReport(report, hostName) {
   };
 }
 
+function createEmptyQrFunnel(error = "") {
+  return {
+    available: false,
+    error,
+    totals: {
+      views: 0,
+      clicks: 0,
+      purchases: 0,
+      revenue: 0,
+      viewToClickRate: 0,
+      clickToPurchaseRate: 0,
+      viewToPurchaseRate: 0,
+    },
+    rows: [],
+  };
+}
+
+function upsertQrFunnelRow(groupedRows, venueDirectory, key, rawVenue = "") {
+  const normalizedKey = String(key || "unknown")
+    .trim()
+    .toLowerCase() || "unknown";
+  const existing = groupedRows.get(normalizedKey);
+
+  if (existing) {
+    if (rawVenue) {
+      existing.sourceVenues.add(rawVenue);
+    }
+    return existing;
+  }
+
+  const venueRecord = venueDirectory.get(normalizedKey);
+  const next = {
+    key: normalizedKey,
+    venueSlug: normalizedKey,
+    label: venueRecord?.name || rawVenue || normalizedKey,
+    qrVenue: rawVenue || normalizedKey,
+    views: 0,
+    clicks: 0,
+    purchases: 0,
+    revenue: 0,
+    sourceVenues: new Set(rawVenue ? [rawVenue] : []),
+  };
+
+  groupedRows.set(normalizedKey, next);
+
+  return next;
+}
+
+function buildQrFunnelRows({
+  viewRows = [],
+  clickRows = [],
+  purchaseRows = [],
+  venueDirectory = new Map(),
+  venue = "",
+}) {
+  const groupedRows = new Map();
+
+  for (const row of viewRows) {
+    const rawVenue = String(row.dimensionValues?.[0]?.value || "").trim();
+    const venueKey = resolveVenueSlug(rawVenue || "unknown");
+    const grouped = upsertQrFunnelRow(groupedRows, venueDirectory, venueKey, rawVenue);
+
+    grouped.views += Number(row.metricValues?.[0]?.value || 0);
+  }
+
+  for (const row of clickRows) {
+    const rawVenue = String(row.dimensionValues?.[0]?.value || "").trim();
+    const venueKey = resolveVenueSlug(rawVenue || "unknown");
+    const grouped = upsertQrFunnelRow(groupedRows, venueDirectory, venueKey, rawVenue);
+
+    grouped.clicks += Number(row.metricValues?.[0]?.value || 0);
+  }
+
+  for (const row of purchaseRows) {
+    const rawVenue = String(row.dimensionValues?.[0]?.value || "").trim();
+    const venueKey = resolveVenueSlug(rawVenue || "unknown");
+    const grouped = upsertQrFunnelRow(groupedRows, venueDirectory, venueKey, rawVenue);
+
+    grouped.purchases += Number(row.metricValues?.[0]?.value || 0);
+    grouped.revenue += Number(row.metricValues?.[1]?.value || 0);
+  }
+
+  const normalizedVenue = String(venue || "")
+    .trim()
+    .toLowerCase();
+  const resolvedVenue = normalizedVenue
+    ? resolveVenueSlug(normalizedVenue)
+    : "";
+
+  return [...groupedRows.values()]
+    .filter((row) => {
+      if (!normalizedVenue) {
+        return true;
+      }
+
+      return (
+        row.venueSlug === resolvedVenue || row.sourceVenues.has(normalizedVenue)
+      );
+    })
+    .map((row) => {
+      const views = Number(row.views || 0);
+      const clicks = Number(row.clicks || 0);
+      const purchases = Number(row.purchases || 0);
+
+      return {
+        key: row.key,
+        venueSlug: row.venueSlug,
+        label: row.label,
+        qrVenue: row.qrVenue,
+        views,
+        clicks,
+        purchases,
+        revenue: Number(row.revenue || 0),
+        viewToClickRate: views > 0 ? clicks / views : 0,
+        clickToPurchaseRate: clicks > 0 ? purchases / clicks : 0,
+        viewToPurchaseRate: views > 0 ? purchases / views : 0,
+        sourceVenues: [...row.sourceVenues].sort((left, right) =>
+          left.localeCompare(right),
+        ),
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.purchases - left.purchases ||
+        right.clicks - left.clicks ||
+        right.views - left.views ||
+        left.label.localeCompare(right.label),
+    );
+}
+
+function buildQrFunnelTotals(rows = []) {
+  const totals = rows.reduce(
+    (accumulator, row) => ({
+      views: accumulator.views + Number(row.views || 0),
+      clicks: accumulator.clicks + Number(row.clicks || 0),
+      purchases: accumulator.purchases + Number(row.purchases || 0),
+      revenue: accumulator.revenue + Number(row.revenue || 0),
+    }),
+    { views: 0, clicks: 0, purchases: 0, revenue: 0 },
+  );
+
+  return {
+    ...totals,
+    viewToClickRate: totals.views > 0 ? totals.clicks / totals.views : 0,
+    clickToPurchaseRate:
+      totals.clicks > 0 ? totals.purchases / totals.clicks : 0,
+    viewToPurchaseRate:
+      totals.views > 0 ? totals.purchases / totals.views : 0,
+  };
+}
+
+async function getQrFunnelSummary({
+  startDate,
+  endDate,
+  venue = "",
+  venueDirectory = new Map(),
+} = {}) {
+  try {
+    const [viewReport, clickReport, purchaseReport] = await Promise.all([
+      runQrFunnelBreakdownReport({
+        startDate,
+        endDate,
+        eventName: QR_FUNNEL_VIEW_EVENT_NAME,
+        dimensionName: "customEvent:qr_venue",
+        metrics: [{ name: "eventCount" }],
+        orderByMetricName: "eventCount",
+      }),
+      runQrFunnelBreakdownReport({
+        startDate,
+        endDate,
+        eventName: QR_FUNNEL_CLICK_EVENT_NAME,
+        dimensionName: "customEvent:qr_venue",
+        metrics: [{ name: "eventCount" }],
+        orderByMetricName: "eventCount",
+      }),
+      runQrFunnelBreakdownReport({
+        startDate,
+        endDate,
+        eventName: PURCHASE_EVENT_NAME,
+        dimensionName: "customEvent:venue_slug",
+        metrics: [{ name: "transactions" }, { name: "purchaseRevenue" }],
+        extraExpressions: [
+          buildCustomEventFilter(
+            "customEvent:flow_type",
+            QR_FUNNEL_PURCHASE_FLOW_TYPE,
+          ),
+        ],
+        orderByMetricName: "transactions",
+      }),
+    ]);
+
+    const rows = buildQrFunnelRows({
+      viewRows: viewReport?.rows,
+      clickRows: clickReport?.rows,
+      purchaseRows: purchaseReport?.rows,
+      venueDirectory,
+      venue,
+    });
+
+    return {
+      available: true,
+      error: "",
+      totals: buildQrFunnelTotals(rows),
+      rows,
+    };
+  } catch (error) {
+    return createEmptyQrFunnel(String(error?.message || error));
+  }
+}
+
 export async function getQrDashboardSummary({
   startDate = DEFAULT_START_DATE,
   endDate = DEFAULT_END_DATE,
@@ -716,6 +998,7 @@ export async function getQrDashboardSummary({
     rootTrafficReport,
     passTrafficReport,
     venueDirectory,
+    funnel,
   ] = await Promise.all([
     runReport({
       startDate,
@@ -750,6 +1033,14 @@ export async function getQrDashboardSummary({
       hostName: PASS_HOSTNAME,
     }),
     getVenueDirectory(),
+    getVenueDirectory().then((resolvedVenueDirectory) =>
+      getQrFunnelSummary({
+        startDate,
+        endDate,
+        venue: normalizedVenue,
+        venueDirectory: resolvedVenueDirectory,
+      }),
+    ),
   ]);
 
   const ctaClicksByRow = mapEventCountRows(ctaClickBreakdownReport.rows);
@@ -762,6 +1053,7 @@ export async function getQrDashboardSummary({
 
   return {
     rows,
+    funnel,
     scanMapRows: buildScanMapRows(rows, venueDirectory),
     rootTrafficRows: [mapHostTrafficReport(rootTrafficReport, ROOT_HOSTNAME)],
     passTrafficRows: [mapHostTrafficReport(passTrafficReport, PASS_HOSTNAME)],
