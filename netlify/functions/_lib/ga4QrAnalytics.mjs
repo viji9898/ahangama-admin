@@ -481,6 +481,39 @@ async function runPurchaseBreakdownReport({ startDate, endDate, venue }) {
   });
 }
 
+async function runPurchaseVenueBreakdownReport({ startDate, endDate }) {
+  return runGaReport({
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "date" }, { name: "customEvent:qr_venue" }],
+    metrics: [{ name: "transactions" }, { name: "purchaseRevenue" }],
+    dimensionFilter: {
+      andGroup: {
+        expressions: [
+          {
+            filter: {
+              fieldName: "eventName",
+              stringFilter: {
+                matchType: "EXACT",
+                value: PURCHASE_EVENT_NAME,
+              },
+            },
+          },
+        ],
+      },
+    },
+    keepEmptyRows: false,
+    limit: 1000,
+    orderBys: [
+      {
+        metric: {
+          metricName: "purchaseRevenue",
+        },
+        desc: true,
+      },
+    ],
+  });
+}
+
 async function runQrFunnelBreakdownReport({
   startDate,
   endDate,
@@ -590,12 +623,53 @@ function mapPurchaseRows(rows = [], startDate, endDate) {
   return purchases;
 }
 
+function mapPurchaseVenueRows(rows = [], startDate, endDate) {
+  const purchases = new Map();
+
+  for (const row of rows) {
+    const dimensionValues = row.dimensionValues || [];
+    const purchaseDateRaw = String(dimensionValues[0]?.value || "").trim();
+    const purchaseDate = /^\d{8}$/.test(purchaseDateRaw)
+      ? `${purchaseDateRaw.slice(0, 4)}-${purchaseDateRaw.slice(4, 6)}-${purchaseDateRaw.slice(6, 8)}`
+      : purchaseDateRaw;
+
+    if (!isDateWithinRange(purchaseDate, startDate, endDate)) {
+      continue;
+    }
+
+    const rawVenue = String(dimensionValues[1]?.value || "")
+      .trim()
+      .toLowerCase();
+
+    if (!rawVenue) {
+      continue;
+    }
+
+    const venueKey = resolveVenueSlug(rawVenue);
+    const existing = purchases.get(venueKey) || {
+      count: 0,
+      revenue: 0,
+      sourceVenues: new Set(),
+    };
+
+    existing.count += Number(row.metricValues?.[0]?.value || 0);
+    existing.revenue += Number(row.metricValues?.[1]?.value || 0);
+    existing.sourceVenues.add(rawVenue);
+
+    purchases.set(venueKey, existing);
+  }
+
+  return purchases;
+}
+
 function mapRows(
   rows = [],
   ctaClicksByRow = new Map(),
   purchasesByRow = new Map(),
+  purchasesByVenue = new Map(),
 ) {
   const groupedRows = new Map();
+  const directPurchasesByVenue = new Map();
 
   for (const row of rows) {
     const dimensionValues = row.dimensionValues || [];
@@ -626,6 +700,56 @@ function mapRows(
       revenue: Number(purchasesByRow.get(key)?.revenue || 0),
       landingPage,
     });
+
+    const resolvedVenue = resolveVenueSlug(parsed.venue || "unknown");
+    const directPurchase = purchasesByRow.get(key);
+
+    if (directPurchase) {
+      const existingVenuePurchase = directPurchasesByVenue.get(resolvedVenue) || {
+        count: 0,
+        revenue: 0,
+      };
+
+      directPurchasesByVenue.set(resolvedVenue, {
+        count: existingVenuePurchase.count + Number(directPurchase.count || 0),
+        revenue:
+          existingVenuePurchase.revenue + Number(directPurchase.revenue || 0),
+      });
+    }
+  }
+
+  for (const [venueKey, venuePurchase] of purchasesByVenue.entries()) {
+    const directPurchase = directPurchasesByVenue.get(venueKey) || {
+      count: 0,
+      revenue: 0,
+    };
+    const remainingCount = Number(venuePurchase.count || 0) - directPurchase.count;
+    const remainingRevenue =
+      Number(venuePurchase.revenue || 0) - directPurchase.revenue;
+
+    if (remainingCount <= 0 && remainingRevenue <= 0) {
+      continue;
+    }
+
+    let targetRow = null;
+
+    for (const row of groupedRows.values()) {
+      if (resolveVenueSlug(row.venue || "unknown") !== venueKey) {
+        continue;
+      }
+
+      if (!targetRow || Number(row.sessions || 0) > Number(targetRow.sessions || 0)) {
+        targetRow = row;
+      }
+    }
+
+    if (!targetRow) {
+      continue;
+    }
+
+    // Fallback to venue-level attribution when purchase events do not carry qr_content.
+    targetRow.purchases += Math.max(remainingCount, 0);
+    targetRow.revenue += Math.max(remainingRevenue, 0);
   }
 
   return [...groupedRows.values()];
@@ -995,6 +1119,7 @@ export async function getQrDashboardSummary({
     ctaClickReport,
     ctaClickBreakdownReport,
     purchaseBreakdownReport,
+    purchaseVenueBreakdownReport,
     rootTrafficReport,
     passTrafficReport,
     venueDirectory,
@@ -1021,6 +1146,10 @@ export async function getQrDashboardSummary({
       startDate: purchaseStartDate,
       endDate,
       venue: normalizedVenue,
+    }),
+    runPurchaseVenueBreakdownReport({
+      startDate: purchaseStartDate,
+      endDate,
     }),
     runHostTrafficReport({
       startDate,
@@ -1049,7 +1178,17 @@ export async function getQrDashboardSummary({
     startDate,
     endDate,
   );
-  const rows = mapRows(report.rows, ctaClicksByRow, purchasesByRow);
+  const purchasesByVenue = mapPurchaseVenueRows(
+    purchaseVenueBreakdownReport.rows,
+    startDate,
+    endDate,
+  );
+  const rows = mapRows(
+    report.rows,
+    ctaClicksByRow,
+    purchasesByRow,
+    purchasesByVenue,
+  );
 
   return {
     rows,
