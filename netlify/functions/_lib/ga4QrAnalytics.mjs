@@ -949,7 +949,7 @@ async function getQrFunnelSummary({
         startDate,
         endDate,
         eventName: PURCHASE_EVENT_NAME,
-        dimensionName: "customEvent:venue_slug",
+        dimensionName: "customEvent:qr_venue",
         metrics: [{ name: "transactions" }, { name: "purchaseRevenue" }],
         extraExpressions: [
           buildCustomEventFilter(
