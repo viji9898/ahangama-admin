@@ -7,6 +7,7 @@ This document covers the scheduled daily team email that sends the previous day'
 - Runs a Netlify scheduled function named `daily-team-email`.
 - Builds a report for the previous day in London time.
 - Pulls QR analytics from GA4 and venue/admin data from Postgres.
+- Includes a QR funnel section with Venue, QR Venue, Views, CTA Clicks, Purchases, and Revenue.
 - Optionally adds an AI-written summary when OpenAI credentials are present.
 - Sends the email through SendGrid.
 - Records a send ledger in Postgres so the same report date is not sent twice unless forced.
@@ -43,7 +44,7 @@ Required environment variables:
 
 Optional environment variables:
 
-- `DAILY_REPORT_TO_EMAILS`: comma-separated recipient list. Default: `team@ahangama.com`.
+- `DAILY_REPORT_TO_EMAILS`: comma-separated recipient list. Default: `viji@viji.com`.
 - `DAILY_REPORT_FROM_EMAIL`: sender email. Default: `hello@ahangama.com`.
 - `DAILY_REPORT_DESTINATION_SLUG`: destination slug used in venue/admin summary queries. Default: `ahangama`.
 - `OPENAI_API_KEY`: enables AI summary generation.

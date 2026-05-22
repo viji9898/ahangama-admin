@@ -6,13 +6,14 @@ const REPORT_NAME = "daily-team-email";
 const VENUES_TABLE = "venues260414";
 const EMAIL_LOG_TABLE = "daily_team_email_sends";
 const DEFAULT_FROM_EMAIL = "hello@ahangama.com";
-const DEFAULT_TO_EMAILS = ["team@ahangama.com"];
+const DEFAULT_TO_EMAILS = ["viji@viji.com"];
 const DEFAULT_DESTINATION_SLUG = "ahangama";
 const MIN_RANKING_SESSIONS = 20;
 const WATCHOUT_MAX_CONVERSION_RATE = 0.05;
 const WATCHOUT_MAX_PURCHASE_RATE = 0.02;
 const MAX_UPDATED_VENUES = 6;
 const MAX_INCOMPLETE_VENUES = 6;
+const MAX_FUNNEL_ROWS = 20;
 
 function formatLabel(value) {
   const normalized = String(value || "unknown").trim();
@@ -218,6 +219,57 @@ function formatRowSummary(row) {
 
 function formatRowSummaryHtml(row) {
   return `<strong>${escapeHtml(formatLabel(row.venue))}</strong> / ${escapeHtml(formatLabel(row.surface))} - ${escapeHtml(formatInteger(row.sessions))} sessions, ${escapeHtml(formatInteger(row.ctaClick))} CTA clicks, ${escapeHtml(formatInteger(row.purchases))} purchases, ${escapeHtml(formatCurrency(row.revenue))}, ${escapeHtml(formatPercent(row.purchaseRate))} purchase rate`;
+}
+
+function formatFunnelRowText(row) {
+  return `${row.label || "Unknown"} | ${formatLabel(row.qrVenue)} | ${formatInteger(row.views)} | ${formatInteger(row.clicks)} | ${formatInteger(row.purchases)} | ${formatCurrency(row.revenue)}`;
+}
+
+function formatFunnelTableText(rows = []) {
+  const header = "Venue | QR Venue | Views | CTA Clicks | Purchases | Revenue";
+
+  if (!rows.length) {
+    return [header, "None"];
+  }
+
+  return [header, ...rows.map(formatFunnelRowText)];
+}
+
+function formatFunnelTableHtml(rows = []) {
+  if (!rows.length) {
+    return "<p>None</p>";
+  }
+
+  return `
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <thead>
+        <tr>
+          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0;">Venue</th>
+          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0;">QR Venue</th>
+          <th style="text-align: right; padding: 8px; border-bottom: 1px solid #e2e8f0;">Views</th>
+          <th style="text-align: right; padding: 8px; border-bottom: 1px solid #e2e8f0;">CTA Clicks</th>
+          <th style="text-align: right; padding: 8px; border-bottom: 1px solid #e2e8f0;">Purchases</th>
+          <th style="text-align: right; padding: 8px; border-bottom: 1px solid #e2e8f0;">Revenue</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${escapeHtml(row.label || "Unknown")}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${escapeHtml(formatLabel(row.qrVenue))}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right;">${escapeHtml(formatInteger(row.views))}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right;">${escapeHtml(formatInteger(row.clicks))}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right;">${escapeHtml(formatInteger(row.purchases))}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right;">${escapeHtml(formatCurrency(row.revenue))}</td>
+              </tr>
+            `,
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `.trim();
 }
 
 function normalizeText(value) {
@@ -565,6 +617,9 @@ export async function getDailyTeamEmailReport({
     users: 0,
     pageViews: 0,
   };
+  const funnelRows = Array.isArray(qrSummary?.funnel?.rows)
+    ? qrSummary.funnel.rows.slice(0, MAX_FUNNEL_ROWS)
+    : [];
   const thoughts = buildThoughts({
     totals,
     performers,
@@ -603,6 +658,7 @@ export async function getDailyTeamEmailReport({
     thoughts,
     rootTraffic,
     passTraffic,
+    funnelRows,
     venueReview,
     aiSummary,
     aiSummaryError,
@@ -643,6 +699,7 @@ export function buildDailyTeamEmailMessage(report) {
     (venue) =>
       `- ${venue.name || venue.slug || venue.id}: missing ${venue.missingFields.join(", ")}`,
   );
+  const funnelLines = formatFunnelTableText(report.funnelRows || []);
   const text = [
     `Team,`,
     ``,
@@ -654,6 +711,9 @@ export function buildDailyTeamEmailMessage(report) {
     `Traffic flow`,
     `- ahangama.com: ${formatInteger(report.rootTraffic.sessions)} sessions, ${formatInteger(report.rootTraffic.users)} users, ${formatInteger(report.rootTraffic.pageViews)} page views`,
     `- pass.ahangama.com: ${formatInteger(report.passTraffic.sessions)} sessions, ${formatInteger(report.passTraffic.users)} users, ${formatInteger(report.passTraffic.pageViews)} page views`,
+    ``,
+    `QR Funnel`,
+    ...funnelLines,
     ``,
     `Top 10 performers`,
     ...(performerLines.length ? performerLines : ["None"]),
@@ -691,6 +751,8 @@ export function buildDailyTeamEmailMessage(report) {
         <li>ahangama.com: ${escapeHtml(formatInteger(report.rootTraffic.sessions))} sessions, ${escapeHtml(formatInteger(report.rootTraffic.users))} users, ${escapeHtml(formatInteger(report.rootTraffic.pageViews))} page views</li>
         <li>pass.ahangama.com: ${escapeHtml(formatInteger(report.passTraffic.sessions))} sessions, ${escapeHtml(formatInteger(report.passTraffic.users))} users, ${escapeHtml(formatInteger(report.passTraffic.pageViews))} page views</li>
       </ul>
+      <h3>QR Funnel</h3>
+      ${formatFunnelTableHtml(report.funnelRows || [])}
       <h3>Top 10 performers</h3>
       <ol>${report.performers.map((row) => `<li>${formatRowSummaryHtml(row)}</li>`).join("") || "<li>None</li>"}</ol>
       <h3>Top 10 watchouts</h3>
@@ -922,6 +984,7 @@ export function getDailyTeamEmailPreview(report) {
     text: message.text,
     venueStats: report.venueStats,
     totals: report.totals,
+    funnelRows: report.funnelRows,
     performers: report.performers,
     watchouts: report.watchouts,
     thoughts: report.thoughts,
