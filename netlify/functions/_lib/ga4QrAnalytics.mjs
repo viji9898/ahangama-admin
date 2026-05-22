@@ -262,6 +262,22 @@ function buildCustomEventFilter(fieldName, value, matchType = "EXACT") {
   };
 }
 
+function normalizeCustomDimensionValue(value) {
+  const normalizedValue = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    !normalizedValue ||
+    normalizedValue === "(not set)" ||
+    normalizedValue === "unknown"
+  ) {
+    return "";
+  }
+
+  return normalizedValue;
+}
+
 function buildQrFunnelEventFilter({ eventName, extraExpressions = [] }) {
   return {
     andGroup: {
@@ -536,13 +552,17 @@ async function runQrFunnelBreakdownReport({
   endDate,
   eventName,
   dimensionName,
+  dimensionNames,
   metrics,
   extraExpressions = [],
   orderByMetricName,
 }) {
   return runGaReport({
     dateRanges: [{ startDate, endDate }],
-    dimensions: [{ name: dimensionName }],
+    dimensions: (Array.isArray(dimensionNames) && dimensionNames.length
+      ? dimensionNames
+      : [dimensionName]
+    ).map((name) => ({ name })),
     metrics,
     dimensionFilter: buildQrFunnelEventFilter({
       eventName,
@@ -952,13 +972,20 @@ function upsertQrFunnelRow(groupedRows, venueDirectory, key, rawVenue = "") {
   const next = {
     key: normalizedKey,
     venueSlug: normalizedKey,
-    label: venueRecord?.name || rawVenue || normalizedKey,
+    label:
+      venueRecord?.name ||
+      rawVenue ||
+      (normalizedKey === "unattributed" ? "Unattributed" : normalizedKey),
     qrVenue: rawVenue || normalizedKey,
     views: 0,
     clicks: 0,
     purchases: 0,
     revenue: 0,
     sourceVenues: new Set(rawVenue ? [rawVenue] : []),
+    purchaseLandingPages: new Set(),
+    promoTypes: new Set(),
+    purchaseVenueSlugs: new Set(),
+    purchaseAttributionSource: "qr_venue",
   };
 
   groupedRows.set(normalizedKey, next);
@@ -992,12 +1019,46 @@ function buildQrFunnelRows({
   }
 
   for (const row of purchaseRows) {
-    const rawVenue = String(row.dimensionValues?.[0]?.value || "").trim();
-    const venueKey = resolveVenueSlug(rawVenue || "unknown");
-    const grouped = upsertQrFunnelRow(groupedRows, venueDirectory, venueKey, rawVenue);
+    const rawQrVenue = String(row.dimensionValues?.[0]?.value || "").trim();
+    const rawLandingPage = String(row.dimensionValues?.[1]?.value || "").trim();
+    const rawPromoType = String(row.dimensionValues?.[2]?.value || "").trim();
+    const rawVenueSlug = String(row.dimensionValues?.[3]?.value || "").trim();
+    const normalizedQrVenue = normalizeCustomDimensionValue(rawQrVenue);
+    const normalizedVenueSlug = normalizeCustomDimensionValue(rawVenueSlug);
+    const normalizedLandingPage = normalizeCustomDimensionValue(rawLandingPage);
+    const normalizedPromoType = normalizeCustomDimensionValue(rawPromoType);
+    const baseVenue = normalizedQrVenue || normalizedVenueSlug || "unattributed";
+    const venueKey = resolveVenueSlug(baseVenue);
+    const grouped = upsertQrFunnelRow(
+      groupedRows,
+      venueDirectory,
+      venueKey,
+      rawQrVenue || rawVenueSlug,
+    );
 
     grouped.purchases += Number(row.metricValues?.[0]?.value || 0);
     grouped.revenue += Number(row.metricValues?.[1]?.value || 0);
+
+    if (normalizedLandingPage) {
+      grouped.purchaseLandingPages.add(rawLandingPage);
+    }
+
+    if (normalizedPromoType) {
+      grouped.promoTypes.add(rawPromoType);
+    }
+
+    if (normalizedVenueSlug) {
+      grouped.purchaseVenueSlugs.add(rawVenueSlug);
+    }
+
+    if (!normalizedQrVenue && normalizedVenueSlug) {
+      grouped.purchaseAttributionSource = "venue_slug_fallback";
+      grouped.qrVenue = rawVenueSlug;
+    } else if (!normalizedQrVenue && !normalizedVenueSlug) {
+      grouped.purchaseAttributionSource = "unattributed";
+      grouped.qrVenue = "unattributed";
+      grouped.label = "Unattributed";
+    }
   }
 
   const normalizedVenue = String(venue || "")
@@ -1037,6 +1098,16 @@ function buildQrFunnelRows({
         sourceVenues: [...row.sourceVenues].sort((left, right) =>
           left.localeCompare(right),
         ),
+        purchaseLandingPages: [...row.purchaseLandingPages].sort((left, right) =>
+          left.localeCompare(right),
+        ),
+        promoTypes: [...row.promoTypes].sort((left, right) =>
+          left.localeCompare(right),
+        ),
+        purchaseVenueSlugs: [...row.purchaseVenueSlugs].sort((left, right) =>
+          left.localeCompare(right),
+        ),
+        purchaseAttributionSource: row.purchaseAttributionSource,
       };
     })
     .sort(
@@ -1097,7 +1168,12 @@ async function getQrFunnelSummary({
         startDate,
         endDate,
         eventName: PURCHASE_EVENT_NAME,
-        dimensionName: "customEvent:qr_venue",
+        dimensionNames: [
+          "customEvent:qr_venue",
+          "customEvent:qr_landing_page",
+          "customEvent:promo_type",
+          "customEvent:venue_slug",
+        ],
         metrics: [{ name: "transactions" }, { name: "purchaseRevenue" }],
         orderByMetricName: "transactions",
       }),

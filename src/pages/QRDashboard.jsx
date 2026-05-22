@@ -130,6 +130,14 @@ function formatInteger(value) {
   }).format(Number(value || 0));
 }
 
+function formatList(values = []) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return "-";
+  }
+
+  return values.join(", ");
+}
+
 function normalizeFunnel(payload) {
   if (!payload || typeof payload !== "object") {
     return EMPTY_FUNNEL;
@@ -682,6 +690,35 @@ export default function QRDashboard() {
         render: (value) => formatCurrency(value),
       },
       {
+        title: "Purchase Landing Page",
+        dataIndex: "purchaseLandingPages",
+        key: "purchaseLandingPages",
+        render: (value) => (
+          <Typography.Text title={formatList(value)}>
+            {formatList(value)}
+          </Typography.Text>
+        ),
+      },
+      {
+        title: "Promo Type",
+        dataIndex: "promoTypes",
+        key: "promoTypes",
+        render: (value) => formatList(value),
+      },
+      {
+        title: "Purchase Attribution",
+        dataIndex: "purchaseAttributionSource",
+        key: "purchaseAttributionSource",
+        render: (value) =>
+          value === "venue_slug_fallback" ? (
+            <Tag color="gold">Venue slug fallback</Tag>
+          ) : value === "unattributed" ? (
+            <Tag color="red">Unattributed</Tag>
+          ) : (
+            <Tag color="green">QR venue</Tag>
+          ),
+      },
+      {
         title: "View to Click",
         dataIndex: "viewToClickRate",
         key: "viewToClickRate",
@@ -902,7 +939,10 @@ export default function QRDashboard() {
             This section follows the QR venue funnel in GA4: venue page view,
             QR pass CTA click, and purchase grouped by <strong>qr_venue</strong>.
             Use it to see which venues are generating intent and which ones are
-            carrying that intent through to paid conversion.
+            carrying that intent through to paid conversion. Purchase rows use
+            <strong> venue_slug</strong> as a fallback when <strong>qr_venue</strong>
+            is missing, and older unattributed purchases may still appear as
+            unattributed.
           </Typography.Paragraph>
         </div>
         {loading ? (
