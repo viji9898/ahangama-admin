@@ -514,6 +514,24 @@ async function runPurchaseVenueBreakdownReport({ startDate, endDate }) {
   });
 }
 
+async function runTotalPurchaseReport({ startDate, endDate }) {
+  return runGaReport({
+    dateRanges: [{ startDate, endDate }],
+    metrics: [{ name: "transactions" }, { name: "purchaseRevenue" }],
+    dimensionFilter: {
+      filter: {
+        fieldName: "eventName",
+        stringFilter: {
+          matchType: "EXACT",
+          value: PURCHASE_EVENT_NAME,
+        },
+      },
+    },
+    keepEmptyRows: false,
+    limit: 1,
+  });
+}
+
 async function runQrFunnelBreakdownReport({
   startDate,
   endDate,
@@ -880,6 +898,13 @@ function getEventCountFromReport(report) {
   return Number(report?.rows?.[0]?.metricValues?.[0]?.value || 0);
 }
 
+function getPurchaseTotalsFromReport(report) {
+  return {
+    purchases: Number(report?.rows?.[0]?.metricValues?.[0]?.value || 0),
+    revenue: Number(report?.rows?.[0]?.metricValues?.[1]?.value || 0),
+  };
+}
+
 function mapHostTrafficReport(report, hostName) {
   const row = report?.rows?.[0];
 
@@ -1120,6 +1145,7 @@ export async function getQrDashboardSummary({
     ctaClickBreakdownReport,
     purchaseBreakdownReport,
     purchaseVenueBreakdownReport,
+    totalPurchaseReport,
     rootTrafficReport,
     passTrafficReport,
     venueDirectory,
@@ -1149,6 +1175,10 @@ export async function getQrDashboardSummary({
     }),
     runPurchaseVenueBreakdownReport({
       startDate: purchaseStartDate,
+      endDate,
+    }),
+    runTotalPurchaseReport({
+      startDate,
       endDate,
     }),
     runHostTrafficReport({
@@ -1189,6 +1219,7 @@ export async function getQrDashboardSummary({
     purchasesByRow,
     purchasesByVenue,
   );
+  const totalPurchaseStats = getPurchaseTotalsFromReport(totalPurchaseReport);
 
   return {
     rows,
@@ -1198,6 +1229,8 @@ export async function getQrDashboardSummary({
     passTrafficRows: [mapHostTrafficReport(passTrafficReport, PASS_HOSTNAME)],
     stats: {
       ctaClick: getEventCountFromReport(ctaClickReport),
+      totalPurchases: totalPurchaseStats.purchases,
+      totalRevenue: totalPurchaseStats.revenue,
     },
   };
 }

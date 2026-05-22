@@ -43,8 +43,8 @@ const SUMMARY_METRICS = [
   { key: "users", title: "Total Users", color: "#0f766e" },
   { key: "events", title: "Total Events", color: "#9a3412" },
   { key: "ctaClick", title: "CTA Clicks", color: "#2563eb" },
-  { key: "purchases", title: "Purchases", color: "#7c3aed" },
-  { key: "revenue", title: "Revenue", color: "#15803d" },
+  { key: "purchases", title: "All GA4 Purchases", color: "#7c3aed" },
+  { key: "revenue", title: "All GA4 Revenue", color: "#15803d" },
 ];
 const EMPTY_FUNNEL = {
   available: false,
@@ -196,6 +196,11 @@ export default function QRDashboard() {
   const [passTrafficRows, setPassTrafficRows] = useState([]);
   const [funnel, setFunnel] = useState(EMPTY_FUNNEL);
   const [stats, setStats] = useState({ ctaClick: 0 });
+    const [stats, setStats] = useState({
+      ctaClick: 0,
+      totalPurchases: 0,
+      totalRevenue: 0,
+    });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [mapSizeMetric, setMapSizeMetric] = useState("sessions");
@@ -247,6 +252,8 @@ export default function QRDashboard() {
         setFunnel(normalizeFunnel(payload?.funnel));
         setStats({
           ctaClick: Number(payload?.stats?.ctaClick || 0),
+          totalPurchases: Number(payload?.stats?.totalPurchases || 0),
+          totalRevenue: Number(payload?.stats?.totalRevenue || 0),
         });
       } catch (fetchError) {
         if (fetchError?.name === "AbortError") {
@@ -259,7 +266,7 @@ export default function QRDashboard() {
         setRootTrafficRows([]);
         setPassTrafficRows([]);
         setFunnel(EMPTY_FUNNEL);
-        setStats({ ctaClick: 0 });
+        setStats({ ctaClick: 0, totalPurchases: 0, totalRevenue: 0 });
       } finally {
         setLoading(false);
       }
@@ -802,8 +809,8 @@ export default function QRDashboard() {
                   : metric.key === "ctaClick"
                     ? totals.totalCtaClicks
                     : metric.key === "purchases"
-                      ? totals.totalPurchases
-                      : totals.totalRevenue;
+                      ? stats.totalPurchases
+                      : stats.totalRevenue;
 
           return (
             <Col key={metric.key} xs={24} sm={12} lg={6}>
@@ -844,7 +851,9 @@ export default function QRDashboard() {
             style={{ margin: 0, maxWidth: 880 }}
           >
             This table shows which QR placements are bringing people in and
-            which ones are driving action and paid outcomes. Use
+                postcard, table, and other offline placements roll up cleanly.
+                Summary purchase and revenue cards use all GA4 purchase events
+                in the selected date range.
             <strong> Sessions</strong> to see traffic volume,
             <strong> CTA Clicks</strong> to see action taken,
             <strong> Purchases</strong> and <strong>Revenue</strong> to see paid
