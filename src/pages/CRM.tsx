@@ -46,8 +46,6 @@ const INTERACTIONS_LIST_ENDPOINT =
   "/.netlify/functions/api-partner-interactions-list";
 const INTERACTIONS_CREATE_ENDPOINT =
   "/.netlify/functions/api-partner-interactions-create";
-const CRM_EXPORT_ENDPOINT = "/.netlify/functions/api-partner-crm-export";
-const CRM_IMPORT_ENDPOINT = "/.netlify/functions/api-partner-crm-import";
 const VENUES_LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
 
 const ROLE_OPTIONS: { label: string; value: PartnerContactRole }[] = [
@@ -161,12 +159,10 @@ export default function CRM() {
     "venue",
   );
   const [interactionSubmitting, setInteractionSubmitting] = useState(false);
-  const [csvImporting, setCsvImporting] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactModalTab, setContactModalTab] = useState<ContactModalTab>("info");
   const [createForm] = Form.useForm();
   const [interactionForm] = Form.useForm();
-  const [csvImportForm] = Form.useForm();
 
   const selectedContact = useMemo(
     () => contacts.find((item) => item.id === selectedContactId) || null,
@@ -463,50 +459,6 @@ export default function CRM() {
       message.error(String((error as Error)?.message || error));
     } finally {
       setInteractionSubmitting(false);
-    }
-  }
-
-  async function handleCsvExport(resource: "contacts" | "touchpoints" | "interactions") {
-    const params = new URLSearchParams({ resource });
-    if (activeVenueId) {
-      params.set("venueId", activeVenueId);
-    }
-    window.open(`${CRM_EXPORT_ENDPOINT}?${params.toString()}`, "_blank");
-  }
-
-  async function handleCsvImport(values: {
-    resource: "contacts" | "touchpoints" | "interactions";
-    csv: string;
-  }) {
-    try {
-      setCsvImporting(true);
-      const result = await fetchJson<{
-        importedCount: number;
-        errorCount: number;
-        errors?: Array<{ row: number; error: string }>;
-      }>(CRM_IMPORT_ENDPOINT, {
-        method: "POST",
-        body: JSON.stringify(values),
-      });
-
-      if (result.errorCount > 0) {
-        message.warning(
-          `Imported ${result.importedCount} rows with ${result.errorCount} row errors`,
-        );
-      } else {
-        message.success(`Imported ${result.importedCount} rows`);
-      }
-
-      csvImportForm.resetFields();
-
-      const [contactsPayload] = await Promise.all([
-        fetchJson<{ contacts: PartnerContact[] }>(CONTACTS_LIST_ENDPOINT),
-      ]);
-      setContacts(contactsPayload.contacts || []);
-    } catch (error) {
-      message.error(String((error as Error)?.message || error));
-    } finally {
-      setCsvImporting(false);
     }
   }
 
@@ -810,53 +762,6 @@ export default function CRM() {
                 ]}
               />
             </Modal>
-
-            <Card title="CSV Tools" loading={loading}>
-              <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                <Space wrap>
-                  <Button onClick={() => void handleCsvExport("contacts")}>Export Contacts CSV</Button>
-                  <Button onClick={() => void handleCsvExport("touchpoints")}>Export Touchpoints CSV</Button>
-                  <Button onClick={() => void handleCsvExport("interactions")}>Export Interactions CSV</Button>
-                </Space>
-
-                <Form
-                  form={csvImportForm}
-                  layout="vertical"
-                  onFinish={handleCsvImport}
-                  initialValues={{ resource: "contacts" }}
-                >
-                  <Row gutter={12}>
-                    <Col xs={24} md={6}>
-                      <Form.Item
-                        name="resource"
-                        label="Import Resource"
-                        rules={[{ required: true }]}
-                      >
-                        <Select
-                          options={[
-                            { label: "Contacts", value: "contacts" },
-                            { label: "Touchpoints", value: "touchpoints" },
-                            { label: "Interactions", value: "interactions" },
-                          ]}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={18}>
-                      <Form.Item
-                        name="csv"
-                        label="CSV Content"
-                        rules={[{ required: true, message: "Paste CSV content" }]}
-                      >
-                        <Input.TextArea rows={5} placeholder="Paste CSV with header row" />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                  <Button type="primary" htmlType="submit" loading={csvImporting}>
-                    Import CSV
-                  </Button>
-                </Form>
-              </Space>
-            </Card>
           </Space>
         </Col>
       </Row>
