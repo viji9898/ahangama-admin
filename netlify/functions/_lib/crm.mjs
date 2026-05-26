@@ -107,9 +107,14 @@ export function normalizeInteractionOutcome(value, fallback = "pending") {
   return normalized;
 }
 
-export function makePartnerContactId(referenceKey, role) {
+export function makePartnerContactId(venueId, role) {
   const now = Date.now().toString(36);
-  return `${referenceKey.toLowerCase()}-${role}-${now}`;
+  const safeVenueId = String(venueId || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "")
+    .slice(0, 32);
+  return `${safeVenueId || "venue"}-${role}-${now}`;
 }
 
 export function makeInteractionId(venueId, interactionType) {
@@ -127,7 +132,6 @@ export function toPartnerContactDto(row) {
     id: row.id,
     venueId: row.venue_id,
     venueName: row.venue_name ?? null,
-    referenceKey: row.reference_key,
     contactName: row.contact_name,
     role: row.role,
     email: row.email,

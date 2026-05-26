@@ -81,7 +81,6 @@ const INTERACTION_OUTCOME_OPTIONS: {
 type DraftContact = {
   contactName: string;
   role: PartnerContactRole;
-  referenceKey: string;
   email?: string;
   whatsapp?: string;
   phone?: string;
@@ -89,13 +88,6 @@ type DraftContact = {
   isPrimary: boolean;
   active: boolean;
 };
-
-function normalizeReferenceKey(value: string): string {
-  return String(value || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
-}
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -137,7 +129,6 @@ function toDraft(contact: PartnerContact): DraftContact {
   return {
     contactName: contact.contactName,
     role: contact.role,
-    referenceKey: contact.referenceKey,
     email: contact.email || "",
     whatsapp: contact.whatsapp || "",
     phone: contact.phone || "",
@@ -189,7 +180,8 @@ export default function CRM() {
       if (!q) return true;
 
       const haystack = [
-        contact.referenceKey,
+        contact.id,
+        contact.venueId,
         contact.contactName,
         contact.role,
         contact.email,
@@ -340,7 +332,6 @@ export default function CRM() {
 
   async function handleCreateContact(values: {
     venueId: string;
-    referenceKey: string;
     contactName: string;
     role: PartnerContactRole;
     email?: string;
@@ -348,16 +339,11 @@ export default function CRM() {
     phone?: string;
   }) {
     try {
-      const payload = {
-        ...values,
-        referenceKey: normalizeReferenceKey(values.referenceKey),
-      };
-
       const result = await fetchJson<{ contact: PartnerContact }>(
         CONTACTS_CREATE_ENDPOINT,
         {
           method: "POST",
-          body: JSON.stringify(payload),
+          body: JSON.stringify(values),
         },
       );
 
@@ -379,7 +365,6 @@ export default function CRM() {
       id: selectedContact.id,
       contactName: draft.contactName.trim(),
       role: draft.role,
-      referenceKey: normalizeReferenceKey(draft.referenceKey),
       email: draft.email || null,
       whatsapp: draft.whatsapp || null,
       phone: draft.phone || null,
@@ -589,18 +574,8 @@ export default function CRM() {
               </Form.Item>
             </Col>
             <Col xs={24} md={4}>
-              <Form.Item
-                name="referenceKey"
-                label="Reference Key"
-                rules={[
-                  { required: true, message: "Reference key is required" },
-                  {
-                    pattern: /^[A-Za-z0-9]+$/,
-                    message: "Uppercase letters and numbers only",
-                  },
-                ]}
-              >
-                <Input placeholder="KAFFI01" />
+              <Form.Item label="Venue Identifier">
+                <Input value={createForm.getFieldValue("venueId") || ""} disabled />
               </Form.Item>
             </Col>
             <Col xs={24} md={5}>
@@ -645,7 +620,7 @@ export default function CRM() {
             extra={
               <Input.Search
                 allowClear
-                placeholder="Search by ref key, name, venue"
+                placeholder="Search by contact id, venue id, name"
                 onChange={(event) => setSearch(event.target.value)}
                 style={{ width: 220 }}
               />
@@ -669,13 +644,13 @@ export default function CRM() {
                   <List.Item.Meta
                     title={
                       <Space>
-                        <Typography.Text strong>{item.referenceKey}</Typography.Text>
+                        <Typography.Text strong>{item.contactName}</Typography.Text>
                         <Tag>{item.role}</Tag>
                       </Space>
                     }
                     description={
                       <Space direction="vertical" size={0}>
-                        <Typography.Text>{item.contactName}</Typography.Text>
+                        <Typography.Text type="secondary">Contact ID: {item.id}</Typography.Text>
                         <Typography.Text type="secondary">
                           {item.venueName || item.venueId}
                         </Typography.Text>
@@ -691,7 +666,7 @@ export default function CRM() {
         <Col xs={24} lg={16}>
           <Space direction="vertical" size={16} style={{ width: "100%" }}>
             <Card
-              title={selectedContact ? `Contact: ${selectedContact.referenceKey}` : "Contact"}
+              title={selectedContact ? `Contact: ${selectedContact.contactName}` : "Contact"}
               loading={loading}
               extra={
                 <Button
@@ -711,20 +686,8 @@ export default function CRM() {
               ) : (
                 <Row gutter={12}>
                   <Col xs={24} md={8}>
-                    <Typography.Text type="secondary">Reference Key</Typography.Text>
-                    <Input
-                      value={draft.referenceKey}
-                      onChange={(event) =>
-                        setDraft((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                referenceKey: normalizeReferenceKey(event.target.value),
-                              }
-                            : prev,
-                        )
-                      }
-                    />
+                    <Typography.Text type="secondary">Venue Identifier</Typography.Text>
+                    <Input value={selectedContact.venueId} disabled />
                   </Col>
                   <Col xs={24} md={8}>
                     <Typography.Text type="secondary">Contact Name</Typography.Text>

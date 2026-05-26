@@ -47,7 +47,7 @@ export async function handler(event) {
       const result = await query(
         `
           SELECT
-            id, venue_id, reference_key, contact_name, role,
+            id, venue_id, contact_name, role,
             email, whatsapp, phone, notes,
             is_primary, active, created_by, updated_by,
             created_at, updated_at
@@ -62,7 +62,6 @@ export async function handler(event) {
         [
           { key: "id", label: "id" },
           { key: "venue_id", label: "venue_id" },
-          { key: "reference_key", label: "reference_key" },
           { key: "contact_name", label: "contact_name" },
           { key: "role", label: "role" },
           { key: "email", label: "email" },

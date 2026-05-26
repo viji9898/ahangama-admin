@@ -24,7 +24,6 @@ export interface PartnerContact {
   id: string;
   venueId: string;
   venueName?: string | null;
-  referenceKey: string;
   contactName: string;
   role: PartnerContactRole;
   email?: string | null;

@@ -12,7 +12,6 @@ import {
   normalizeLowerText,
   normalizeOptionalText,
   normalizeQuantity,
-  normalizeReferenceKey,
   normalizeTouchpointType,
 } from "./_lib/crm.mjs";
 import { parseCsv } from "./_lib/csv.mjs";
@@ -68,22 +67,19 @@ export async function handler(event) {
       const row = rows[index];
       try {
         if (resource === "contacts") {
-          const referenceKey = normalizeReferenceKey(
-            pick(row, "reference_key", "referenceKey"),
-          );
           const role = normalizeContactRole(pick(row, "role"), "other");
           const venueId = normalizeLowerText(pick(row, "venue_id", "venueId"));
           const contactName = normalizeOptionalText(
             pick(row, "contact_name", "contactName"),
           );
 
-          if (!referenceKey || !venueId || !contactName) {
-            throw new Error("reference_key, venue_id, and contact_name are required");
+          if (!venueId || !contactName) {
+            throw new Error("venue_id and contact_name are required");
           }
 
           const id =
             normalizeLowerText(pick(row, "id")) ||
-            makePartnerContactId(referenceKey, role);
+            makePartnerContactId(venueId, role);
 
           await query(
             `
@@ -97,7 +93,7 @@ export async function handler(event) {
                 $6, $7, $8, $9,
                 $10, $11, $12, $13, NULL
               )
-              ON CONFLICT (reference_key)
+              ON CONFLICT (id)
               DO UPDATE SET
                 venue_id = EXCLUDED.venue_id,
                 contact_name = EXCLUDED.contact_name,
@@ -114,7 +110,7 @@ export async function handler(event) {
             [
               id,
               venueId,
-              referenceKey,
+              null,
               contactName,
               role,
               normalizeLowerText(pick(row, "email")),

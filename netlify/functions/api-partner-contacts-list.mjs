@@ -56,7 +56,7 @@ export async function handler(event) {
     if (q) {
       where.push(`(
         lower(c.contact_name) LIKE $${idx}
-        OR lower(c.reference_key) LIKE $${idx}
+        OR lower(c.venue_id) LIKE $${idx}
         OR lower(coalesce(c.email, '')) LIKE $${idx}
         OR lower(coalesce(c.whatsapp, '')) LIKE $${idx}
         OR lower(coalesce(c.phone, '')) LIKE $${idx}
@@ -74,7 +74,7 @@ export async function handler(event) {
       FROM ${PARTNER_CONTACTS_TABLE} c
       JOIN ${VENUES_TABLE} v ON v.id = c.venue_id
       WHERE ${where.join(" AND ")}
-      ORDER BY c.updated_at DESC, c.reference_key ASC
+      ORDER BY c.updated_at DESC, c.contact_name ASC
       LIMIT 1000
     `;
 

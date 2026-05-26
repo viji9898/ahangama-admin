@@ -6,7 +6,6 @@ import {
   normalizeContactRole,
   normalizeLowerText,
   normalizeOptionalText,
-  normalizeReferenceKey,
   toPartnerContactDto,
 } from "./_lib/crm.mjs";
 import { VENUES_TABLE } from "./_lib/venues260414.mjs";
@@ -37,16 +36,13 @@ export async function handler(event) {
     }
 
     const venueId = normalizeLowerText(body.venueId);
-    const referenceKey = normalizeReferenceKey(body.referenceKey);
     const contactName = normalizeOptionalText(body.contactName);
     const role = normalizeContactRole(body.role, "other");
 
     if (!venueId) return badRequest("venueId is required");
-    if (!referenceKey) return badRequest("referenceKey is required");
     if (!contactName) return badRequest("contactName is required");
 
-    const id =
-      normalizeLowerText(body.id) || makePartnerContactId(referenceKey, role);
+    const id = normalizeLowerText(body.id) || makePartnerContactId(venueId, role);
 
     const email = normalizeLowerText(body.email);
     const whatsapp = normalizeOptionalText(body.whatsapp);
@@ -80,7 +76,7 @@ export async function handler(event) {
     const result = await query(sql, [
       id,
       venueId,
-      referenceKey,
+      null,
       contactName,
       role,
       email,
@@ -99,7 +95,7 @@ export async function handler(event) {
     if (msg.toLowerCase().includes("duplicate")) {
       return json(409, {
         ok: false,
-        error: "Duplicate id or referenceKey",
+        error: "Duplicate contact id",
       });
     }
 

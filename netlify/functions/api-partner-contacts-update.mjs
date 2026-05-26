@@ -5,7 +5,6 @@ import {
   normalizeContactRole,
   normalizeLowerText,
   normalizeOptionalText,
-  normalizeReferenceKey,
   toPartnerContactDto,
 } from "./_lib/crm.mjs";
 import { VENUES_TABLE } from "./_lib/venues260414.mjs";
@@ -38,10 +37,6 @@ export async function handler(event) {
     const id = normalizeLowerText(body.id);
     if (!id) return json(400, { ok: false, error: "id is required" });
 
-    if (hasOwn(body, "referenceKey") && !normalizeReferenceKey(body.referenceKey)) {
-      return json(400, { ok: false, error: "referenceKey is required" });
-    }
-
     if (hasOwn(body, "contactName") && !normalizeOptionalText(body.contactName)) {
       return json(400, { ok: false, error: "contactName is required" });
     }
@@ -53,16 +48,15 @@ export async function handler(event) {
         UPDATE ${PARTNER_CONTACTS_TABLE}
         SET
           venue_id = COALESCE($2, venue_id),
-          reference_key = COALESCE($3, reference_key),
-          contact_name = COALESCE($4, contact_name),
-          role = COALESCE($5, role),
-          email = COALESCE($6, email),
-          whatsapp = COALESCE($7, whatsapp),
-          phone = COALESCE($8, phone),
-          notes = COALESCE($9, notes),
-          is_primary = COALESCE($10::boolean, is_primary),
-          active = COALESCE($11::boolean, active),
-          updated_by = COALESCE($12, updated_by)
+          contact_name = COALESCE($3, contact_name),
+          role = COALESCE($4, role),
+          email = COALESCE($5, email),
+          whatsapp = COALESCE($6, whatsapp),
+          phone = COALESCE($7, phone),
+          notes = COALESCE($8, notes),
+          is_primary = COALESCE($9::boolean, is_primary),
+          active = COALESCE($10::boolean, active),
+          updated_by = COALESCE($11, updated_by)
         WHERE id = $1
           AND deleted_at IS NULL
         RETURNING *
@@ -75,9 +69,6 @@ export async function handler(event) {
     const params = [
       id,
       hasOwn(body, "venueId") ? normalizeLowerText(body.venueId) : null,
-      hasOwn(body, "referenceKey")
-        ? normalizeReferenceKey(body.referenceKey)
-        : null,
       hasOwn(body, "contactName") ? normalizeOptionalText(body.contactName) : null,
       hasOwn(body, "role") ? normalizeContactRole(body.role) : null,
       hasOwn(body, "email") ? normalizeLowerText(body.email) : null,
@@ -100,7 +91,7 @@ export async function handler(event) {
     if (msg.toLowerCase().includes("duplicate")) {
       return json(409, {
         ok: false,
-        error: "Duplicate referenceKey",
+        error: "Duplicate contact id",
       });
     }
 
