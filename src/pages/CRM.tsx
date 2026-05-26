@@ -4,16 +4,13 @@ import {
   Button,
   Card,
   Col,
-  DatePicker,
   Form,
   Input,
-  InputNumber,
   List,
   Modal,
   Row,
   Select,
   Space,
-  Switch,
   Tag,
   Tabs,
   Typography,
@@ -30,6 +27,11 @@ import type {
   PartnerTouchpointInventory,
   TouchpointType,
 } from "../types/crm";
+import ContactInfoTab from "../components/crm/ContactInfoTab";
+import ContactInteractionsTab from "../components/crm/ContactInteractionsTab";
+import ContactInventoryTab from "../components/crm/ContactInventoryTab";
+import ContactSummaryCards from "../components/crm/ContactSummaryCards";
+import type { ContactModalTab, DraftContact } from "../components/crm/types";
 
 const CONTACTS_LIST_ENDPOINT = "/.netlify/functions/api-partner-contacts-list";
 const CONTACTS_CREATE_ENDPOINT =
@@ -80,17 +82,6 @@ const INTERACTION_OUTCOME_OPTIONS: {
   { label: "Not Interested", value: "not_interested" },
 ];
 
-type DraftContact = {
-  contactName: string;
-  role: PartnerContactRole;
-  email?: string;
-  whatsapp?: string;
-  phone?: string;
-  notes?: string;
-  isPrimary: boolean;
-  active: boolean;
-};
-
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     credentials: "include",
@@ -140,6 +131,14 @@ function toDraft(contact: PartnerContact): DraftContact {
   };
 }
 
+function makeTouchpointDraft(items: PartnerTouchpointInventory[]) {
+  const initialDraft = {} as Partial<Record<TouchpointType, number>>;
+  items.forEach((item) => {
+    initialDraft[item.touchpointType] = item.quantity;
+  });
+  return initialDraft;
+}
+
 export default function CRM() {
   const [loading, setLoading] = useState(true);
   const [savingContact, setSavingContact] = useState(false);
@@ -164,9 +163,7 @@ export default function CRM() {
   const [interactionSubmitting, setInteractionSubmitting] = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
-  const [contactModalTab, setContactModalTab] = useState<
-    "info" | "interactions" | "inventory"
-  >("info");
+  const [contactModalTab, setContactModalTab] = useState<ContactModalTab>("info");
   const [createForm] = Form.useForm();
   const [interactionForm] = Form.useForm();
   const [csvImportForm] = Form.useForm();
@@ -317,11 +314,7 @@ export default function CRM() {
 
         setTouchpoints(touchpointPayload.touchpoints || []);
         setInteractions(interactionPayload.interactions || []);
-        const initialDraft = {} as Partial<Record<TouchpointType, number>>;
-        (touchpointPayload.touchpoints || []).forEach((item) => {
-          initialDraft[item.touchpointType] = item.quantity;
-        });
-        setTouchpointDraft(initialDraft);
+        setTouchpointDraft(makeTouchpointDraft(touchpointPayload.touchpoints || []));
       } catch (error) {
         if (!cancelled) {
           message.error(String((error as Error)?.message || error));
@@ -518,8 +511,27 @@ export default function CRM() {
   }
 
   const totalVisibleContacts = filteredContacts.length;
+  const hasDraftChanges = Boolean(
+    selectedContact && draft && JSON.stringify(draft) !== JSON.stringify(toDraft(selectedContact)),
+  );
+  const hasTouchpointChanges = TOUCHPOINT_OPTIONS.some((option) => {
+    const savedQuantity = touchpointByType.get(option.value)?.quantity ?? 0;
+    const draftQuantity = touchpointDraft[option.value] ?? savedQuantity;
+    return Number(draftQuantity) !== Number(savedQuantity);
+  });
+  const hasInteractionFormChanges = interactionForm.isFieldsTouched();
+  const hasModalChanges = hasDraftChanges || hasTouchpointChanges || hasInteractionFormChanges;
 
-  const openContactModal = (tab: "info" | "interactions" | "inventory") => {
+  const resetModalState = () => {
+    if (selectedContact) {
+      setDraft(toDraft(selectedContact));
+    }
+    setTouchpointDraft(makeTouchpointDraft(touchpoints));
+    interactionForm.resetFields();
+    setContactModalOpen(false);
+  };
+
+  const openContactModal = (tab: ContactModalTab) => {
     if (!selectedContact) {
       message.info("Select a contact first");
       return;
@@ -532,6 +544,22 @@ export default function CRM() {
 
     setContactModalTab(tab);
     setContactModalOpen(true);
+  };
+
+  const handleCloseContactModal = () => {
+    if (!hasModalChanges) {
+      resetModalState();
+      return;
+    }
+
+    Modal.confirm({
+      title: "Discard unsaved CRM changes?",
+      content:
+        "You have unsaved contact, interaction, or inventory changes in this modal.",
+      okText: "Discard changes",
+      cancelText: "Keep editing",
+      onOk: resetModalState,
+    });
   };
 
   return (
@@ -692,66 +720,14 @@ export default function CRM() {
                   Select a contact to view management cards.
                 </Typography.Text>
               ) : (
-                <Row gutter={[12, 12]}>
-                  <Col xs={24} md={8}>
-                    <Card
-                      hoverable
-                      onClick={() => openContactModal("info")}
-                      style={{ height: "100%" }}
-                    >
-                      <Space direction="vertical" size={6} style={{ width: "100%" }}>
-                        <Typography.Text strong>Contact Details</Typography.Text>
-                        <Typography.Text>{selectedContact.contactName}</Typography.Text>
-                        <Tag>{selectedContact.role}</Tag>
-                        <Typography.Text type="secondary">
-                          {selectedContact.venueName || selectedContact.venueId}
-                        </Typography.Text>
-                        <Typography.Text type="secondary">
-                          Click to edit contact info
-                        </Typography.Text>
-                      </Space>
-                    </Card>
-                  </Col>
-                  <Col xs={24} md={8}>
-                    <Card
-                      hoverable
-                      onClick={() => openContactModal("interactions")}
-                      style={{ height: "100%" }}
-                    >
-                      <Space direction="vertical" size={6} style={{ width: "100%" }}>
-                        <Typography.Text strong>Log Calls & Interactions</Typography.Text>
-                        <Typography.Text>
-                          {interactions.length} interaction
-                          {interactions.length === 1 ? "" : "s"}
-                        </Typography.Text>
-                        <Typography.Text type="secondary">
-                          Scope: {interactionScope === "contact" ? "Selected Contact" : "Venue"}
-                        </Typography.Text>
-                        <Typography.Text type="secondary">
-                          Click to log calls and follow-ups
-                        </Typography.Text>
-                      </Space>
-                    </Card>
-                  </Col>
-                  <Col xs={24} md={8}>
-                    <Card
-                      hoverable
-                      onClick={() => openContactModal("inventory")}
-                      style={{ height: "100%" }}
-                    >
-                      <Space direction="vertical" size={6} style={{ width: "100%" }}>
-                        <Typography.Text strong>Inventory Updates</Typography.Text>
-                        <Typography.Text>{touchpoints.length} touchpoint types</Typography.Text>
-                        <Typography.Text type="secondary">
-                          Manage QR stands, postcards, tea tins, and more
-                        </Typography.Text>
-                        <Typography.Text type="secondary">
-                          Click to update quantities
-                        </Typography.Text>
-                      </Space>
-                    </Card>
-                  </Col>
-                </Row>
+                <ContactSummaryCards
+                  selectedContact={selectedContact}
+                  interactions={interactions}
+                  interactionScope={interactionScope}
+                  touchpoints={touchpoints}
+                  touchpointOptions={TOUCHPOINT_OPTIONS}
+                  onOpenTab={openContactModal}
+                />
               )}
             </Card>
 
@@ -762,346 +738,71 @@ export default function CRM() {
                   : "Manage Contact"
               }
               open={contactModalOpen}
-              onCancel={() => setContactModalOpen(false)}
+              onCancel={handleCloseContactModal}
               width={980}
               footer={null}
               destroyOnHidden
             >
               <Tabs
                 activeKey={contactModalTab}
-                onChange={(key) =>
-                  setContactModalTab(key as "info" | "interactions" | "inventory")
-                }
+                onChange={(key) => setContactModalTab(key as ContactModalTab)}
                 items={[
                   {
                     key: "info",
                     label: "Info",
-                    children:
-                      !selectedContact || !draft ? (
-                        <Typography.Text type="secondary">
-                          Select a contact to edit details.
-                        </Typography.Text>
-                      ) : (
-                        <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                          <Row gutter={12}>
-                            <Col xs={24} md={8}>
-                              <Typography.Text type="secondary">Venue Identifier</Typography.Text>
-                              <Input value={selectedContact.venueId} disabled />
-                            </Col>
-                            <Col xs={24} md={8}>
-                              <Typography.Text type="secondary">Contact ID</Typography.Text>
-                              <Input value={selectedContact.id} disabled />
-                            </Col>
-                            <Col xs={24} md={8}>
-                              <Typography.Text type="secondary">Role</Typography.Text>
-                              <Select
-                                value={draft.role}
-                                options={ROLE_OPTIONS}
-                                style={{ width: "100%" }}
-                                onChange={(value) =>
-                                  setDraft((prev) =>
-                                    prev
-                                      ? { ...prev, role: value as PartnerContactRole }
-                                      : prev,
-                                  )
-                                }
-                              />
-                            </Col>
-                            <Col xs={24} md={8}>
-                              <Typography.Text type="secondary">Contact Name</Typography.Text>
-                              <Input
-                                value={draft.contactName}
-                                onChange={(event) =>
-                                  setDraft((prev) =>
-                                    prev
-                                      ? { ...prev, contactName: event.target.value }
-                                      : prev,
-                                  )
-                                }
-                              />
-                            </Col>
-                            <Col xs={24} md={8}>
-                              <Typography.Text type="secondary">Email</Typography.Text>
-                              <Input
-                                value={draft.email}
-                                onChange={(event) =>
-                                  setDraft((prev) =>
-                                    prev ? { ...prev, email: event.target.value } : prev,
-                                  )
-                                }
-                              />
-                            </Col>
-                            <Col xs={24} md={8}>
-                              <Typography.Text type="secondary">WhatsApp</Typography.Text>
-                              <Input
-                                value={draft.whatsapp}
-                                onChange={(event) =>
-                                  setDraft((prev) =>
-                                    prev ? { ...prev, whatsapp: event.target.value } : prev,
-                                  )
-                                }
-                              />
-                            </Col>
-                            <Col xs={24} md={8}>
-                              <Typography.Text type="secondary">Phone</Typography.Text>
-                              <Input
-                                value={draft.phone}
-                                onChange={(event) =>
-                                  setDraft((prev) =>
-                                    prev ? { ...prev, phone: event.target.value } : prev,
-                                  )
-                                }
-                              />
-                            </Col>
-                            <Col xs={24} md={8}>
-                              <Typography.Text type="secondary">Primary Contact</Typography.Text>
-                              <div style={{ marginTop: 8 }}>
-                                <Switch
-                                  checked={draft.isPrimary}
-                                  onChange={(checked) =>
-                                    setDraft((prev) =>
-                                      prev ? { ...prev, isPrimary: checked } : prev,
-                                    )
-                                  }
-                                />
-                              </div>
-                            </Col>
-                            <Col xs={24} md={8}>
-                              <Typography.Text type="secondary">Active</Typography.Text>
-                              <div style={{ marginTop: 8 }}>
-                                <Switch
-                                  checked={draft.active}
-                                  onChange={(checked) =>
-                                    setDraft((prev) =>
-                                      prev ? { ...prev, active: checked } : prev,
-                                    )
-                                  }
-                                />
-                              </div>
-                            </Col>
-                            <Col xs={24}>
-                              <Typography.Text type="secondary">Notes</Typography.Text>
-                              <Input.TextArea
-                                value={draft.notes}
-                                rows={3}
-                                onChange={(event) =>
-                                  setDraft((prev) =>
-                                    prev ? { ...prev, notes: event.target.value } : prev,
-                                  )
-                                }
-                              />
-                            </Col>
-                          </Row>
-                          <Button
-                            type="primary"
-                            onClick={handleSaveContact}
-                            loading={savingContact}
-                            disabled={!selectedContact || !draft}
-                          >
-                            Save Contact
-                          </Button>
-                        </Space>
-                      ),
+                    children: (
+                      <ContactInfoTab
+                        selectedContact={selectedContact}
+                        draft={draft}
+                        roleOptions={ROLE_OPTIONS}
+                        savingContact={savingContact}
+                        onDraftChange={(patch) =>
+                          setDraft((prev) => (prev ? { ...prev, ...patch } : prev))
+                        }
+                        onSave={handleSaveContact}
+                      />
+                    ),
                   },
                   {
                     key: "interactions",
                     label: "Log Call/Interaction",
-                    children: !activeVenueId ? (
-                      <Typography.Text type="secondary">
-                        Select a venue/contact to log interactions.
-                      </Typography.Text>
-                    ) : (
-                      <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                        <Space align="center">
-                          <Typography.Text type="secondary">Interaction Scope</Typography.Text>
-                          <Select
-                            value={interactionScope}
-                            style={{ width: 220 }}
-                            options={[
-                              { label: "All contacts in this venue", value: "venue" },
-                              { label: "Only selected contact", value: "contact" },
-                            ]}
-                            onChange={(value) =>
-                              setInteractionScope(value as "venue" | "contact")
-                            }
-                          />
-                        </Space>
-
-                        <Form
-                          form={interactionForm}
-                          layout="vertical"
-                          onFinish={handleAddInteraction}
-                          initialValues={{
-                            interactionType: "call",
-                            outcomeStatus: "pending",
-                          }}
-                        >
-                          <Row gutter={12}>
-                            <Col xs={24} md={5}>
-                              <Form.Item
-                                name="interactionType"
-                                label="Type"
-                                rules={[{ required: true, message: "Type is required" }]}
-                              >
-                                <Select options={INTERACTION_OPTIONS} />
-                              </Form.Item>
-                            </Col>
-                            <Col xs={24} md={5}>
-                              <Form.Item
-                                name="outcomeStatus"
-                                label="Outcome"
-                                rules={[{ required: true, message: "Outcome is required" }]}
-                              >
-                                <Select options={INTERACTION_OUTCOME_OPTIONS} />
-                              </Form.Item>
-                            </Col>
-                            <Col xs={24} md={14}>
-                              <Form.Item
-                                name="summary"
-                                label="Summary"
-                                rules={[{ required: true, message: "Summary is required" }]}
-                              >
-                                <Input placeholder="Called manager, waiting for stock confirmation" />
-                              </Form.Item>
-                            </Col>
-                            <Col xs={24} md={12}>
-                              <Form.Item name="feedback" label="Feedback">
-                                <Input.TextArea
-                                  rows={2}
-                                  placeholder="Vendor feedback, blockers, or comments"
-                                />
-                              </Form.Item>
-                            </Col>
-                            <Col xs={24} md={6}>
-                              <Form.Item name="nextFollowUpAt" label="Follow-up Date">
-                                <DatePicker
-                                  showTime
-                                  style={{ width: "100%" }}
-                                  format="YYYY-MM-DD HH:mm"
-                                />
-                              </Form.Item>
-                            </Col>
-                            <Col xs={24} md={6}>
-                              <Form.Item name="nextAction" label="Next Action">
-                                <Input placeholder="Follow up Friday" />
-                              </Form.Item>
-                            </Col>
-                          </Row>
-                          <Button
-                            htmlType="submit"
-                            type="primary"
-                            loading={interactionSubmitting}
-                          >
-                            Log Interaction
-                          </Button>
-                        </Form>
-
-                        <List
-                          dataSource={interactions}
-                          locale={{ emptyText: "No interactions logged yet" }}
-                          renderItem={(item) => (
-                            <List.Item>
-                              <List.Item.Meta
-                                title={
-                                  <Space>
-                                    <Tag color="blue">{item.interactionType}</Tag>
-                                    <Tag>
-                                      {INTERACTION_OUTCOME_OPTIONS.find(
-                                        (option) => option.value === item.outcomeStatus,
-                                      )?.label || item.outcomeStatus}
-                                    </Tag>
-                                    <Typography.Text>{item.summary}</Typography.Text>
-                                  </Space>
-                                }
-                                description={
-                                  <Space direction="vertical" size={0}>
-                                    <Typography.Text type="secondary">
-                                      {new Date(item.interactionAt).toLocaleString()}
-                                    </Typography.Text>
-                                    {item.nextAction ? (
-                                      <Typography.Text type="secondary">
-                                        Next: {item.nextAction}
-                                      </Typography.Text>
-                                    ) : null}
-                                    {item.nextFollowUpAt ? (
-                                      <Typography.Text type="secondary">
-                                        Follow-up: {new Date(item.nextFollowUpAt).toLocaleString()}
-                                      </Typography.Text>
-                                    ) : null}
-                                    {item.feedback ? (
-                                      <Typography.Text type="secondary">
-                                        Feedback: {item.feedback}
-                                      </Typography.Text>
-                                    ) : null}
-                                    {item.contactName ? (
-                                      <Typography.Text type="secondary">
-                                        Contact: {item.contactName}
-                                      </Typography.Text>
-                                    ) : null}
-                                    {item.createdBy ? (
-                                      <Typography.Text type="secondary">
-                                        By: {item.createdBy}
-                                      </Typography.Text>
-                                    ) : null}
-                                  </Space>
-                                }
-                              />
-                            </List.Item>
-                          )}
-                        />
-                      </Space>
+                    children: (
+                      <ContactInteractionsTab
+                        activeVenueId={activeVenueId}
+                        selectedContact={selectedContact}
+                        interactionScope={interactionScope}
+                        interactionForm={interactionForm}
+                        interactionSubmitting={interactionSubmitting}
+                        interactions={interactions}
+                        interactionOptions={INTERACTION_OPTIONS}
+                        interactionOutcomeOptions={INTERACTION_OUTCOME_OPTIONS}
+                        onInteractionScopeChange={setInteractionScope}
+                        onSubmit={handleAddInteraction}
+                      />
                     ),
                   },
                   {
                     key: "inventory",
                     label: "Inventory",
-                    children: !activeVenueId ? (
-                      <Typography.Text type="secondary">
-                        Select a venue/contact to manage touchpoint counts.
-                      </Typography.Text>
-                    ) : (
-                      <List
-                        dataSource={TOUCHPOINT_OPTIONS}
-                        renderItem={(item) => {
-                          const existing = touchpointByType.get(item.value);
-                          return (
-                            <List.Item
-                              actions={[
-                                <Button
-                                  key="save"
-                                  type="link"
-                                  loading={touchpointSavingType === item.value}
-                                  onClick={() => {
-                                    const parsed = Number(touchpointDraft[item.value] || 0);
-                                    if (!Number.isInteger(parsed) || parsed < 0) {
-                                      message.error("Quantity must be a whole number >= 0");
-                                      return;
-                                    }
-                                    void saveTouchpoint(item.value, parsed);
-                                  }}
-                                >
-                                  Save
-                                </Button>,
-                              ]}
-                            >
-                              <Space style={{ width: "100%", justifyContent: "space-between" }}>
-                                <Typography.Text>{item.label}</Typography.Text>
-                                <InputNumber
-                                  min={0}
-                                  precision={0}
-                                  value={
-                                    touchpointDraft[item.value] ?? existing?.quantity ?? 0
-                                  }
-                                  onChange={(value) =>
-                                    setTouchpointDraft((prev) => ({
-                                      ...prev,
-                                      [item.value]: Number(value || 0),
-                                    }))
-                                  }
-                                />
-                              </Space>
-                            </List.Item>
-                          );
+                    children: (
+                      <ContactInventoryTab
+                        activeVenueId={activeVenueId}
+                        touchpointOptions={TOUCHPOINT_OPTIONS}
+                        touchpointByType={touchpointByType}
+                        touchpointDraft={touchpointDraft}
+                        touchpointSavingType={touchpointSavingType}
+                        onTouchpointChange={(touchpointType, quantity) =>
+                          setTouchpointDraft((prev) => ({
+                            ...prev,
+                            [touchpointType]: quantity,
+                          }))
+                        }
+                        onSaveTouchpoint={(touchpointType, quantity) => {
+                          if (!Number.isInteger(quantity) || quantity < 0) {
+                            message.error("Quantity must be a whole number >= 0");
+                            return;
+                          }
+                          void saveTouchpoint(touchpointType, quantity);
                         }}
                       />
                     ),
