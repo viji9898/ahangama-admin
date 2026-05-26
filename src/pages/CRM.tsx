@@ -31,6 +31,7 @@ import ContactInfoTab from "../components/crm/ContactInfoTab";
 import ContactInteractionsTab from "../components/crm/ContactInteractionsTab";
 import ContactInventoryTab from "../components/crm/ContactInventoryTab";
 import ContactSummaryCards from "../components/crm/ContactSummaryCards";
+import { makeGmailComposeUrl, makeWhatsAppUrl } from "../components/crm/contactLinks";
 import type { ContactModalTab, DraftContact } from "../components/crm/types";
 
 const CONTACTS_LIST_ENDPOINT = "/.netlify/functions/api-partner-contacts-list";
@@ -463,6 +464,8 @@ export default function CRM() {
   }
 
   const totalVisibleContacts = filteredContacts.length;
+  const contactWhatsappUrl = makeWhatsAppUrl(selectedContact?.whatsapp);
+  const contactGmailUrl = makeGmailComposeUrl(selectedContact?.email);
   const hasDraftChanges = Boolean(
     selectedContact && draft && JSON.stringify(draft) !== JSON.stringify(toDraft(selectedContact)),
   );
@@ -672,14 +675,31 @@ export default function CRM() {
                   Select a contact to view management cards.
                 </Typography.Text>
               ) : (
-                <ContactSummaryCards
-                  selectedContact={selectedContact}
-                  interactions={interactions}
-                  interactionScope={interactionScope}
-                  touchpoints={touchpoints}
-                  touchpointOptions={TOUCHPOINT_OPTIONS}
-                  onOpenTab={openContactModal}
-                />
+                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  {contactWhatsappUrl || contactGmailUrl ? (
+                    <Space wrap>
+                      {contactWhatsappUrl ? (
+                        <Button href={contactWhatsappUrl} target="_blank" rel="noreferrer">
+                          WhatsApp Contact
+                        </Button>
+                      ) : null}
+                      {contactGmailUrl ? (
+                        <Button href={contactGmailUrl} target="_blank" rel="noreferrer">
+                          Email Contact
+                        </Button>
+                      ) : null}
+                    </Space>
+                  ) : null}
+
+                  <ContactSummaryCards
+                    selectedContact={selectedContact}
+                    interactions={interactions}
+                    interactionScope={interactionScope}
+                    touchpoints={touchpoints}
+                    touchpointOptions={TOUCHPOINT_OPTIONS}
+                    onOpenTab={openContactModal}
+                  />
+                </Space>
               )}
             </Card>
 

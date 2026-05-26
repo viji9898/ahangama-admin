@@ -1,5 +1,6 @@
 import { Button, Col, Input, Row, Select, Space, Switch, Typography } from "antd";
 import type { PartnerContact, PartnerContactRole } from "../../types/crm";
+import { makeGmailComposeUrl, makeWhatsAppUrl } from "./contactLinks";
 import type { DraftContact } from "./types";
 
 type Props = {
@@ -27,8 +28,25 @@ export default function ContactInfoTab({
     );
   }
 
+  const whatsappUrl = makeWhatsAppUrl(draft.whatsapp);
+  const gmailUrl = makeGmailComposeUrl(draft.email);
+
   return (
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
+      {whatsappUrl || gmailUrl ? (
+        <Space wrap>
+          {whatsappUrl ? (
+            <Button href={whatsappUrl} target="_blank" rel="noreferrer">
+              WhatsApp Contact
+            </Button>
+          ) : null}
+          {gmailUrl ? (
+            <Button href={gmailUrl} target="_blank" rel="noreferrer">
+              Email Contact
+            </Button>
+          ) : null}
+        </Space>
+      ) : null}
       <Row gutter={12}>
         <Col xs={24} md={8}>
           <Typography.Text type="secondary">Venue Identifier</Typography.Text>
