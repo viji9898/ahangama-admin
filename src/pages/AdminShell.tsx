@@ -85,6 +85,17 @@ export default function AdminShell() {
             Venues
           </Link>
           <Link
+            to="/admin/crm"
+            style={{
+              color: "#fff",
+              textDecoration: location.pathname.startsWith("/admin/crm")
+                ? "underline"
+                : "none",
+            }}
+          >
+            CRM
+          </Link>
+          <Link
             to="/admin/qr"
             style={{
               color: "#fff",

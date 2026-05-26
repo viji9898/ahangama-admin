@@ -5,6 +5,7 @@ import AdminHome from "./pages/AdminHome";
 import LinkGenerator from "./pages/LinkGenerator";
 import QrLinkGenerator from "./pages/QrLinkGenerator";
 import QRDashboard from "./pages/QRDashboard.jsx";
+import CRM from "./pages/CRM";
 import { RequireAuth } from "./auth/RequireAuth";
 import AdminShell from "./pages/AdminShell";
 
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="links" element={<LinkGenerator />} />
           <Route path="qr-links" element={<QrLinkGenerator />} />
           <Route path="venues" element={<Admin />} />
+          <Route path="crm" element={<CRM />} />
           <Route path="qr" element={<QRDashboard />} />
         </Route>
 
