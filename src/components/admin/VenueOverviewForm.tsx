@@ -8,6 +8,7 @@ import {
   Select,
   Space,
   Switch,
+  Tooltip,
   Typography,
 } from "antd";
 import { EDITORIAL_TAGS } from "../../constants/editorialTags";
@@ -59,6 +60,25 @@ export function VenueOverviewForm({ venue, categoryOptions, onPatch }: Props) {
             />
           </Form.Item>
         </Col>
+        <Col span={12}>
+          <Form.Item
+            label={
+              <Space size={6}>
+                <span>Venue ID</span>
+                <Tooltip title="Venue ID is locked after creation. Contact admin to change it.">
+                  <Typography.Text type="secondary" aria-label="Venue ID info">
+                    i
+                  </Typography.Text>
+                </Tooltip>
+              </Space>
+            }
+          >
+            <Input value={venue.id || ""} disabled />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={12}>
         <Col span={12}>
           <Form.Item label="Category">
             <Select

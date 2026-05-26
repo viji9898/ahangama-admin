@@ -118,48 +118,7 @@ export async function handler(event) {
         $32,$33,$34,$35,$36,$37,
         $38,$39,$40,$41,NULL
       )
-      ON CONFLICT (id) DO UPDATE SET
-        destination_slug = EXCLUDED.destination_slug,
-        category = EXCLUDED.category,
-        name = EXCLUDED.name,
-        slug = EXCLUDED.slug,
-        status = EXCLUDED.status,
-        stars = EXCLUDED.stars,
-        reviews = EXCLUDED.reviews,
-        excerpt = EXCLUDED.excerpt,
-        description = EXCLUDED.description,
-        best_for = EXCLUDED.best_for,
-        tags = EXCLUDED.tags,
-        editorial_tags = EXCLUDED.editorial_tags,
-        card_perk = EXCLUDED.card_perk,
-        offer = EXCLUDED.offer,
-        how_to_claim = EXCLUDED.how_to_claim,
-        restrictions = EXCLUDED.restrictions,
-        discount = EXCLUDED.discount,
-        price = EXCLUDED.price,
-        hours = EXCLUDED.hours,
-        area = EXCLUDED.area,
-        lat = EXCLUDED.lat,
-        lng = EXCLUDED.lng,
-        map_url = EXCLUDED.map_url,
-        google_place_id = EXCLUDED.google_place_id,
-        whatsapp = EXCLUDED.whatsapp,
-        email = EXCLUDED.email,
-        instagram = EXCLUDED.instagram,
-        logo = EXCLUDED.logo,
-        image = EXCLUDED.image,
-        og_image = EXCLUDED.og_image,
-        live = EXCLUDED.live,
-        is_pass_venue = EXCLUDED.is_pass_venue,
-        staff_pick = EXCLUDED.staff_pick,
-        is_featured = EXCLUDED.is_featured,
-        priority_score = EXCLUDED.priority_score,
-        pass_priority = EXCLUDED.pass_priority,
-        updated_by = EXCLUDED.updated_by,
-        source = EXCLUDED.source,
-        notes_internal = EXCLUDED.notes_internal,
-        deleted_at = NULL
-      RETURNING *, (xmax = 0) AS inserted;
+      RETURNING *;
     `;
 
     const params = [
@@ -208,9 +167,21 @@ export async function handler(event) {
 
     const r = await query(sql, params);
     const row = r.rows[0];
-    const inserted = !!row.inserted;
-    return json(200, { ok: true, inserted, venue: toVenueDto(row) });
+    return json(200, { ok: true, inserted: true, venue: toVenueDto(row) });
   } catch (e) {
+    if (e?.code === "23505") {
+      const constraint = String(e?.constraint || "");
+      let message = "Duplicate venue id or slug";
+
+      if (constraint === "venues260414_pkey") {
+        message = "Venue ID already exists";
+      } else if (constraint === "venues260414_destination_slug_slug_key") {
+        message = "Slug already exists for this destination";
+      }
+
+      return json(409, { ok: false, error: message });
+    }
+
     const statusCode = e?.statusCode || 500;
     return json(statusCode, { ok: false, error: String(e?.message || e) });
   }

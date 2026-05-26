@@ -896,6 +896,20 @@ export function VenueAdminPage() {
         ...createForm.getFieldsValue(true),
       } as CreateVenueFormValues;
       const category = normalizeText(formValues.category).toLowerCase();
+      const finalSlug = slugify(formValues.slug || "");
+      const finalId = slugify(formValues.id?.trim() || finalSlug);
+
+      if (!finalId) {
+        throw new Error("Venue ID is required");
+      }
+
+      const duplicateId = venues.some(
+        (venue) => normalizeId(venue.id) === normalizeId(finalId),
+      );
+      if (duplicateId) {
+        throw new Error("Venue ID already exists. Choose a different Venue ID.");
+      }
+
       const payload = {
         destinationSlug: normalizeText(
           formValues.destinationSlug,
@@ -903,8 +917,8 @@ export function VenueAdminPage() {
         category,
         categories: category ? [category] : [],
         name: normalizeText(formValues.name),
-        slug: slugify(formValues.slug || ""),
-        id: formValues.id?.trim() ? slugify(formValues.id) : undefined,
+        slug: finalSlug,
+        id: finalId,
         offers: textToList(formValues.offers || ""),
         discount: discountPercentToDb(formValues.discount),
         stars: formValues.stars ?? null,
@@ -1248,7 +1262,29 @@ export function VenueAdminPage() {
                   <Form.Item
                     label="Venue ID"
                     name="id"
-                    extra="Defaults to the slug."
+                    extra="This can only be set at creation and cannot be changed later."
+                    rules={[
+                      {
+                        validator: async (_, value) => {
+                          const fallbackSlug = slugify(
+                            String(createForm.getFieldValue("slug") || ""),
+                          );
+                          const finalId = slugify(String(value || fallbackSlug));
+
+                          if (!finalId) {
+                            throw new Error("Venue ID is required");
+                          }
+
+                          const isDuplicate = venues.some(
+                            (venue) => normalizeId(venue.id) === normalizeId(finalId),
+                          );
+
+                          if (isDuplicate) {
+                            throw new Error("Venue ID already exists");
+                          }
+                        },
+                      },
+                    ]}
                   >
                     <Input placeholder="palm-hotel" />
                   </Form.Item>
