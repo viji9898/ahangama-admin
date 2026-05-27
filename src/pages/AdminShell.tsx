@@ -1,3 +1,15 @@
+import {
+  BarChartOutlined,
+  ClockCircleOutlined,
+  HomeOutlined,
+  LinkOutlined,
+  LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  QrcodeOutlined,
+  ShopOutlined,
+  TeamOutlined,
+} from "@ant-design/icons";
 import { Button, Grid, Layout, Menu, Space, Typography, message } from "antd";
 import "antd/dist/reset.css";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -5,14 +17,26 @@ import { useState } from "react";
 import { useAuth } from "../auth/useAuth";
 
 const navItems = [
-  { key: "/admin", label: "Home" },
-  { key: "/admin/activity", label: "Recent Activity" },
-  { key: "/admin/operations", label: "Daily Operations" },
-  { key: "/admin/links", label: "IG Link Generator" },
-  { key: "/admin/qr-links", label: "QR Links" },
-  { key: "/admin/venues", label: "Venues" },
-  { key: "/admin/crm", label: "CRM" },
-  { key: "/admin/qr", label: "QR Analytics" },
+  { key: "/admin", label: "Home", icon: <HomeOutlined /> },
+  {
+    key: "/admin/activity",
+    label: "Recent Activity",
+    icon: <ClockCircleOutlined />,
+  },
+  {
+    key: "/admin/operations",
+    label: "Daily Operations",
+    icon: <ClockCircleOutlined />,
+  },
+  {
+    key: "/admin/links",
+    label: "IG Link Generator",
+    icon: <LinkOutlined />,
+  },
+  { key: "/admin/qr-links", label: "QR Links", icon: <QrcodeOutlined /> },
+  { key: "/admin/venues", label: "Venues", icon: <ShopOutlined /> },
+  { key: "/admin/crm", label: "CRM", icon: <TeamOutlined /> },
+  { key: "/admin/qr", label: "QR Analytics", icon: <BarChartOutlined /> },
 ];
 
 export default function AdminShell() {
@@ -21,9 +45,11 @@ export default function AdminShell() {
   const { user } = useAuth();
   const screens = Grid.useBreakpoint();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const displayName = (user?.name || user?.email || "").toString();
   const isSmallScreen = !screens.md;
+  const navCollapsed = !isSmallScreen && collapsed;
   const selectedKey =
     navItems.find((item) =>
       item.key === "/admin"
@@ -57,6 +83,9 @@ export default function AdminShell() {
         <Layout.Sider
           theme="dark"
           width={260}
+          collapsed={!isSmallScreen && collapsed}
+          collapsedWidth={88}
+          trigger={null}
           style={{
             background: "#0f172a",
             flex: isSmallScreen ? "0 0 auto" : undefined,
@@ -70,14 +99,29 @@ export default function AdminShell() {
               borderBottom: "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            <Typography.Text style={{ color: "#fff", fontWeight: 600 }}>
-              Ahangama Admin
-            </Typography.Text>
+            <Space
+              align="center"
+              style={{ width: "100%", justifyContent: "space-between" }}
+            >
+              <Typography.Text style={{ color: "#fff", fontWeight: 600 }}>
+                {navCollapsed ? "AA" : "Ahangama Admin"}
+              </Typography.Text>
+              {!isSmallScreen ? (
+                <Button
+                  type="text"
+                  icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                  onClick={() => setCollapsed((value) => !value)}
+                  aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+                  style={{ color: "#fff" }}
+                />
+              ) : null}
+            </Space>
           </div>
 
           <Menu
             theme="dark"
             mode={isSmallScreen ? "horizontal" : "inline"}
+            inlineCollapsed={isSmallScreen ? undefined : collapsed}
             selectedKeys={[selectedKey]}
             items={navItems}
             onClick={({ key }) => navigate(key)}
@@ -97,7 +141,7 @@ export default function AdminShell() {
               borderTop: "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            {displayName ? (
+            {displayName && !navCollapsed ? (
               <Typography.Text style={{ color: "#fff" }}>
                 {displayName}
               </Typography.Text>
@@ -109,8 +153,9 @@ export default function AdminShell() {
               onClick={logout}
               loading={loggingOut}
               style={{ color: "#fff", padding: 0 }}
+              icon={<LogoutOutlined />}
             >
-              Logout
+              {navCollapsed && !isSmallScreen ? null : "Logout"}
             </Button>
           </Space>
         </Layout.Sider>
