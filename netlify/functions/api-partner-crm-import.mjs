@@ -33,7 +33,9 @@ function normalizeCsvKey(value) {
 }
 
 function asBoolean(value, fallback = false) {
-  const normalized = String(value || "").trim().toLowerCase();
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
   if (!normalized) return fallback;
   return normalized === "true" || normalized === "1" || normalized === "yes";
 }
@@ -99,7 +101,9 @@ export async function handler(event) {
       return json(400, { ok: false, error: "Invalid JSON body" });
     }
 
-    const resource = String(body.resource || "contacts").trim().toLowerCase();
+    const resource = String(body.resource || "contacts")
+      .trim()
+      .toLowerCase();
     const csv = String(body.csv || "");
     if (!csv.trim()) {
       return json(400, { ok: false, error: "csv is required" });
@@ -271,7 +275,9 @@ export async function handler(event) {
               normalizeOptionalText(
                 pick(row, "next_follow_up_at", "nextFollowUpAt"),
               ),
-              normalizeOptionalText(pick(row, "interaction_at", "interactionAt")),
+              normalizeOptionalText(
+                pick(row, "interaction_at", "interactionAt"),
+              ),
               actorEmail,
             ],
           );

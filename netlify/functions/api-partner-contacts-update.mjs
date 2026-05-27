@@ -64,7 +64,10 @@ export async function handler(event) {
     }
     const beforeRow = beforeResult.rows[0];
 
-    if (hasOwn(body, "contactName") && !normalizeOptionalText(body.contactName)) {
+    if (
+      hasOwn(body, "contactName") &&
+      !normalizeOptionalText(body.contactName)
+    ) {
       return json(400, { ok: false, error: "contactName is required" });
     }
 
@@ -96,7 +99,9 @@ export async function handler(event) {
     const params = [
       id,
       hasOwn(body, "venueId") ? normalizeLowerText(body.venueId) : null,
-      hasOwn(body, "contactName") ? normalizeOptionalText(body.contactName) : null,
+      hasOwn(body, "contactName")
+        ? normalizeOptionalText(body.contactName)
+        : null,
       hasOwn(body, "role") ? normalizeContactRole(body.role) : null,
       hasOwn(body, "email") ? normalizeLowerText(body.email) : null,
       hasOwn(body, "whatsapp") ? normalizeOptionalText(body.whatsapp) : null,

@@ -1,5 +1,7 @@
 export function makeWhatsAppUrl(value?: string | null) {
-  const normalized = String(value || "").replace(/[^\d+]/g, "").trim();
+  const normalized = String(value || "")
+    .replace(/[^\d+]/g, "")
+    .trim();
   if (!normalized) return null;
   const phone = normalized.startsWith("+") ? normalized.slice(1) : normalized;
   return `https://wa.me/${encodeURIComponent(phone)}`;

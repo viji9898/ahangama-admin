@@ -10,7 +10,10 @@ type Props = {
   touchpointByType: Map<TouchpointType, PartnerTouchpointInventory>;
   touchpointDraft: Partial<Record<TouchpointType, number>>;
   touchpointSavingType: TouchpointType | null;
-  onTouchpointChange: (touchpointType: TouchpointType, quantity: number) => void;
+  onTouchpointChange: (
+    touchpointType: TouchpointType,
+    quantity: number,
+  ) => void;
   onSaveTouchpoint: (touchpointType: TouchpointType, quantity: number) => void;
 };
 
@@ -58,7 +61,9 @@ export default function ContactInventoryTab({
                 min={0}
                 precision={0}
                 value={touchpointDraft[item.value] ?? existing?.quantity ?? 0}
-                onChange={(value) => onTouchpointChange(item.value, Number(value || 0))}
+                onChange={(value) =>
+                  onTouchpointChange(item.value, Number(value || 0))
+                }
               />
             </Space>
           </List.Item>

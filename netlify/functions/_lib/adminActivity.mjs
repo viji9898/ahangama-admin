@@ -20,7 +20,9 @@ export function diffFields(beforeRow, afterRow, fieldMap) {
   return Object.entries(fieldMap).flatMap(([key, label]) => {
     const beforeValue = beforeRow[key] ?? null;
     const afterValue = afterRow[key] ?? null;
-    return JSON.stringify(beforeValue) === JSON.stringify(afterValue) ? [] : [label];
+    return JSON.stringify(beforeValue) === JSON.stringify(afterValue)
+      ? []
+      : [label];
   });
 }
 
@@ -41,7 +43,12 @@ export async function logAdminActivity({
   const normalizedEntityType = normalizeActivityLowerText(entityType);
   const normalizedEntityId = normalizeActivityLowerText(entityId);
 
-  if (!normalizedActorEmail || !normalizedAction || !normalizedEntityType || !normalizedEntityId) {
+  if (
+    !normalizedActorEmail ||
+    !normalizedAction ||
+    !normalizedEntityType ||
+    !normalizedEntityId
+  ) {
     return;
   }
 

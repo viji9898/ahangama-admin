@@ -33,7 +33,9 @@ export async function handler(event) {
     requireAdmin(event);
 
     const qs = event.queryStringParameters || {};
-    const resource = String(qs.resource || "contacts").trim().toLowerCase();
+    const resource = String(qs.resource || "contacts")
+      .trim()
+      .toLowerCase();
     const venueId = normalizeLowerText(qs.venueId);
 
     if (resource === "contacts") {

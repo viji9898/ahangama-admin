@@ -42,8 +42,12 @@ export async function handler(event) {
       entityType,
       entityId,
       entityName: normalizeActivityText(body.entityName),
-      venueId: normalizeActivityLowerText(body.venueId) || (entityType === "venue" ? entityId : null),
-      contactId: normalizeActivityLowerText(body.contactId) || (entityType === "contact" ? entityId : null),
+      venueId:
+        normalizeActivityLowerText(body.venueId) ||
+        (entityType === "venue" ? entityId : null),
+      contactId:
+        normalizeActivityLowerText(body.contactId) ||
+        (entityType === "contact" ? entityId : null),
       details: {
         source: normalizeActivityText(body.source) || "admin-ui",
       },

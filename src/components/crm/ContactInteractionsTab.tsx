@@ -1,4 +1,16 @@
-import { Button, Col, DatePicker, Form, Input, List, Row, Select, Space, Tag, Typography } from "antd";
+import {
+  Button,
+  Col,
+  DatePicker,
+  Form,
+  Input,
+  List,
+  Row,
+  Select,
+  Space,
+  Tag,
+  Typography,
+} from "antd";
 import type { FormInstance } from "antd/es/form";
 import type { Dayjs } from "dayjs";
 import type {
@@ -59,7 +71,9 @@ export default function ContactInteractionsTab({
             { label: "All contacts in this venue", value: "venue" },
             { label: "Only selected contact", value: "contact" },
           ]}
-          onChange={(value) => onInteractionScopeChange(value as "venue" | "contact")}
+          onChange={(value) =>
+            onInteractionScopeChange(value as "venue" | "contact")
+          }
         />
         {selectedContact ? (
           <Typography.Text type="secondary">
@@ -128,7 +142,11 @@ export default function ContactInteractionsTab({
             </Form.Item>
           </Col>
         </Row>
-        <Button htmlType="submit" type="primary" loading={interactionSubmitting}>
+        <Button
+          htmlType="submit"
+          type="primary"
+          loading={interactionSubmitting}
+        >
           Log Interaction
         </Button>
       </Form>
@@ -156,21 +174,30 @@ export default function ContactInteractionsTab({
                     {new Date(item.interactionAt).toLocaleString()}
                   </Typography.Text>
                   {item.nextAction ? (
-                    <Typography.Text type="secondary">Next: {item.nextAction}</Typography.Text>
+                    <Typography.Text type="secondary">
+                      Next: {item.nextAction}
+                    </Typography.Text>
                   ) : null}
                   {item.nextFollowUpAt ? (
                     <Typography.Text type="secondary">
-                      Follow-up: {new Date(item.nextFollowUpAt).toLocaleString()}
+                      Follow-up:{" "}
+                      {new Date(item.nextFollowUpAt).toLocaleString()}
                     </Typography.Text>
                   ) : null}
                   {item.feedback ? (
-                    <Typography.Text type="secondary">Feedback: {item.feedback}</Typography.Text>
+                    <Typography.Text type="secondary">
+                      Feedback: {item.feedback}
+                    </Typography.Text>
                   ) : null}
                   {item.contactName ? (
-                    <Typography.Text type="secondary">Contact: {item.contactName}</Typography.Text>
+                    <Typography.Text type="secondary">
+                      Contact: {item.contactName}
+                    </Typography.Text>
                   ) : null}
                   {item.createdBy ? (
-                    <Typography.Text type="secondary">By: {item.createdBy}</Typography.Text>
+                    <Typography.Text type="secondary">
+                      By: {item.createdBy}
+                    </Typography.Text>
                   ) : null}
                 </Space>
               }

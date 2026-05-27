@@ -40,14 +40,18 @@ export async function handler(event) {
 
     const venueId = normalizeLowerText(body.venueId);
     const interactionType = normalizeInteractionType(body.interactionType);
-    const outcomeStatus = normalizeInteractionOutcome(body.outcomeStatus, "pending");
+    const outcomeStatus = normalizeInteractionOutcome(
+      body.outcomeStatus,
+      "pending",
+    );
     const summary = normalizeOptionalText(body.summary);
 
     if (!venueId) return badRequest("venueId is required");
     if (!summary) return badRequest("summary is required");
 
     const id =
-      normalizeLowerText(body.id) || makeInteractionId(venueId, interactionType);
+      normalizeLowerText(body.id) ||
+      makeInteractionId(venueId, interactionType);
 
     const contactId = normalizeLowerText(body.contactId);
     const feedback = normalizeOptionalText(body.feedback);

@@ -1,10 +1,7 @@
 import { requireAdmin } from "./_lib/auth.mjs";
 import { logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
-import {
-  PARTNER_CONTACTS_TABLE,
-  normalizeLowerText,
-} from "./_lib/crm.mjs";
+import { PARTNER_CONTACTS_TABLE, normalizeLowerText } from "./_lib/crm.mjs";
 
 const json = (statusCode, body) => ({
   statusCode,

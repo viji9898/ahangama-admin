@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 
 export const PARTNER_CONTACTS_TABLE = "partner_contacts";
-export const PARTNER_TOUCHPOINT_INVENTORY_TABLE = "partner_touchpoint_inventory";
+export const PARTNER_TOUCHPOINT_INVENTORY_TABLE =
+  "partner_touchpoint_inventory";
 export const PARTNER_INTERACTIONS_TABLE = "partner_interactions";
 
 export const VALID_CONTACT_ROLES = new Set(["owner", "manager", "other"]);

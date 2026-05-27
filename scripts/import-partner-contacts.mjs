@@ -50,7 +50,9 @@ function pick(row, ...keys) {
 }
 
 function asBoolean(value, fallback = false) {
-  const normalized = String(value || "").trim().toLowerCase();
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
   if (!normalized) return fallback;
   return normalized === "true" || normalized === "1" || normalized === "yes";
 }
@@ -118,7 +120,8 @@ function printUsage() {
 async function main() {
   const filePath = getArgValue("--file") || process.argv[2] || null;
   const apply = process.argv.includes("--apply");
-  const actor = normalizeLowerText(getArgValue("--actor")) || "import:partner-contacts";
+  const actor =
+    normalizeLowerText(getArgValue("--actor")) || "import:partner-contacts";
 
   if (!filePath) {
     printUsage();
@@ -193,7 +196,9 @@ async function main() {
     });
 
     if (!apply) {
-      console.log("Dry run complete. Re-run with --apply to write to the database.");
+      console.log(
+        "Dry run complete. Re-run with --apply to write to the database.",
+      );
       return;
     }
 

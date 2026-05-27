@@ -136,38 +136,44 @@ function MetricCard({
 }
 
 function getActivityActionLabel(activity: AdminActivity) {
-  const entityLabel = {
-    venue: "venue",
-    contact: "contact",
-    touchpoint: "inventory",
-    interaction: "interaction",
-  }[activity.entityType] || activity.entityType;
+  const entityLabel =
+    {
+      venue: "venue",
+      contact: "contact",
+      touchpoint: "inventory",
+      interaction: "interaction",
+    }[activity.entityType] || activity.entityType;
 
-  const verb = {
-    view: "viewed",
-    create: "created",
-    import: "imported",
-    update: "updated",
-    delete: "deleted",
-  }[activity.action] || activity.action;
+  const verb =
+    {
+      view: "viewed",
+      create: "created",
+      import: "imported",
+      update: "updated",
+      delete: "deleted",
+    }[activity.action] || activity.action;
 
   return `${verb} ${entityLabel}`;
 }
 
 function getActivityActionColor(action: string) {
-  return {
-    view: "default",
-    create: "green",
-    import: "purple",
-    update: "blue",
-    delete: "red",
-  }[action] || "default";
+  return (
+    {
+      view: "default",
+      create: "green",
+      import: "purple",
+      update: "blue",
+      delete: "red",
+    }[action] || "default"
+  );
 }
 
 function getActivityTarget(activity: AdminActivity) {
   if (activity.entityType === "venue") {
     const venueId = String(activity.venueId || activity.entityId || "");
-    return venueId ? `/admin/venues?venue=${encodeURIComponent(venueId)}` : "/admin/venues";
+    return venueId
+      ? `/admin/venues?venue=${encodeURIComponent(venueId)}`
+      : "/admin/venues";
   }
 
   if (
@@ -554,57 +560,63 @@ export default function AdminHome() {
                     {activities.map((activity) => {
                       const detailTags = getActivityDetailTags(activity);
                       return (
-                      <Card
-                        key={activity.id}
-                        size="small"
-                        styles={{ body: { padding: 16 } }}
-                        style={{
-                          borderRadius: 16,
-                          background: "rgba(255,255,255,0.72)",
-                        }}
-                      >
-                        <Row
-                          justify="space-between"
-                          align="middle"
-                          gutter={[12, 12]}
+                        <Card
+                          key={activity.id}
+                          size="small"
+                          styles={{ body: { padding: 16 } }}
+                          style={{
+                            borderRadius: 16,
+                            background: "rgba(255,255,255,0.72)",
+                          }}
                         >
-                          <Col flex="auto">
-                            <Typography.Text
-                              strong
-                              style={{ display: "block" }}
-                            >
-                              {activity.entityName || activity.entityId || "Untitled activity"}
-                            </Typography.Text>
-                            <Typography.Text type="secondary">
-                              {getActivityActionLabel(activity)}
-                            </Typography.Text>
-                            <div style={{ marginTop: 8 }}>
-                              <Space size={[8, 8]} wrap>
-                                <Tag color={getActivityActionColor(activity.action)}>
-                                  {activity.action}
-                                </Tag>
-                                <Tag>{activity.entityType}</Tag>
-                                {activity.actorEmail ? (
-                                  <Tag>{activity.actorEmail}</Tag>
-                                ) : null}
-                                {detailTags.map((detail) => (
-                                  <Tag key={detail}>{detail}</Tag>
-                                ))}
-                              </Space>
-                            </div>
-                          </Col>
-                          <Col>
-                            <Space direction="vertical" size={8} align="end">
-                              <Typography.Text type="secondary">
-                                {formatDateTime(activity.createdAt)}
+                          <Row
+                            justify="space-between"
+                            align="middle"
+                            gutter={[12, 12]}
+                          >
+                            <Col flex="auto">
+                              <Typography.Text
+                                strong
+                                style={{ display: "block" }}
+                              >
+                                {activity.entityName ||
+                                  activity.entityId ||
+                                  "Untitled activity"}
                               </Typography.Text>
-                              <Link to={getActivityTarget(activity)}>
-                                <Button size="small">Open</Button>
-                              </Link>
-                            </Space>
-                          </Col>
-                        </Row>
-                      </Card>
+                              <Typography.Text type="secondary">
+                                {getActivityActionLabel(activity)}
+                              </Typography.Text>
+                              <div style={{ marginTop: 8 }}>
+                                <Space size={[8, 8]} wrap>
+                                  <Tag
+                                    color={getActivityActionColor(
+                                      activity.action,
+                                    )}
+                                  >
+                                    {activity.action}
+                                  </Tag>
+                                  <Tag>{activity.entityType}</Tag>
+                                  {activity.actorEmail ? (
+                                    <Tag>{activity.actorEmail}</Tag>
+                                  ) : null}
+                                  {detailTags.map((detail) => (
+                                    <Tag key={detail}>{detail}</Tag>
+                                  ))}
+                                </Space>
+                              </div>
+                            </Col>
+                            <Col>
+                              <Space direction="vertical" size={8} align="end">
+                                <Typography.Text type="secondary">
+                                  {formatDateTime(activity.createdAt)}
+                                </Typography.Text>
+                                <Link to={getActivityTarget(activity)}>
+                                  <Button size="small">Open</Button>
+                                </Link>
+                              </Space>
+                            </Col>
+                          </Row>
+                        </Card>
                       );
                     })}
                   </Space>

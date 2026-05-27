@@ -1,4 +1,13 @@
-import { Button, Col, Input, Row, Select, Space, Switch, Typography } from "antd";
+import {
+  Button,
+  Col,
+  Input,
+  Row,
+  Select,
+  Space,
+  Switch,
+  Typography,
+} from "antd";
 import type { PartnerContact, PartnerContactRole } from "../../types/crm";
 import { makeGmailComposeUrl, makeWhatsAppUrl } from "./contactLinks";
 import type { DraftContact } from "./types";
@@ -62,14 +71,18 @@ export default function ContactInfoTab({
             value={draft.role}
             options={roleOptions}
             style={{ width: "100%" }}
-            onChange={(value) => onDraftChange({ role: value as PartnerContactRole })}
+            onChange={(value) =>
+              onDraftChange({ role: value as PartnerContactRole })
+            }
           />
         </Col>
         <Col xs={24} md={8}>
           <Typography.Text type="secondary">Contact Name</Typography.Text>
           <Input
             value={draft.contactName}
-            onChange={(event) => onDraftChange({ contactName: event.target.value })}
+            onChange={(event) =>
+              onDraftChange({ contactName: event.target.value })
+            }
           />
         </Col>
         <Col xs={24} md={8}>
@@ -83,7 +96,9 @@ export default function ContactInfoTab({
           <Typography.Text type="secondary">WhatsApp</Typography.Text>
           <Input
             value={draft.whatsapp}
-            onChange={(event) => onDraftChange({ whatsapp: event.target.value })}
+            onChange={(event) =>
+              onDraftChange({ whatsapp: event.target.value })
+            }
           />
         </Col>
         <Col xs={24} md={8}>

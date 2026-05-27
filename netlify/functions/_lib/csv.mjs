@@ -11,9 +11,7 @@ export function toCsv(headers, rows) {
   const head = headers.map((header) => escapeCsvCell(header.label)).join(",");
   const body = rows
     .map((row) =>
-      headers
-        .map((header) => escapeCsvCell(row[header.key]))
-        .join(","),
+      headers.map((header) => escapeCsvCell(row[header.key])).join(","),
     )
     .join("\n");
   return `${head}\n${body}`;
@@ -68,11 +66,14 @@ export function parseCsv(csvText) {
   if (!rows.length) return [];
 
   const headers = rows[0].map((cell) => String(cell || "").trim());
-  return rows.slice(1).filter((cells) => cells.some((c) => String(c || "").trim())).map((cells) => {
-    const out = {};
-    headers.forEach((header, index) => {
-      out[header] = String(cells[index] || "").trim();
+  return rows
+    .slice(1)
+    .filter((cells) => cells.some((c) => String(c || "").trim()))
+    .map((cells) => {
+      const out = {};
+      headers.forEach((header, index) => {
+        out[header] = String(cells[index] || "").trim();
+      });
+      return out;
     });
-    return out;
-  });
 }

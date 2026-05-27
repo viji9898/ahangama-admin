@@ -31,7 +31,10 @@ import ContactInfoTab from "../components/crm/ContactInfoTab";
 import ContactInteractionsTab from "../components/crm/ContactInteractionsTab";
 import ContactInventoryTab from "../components/crm/ContactInventoryTab";
 import ContactSummaryCards from "../components/crm/ContactSummaryCards";
-import { makeGmailComposeUrl, makeWhatsAppUrl } from "../components/crm/contactLinks";
+import {
+  makeGmailComposeUrl,
+  makeWhatsAppUrl,
+} from "../components/crm/contactLinks";
 import type { ContactModalTab, DraftContact } from "../components/crm/types";
 
 const CONTACTS_LIST_ENDPOINT = "/.netlify/functions/api-partner-contacts-list";
@@ -92,7 +95,9 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     },
   });
 
-  const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+  const contentType = String(
+    response.headers.get("content-type") || "",
+  ).toLowerCase();
   const raw = await response.text();
 
   if (!contentType.includes("application/json")) {
@@ -162,7 +167,8 @@ export default function CRM() {
   );
   const [interactionSubmitting, setInteractionSubmitting] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
-  const [contactModalTab, setContactModalTab] = useState<ContactModalTab>("info");
+  const [contactModalTab, setContactModalTab] =
+    useState<ContactModalTab>("info");
   const [createForm] = Form.useForm();
   const [interactionForm] = Form.useForm();
   const lastTrackedContactIdRef = useRef<string>("");
@@ -173,7 +179,10 @@ export default function CRM() {
   );
 
   useEffect(() => {
-    if (!selectedContact?.id || lastTrackedContactIdRef.current === selectedContact.id) {
+    if (
+      !selectedContact?.id ||
+      lastTrackedContactIdRef.current === selectedContact.id
+    ) {
       return;
     }
 
@@ -192,7 +201,11 @@ export default function CRM() {
         source: "crm",
       }),
     }).catch(() => undefined);
-  }, [selectedContact?.id, selectedContact?.contactName, selectedContact?.venueId]);
+  }, [
+    selectedContact?.id,
+    selectedContact?.contactName,
+    selectedContact?.venueId,
+  ]);
 
   const filteredContacts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -335,7 +348,9 @@ export default function CRM() {
 
         setTouchpoints(touchpointPayload.touchpoints || []);
         setInteractions(interactionPayload.interactions || []);
-        setTouchpointDraft(makeTouchpointDraft(touchpointPayload.touchpoints || []));
+        setTouchpointDraft(
+          makeTouchpointDraft(touchpointPayload.touchpoints || []),
+        );
       } catch (error) {
         if (!cancelled) {
           message.error(String((error as Error)?.message || error));
@@ -404,7 +419,9 @@ export default function CRM() {
       );
 
       setContacts((prev) =>
-        prev.map((item) => (item.id === result.contact.id ? result.contact : item)),
+        prev.map((item) =>
+          item.id === result.contact.id ? result.contact : item,
+        ),
       );
       setDraft(toDraft(result.contact));
       message.success("Contact updated");
@@ -415,28 +432,34 @@ export default function CRM() {
     }
   }
 
-  async function saveTouchpoint(touchpointType: TouchpointType, quantity: number) {
+  async function saveTouchpoint(
+    touchpointType: TouchpointType,
+    quantity: number,
+  ) {
     if (!activeVenueId) return;
 
     try {
       setTouchpointSavingType(touchpointType);
-      const result = await fetchJson<{ touchpoint: PartnerTouchpointInventory }>(
-        TOUCHPOINTS_UPSERT_ENDPOINT,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            venueId: activeVenueId,
-            touchpointType,
-            quantity,
-            notes: touchpointByType.get(touchpointType)?.notes || null,
-          }),
-        },
-      );
+      const result = await fetchJson<{
+        touchpoint: PartnerTouchpointInventory;
+      }>(TOUCHPOINTS_UPSERT_ENDPOINT, {
+        method: "POST",
+        body: JSON.stringify({
+          venueId: activeVenueId,
+          touchpointType,
+          quantity,
+          notes: touchpointByType.get(touchpointType)?.notes || null,
+        }),
+      });
 
       setTouchpoints((prev) => {
-        const next = prev.filter((item) => item.touchpointType !== touchpointType);
+        const next = prev.filter(
+          (item) => item.touchpointType !== touchpointType,
+        );
         next.push(result.touchpoint);
-        return next.sort((a, b) => a.touchpointType.localeCompare(b.touchpointType));
+        return next.sort((a, b) =>
+          a.touchpointType.localeCompare(b.touchpointType),
+        );
       });
       message.success("Touchpoint updated");
     } catch (error) {
@@ -491,7 +514,9 @@ export default function CRM() {
   const contactWhatsappUrl = makeWhatsAppUrl(selectedContact?.whatsapp);
   const contactGmailUrl = makeGmailComposeUrl(selectedContact?.email);
   const hasDraftChanges = Boolean(
-    selectedContact && draft && JSON.stringify(draft) !== JSON.stringify(toDraft(selectedContact)),
+    selectedContact &&
+    draft &&
+    JSON.stringify(draft) !== JSON.stringify(toDraft(selectedContact)),
   );
   const hasTouchpointChanges = TOUCHPOINT_OPTIONS.some((option) => {
     const savedQuantity = touchpointByType.get(option.value)?.quantity ?? 0;
@@ -499,7 +524,8 @@ export default function CRM() {
     return Number(draftQuantity) !== Number(savedQuantity);
   });
   const hasInteractionFormChanges = interactionForm.isFieldsTouched();
-  const hasModalChanges = hasDraftChanges || hasTouchpointChanges || hasInteractionFormChanges;
+  const hasModalChanges =
+    hasDraftChanges || hasTouchpointChanges || hasInteractionFormChanges;
 
   const resetModalState = () => {
     if (selectedContact) {
@@ -603,14 +629,19 @@ export default function CRM() {
             </Col>
             <Col xs={24} md={4}>
               <Form.Item label="Venue Identifier">
-                <Input value={createForm.getFieldValue("venueId") || ""} disabled />
+                <Input
+                  value={createForm.getFieldValue("venueId") || ""}
+                  disabled
+                />
               </Form.Item>
             </Col>
             <Col xs={24} md={5}>
               <Form.Item
                 name="contactName"
                 label="Contact Name"
-                rules={[{ required: true, message: "Contact name is required" }]}
+                rules={[
+                  { required: true, message: "Contact name is required" },
+                ]}
               >
                 <Input placeholder="Owner or manager" />
               </Form.Item>
@@ -672,13 +703,17 @@ export default function CRM() {
                   <List.Item.Meta
                     title={
                       <Space>
-                        <Typography.Text strong>{item.contactName}</Typography.Text>
+                        <Typography.Text strong>
+                          {item.contactName}
+                        </Typography.Text>
                         <Tag>{item.role}</Tag>
                       </Space>
                     }
                     description={
                       <Space direction="vertical" size={0}>
-                        <Typography.Text type="secondary">Contact ID: {item.id}</Typography.Text>
+                        <Typography.Text type="secondary">
+                          Contact ID: {item.id}
+                        </Typography.Text>
                         <Typography.Text type="secondary">
                           {item.venueName || item.venueId}
                         </Typography.Text>
@@ -703,12 +738,20 @@ export default function CRM() {
                   {contactWhatsappUrl || contactGmailUrl ? (
                     <Space wrap>
                       {contactWhatsappUrl ? (
-                        <Button href={contactWhatsappUrl} target="_blank" rel="noreferrer">
+                        <Button
+                          href={contactWhatsappUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           WhatsApp Contact
                         </Button>
                       ) : null}
                       {contactGmailUrl ? (
-                        <Button href={contactGmailUrl} target="_blank" rel="noreferrer">
+                        <Button
+                          href={contactGmailUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           Email Contact
                         </Button>
                       ) : null}
@@ -753,7 +796,9 @@ export default function CRM() {
                         roleOptions={ROLE_OPTIONS}
                         savingContact={savingContact}
                         onDraftChange={(patch) =>
-                          setDraft((prev) => (prev ? { ...prev, ...patch } : prev))
+                          setDraft((prev) =>
+                            prev ? { ...prev, ...patch } : prev,
+                          )
                         }
                         onSave={handleSaveContact}
                       />
@@ -795,7 +840,9 @@ export default function CRM() {
                         }
                         onSaveTouchpoint={(touchpointType, quantity) => {
                           if (!Number.isInteger(quantity) || quantity < 0) {
-                            message.error("Quantity must be a whole number >= 0");
+                            message.error(
+                              "Quantity must be a whole number >= 0",
+                            );
                             return;
                           }
                           void saveTouchpoint(touchpointType, quantity);

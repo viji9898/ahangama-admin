@@ -931,7 +931,9 @@ export function VenueAdminPage() {
         (venue) => normalizeId(venue.id) === normalizeId(finalId),
       );
       if (duplicateId) {
-        throw new Error("Venue ID already exists. Choose a different Venue ID.");
+        throw new Error(
+          "Venue ID already exists. Choose a different Venue ID.",
+        );
       }
 
       const payload = {
@@ -1293,14 +1295,17 @@ export function VenueAdminPage() {
                           const fallbackSlug = slugify(
                             String(createForm.getFieldValue("slug") || ""),
                           );
-                          const finalId = slugify(String(value || fallbackSlug));
+                          const finalId = slugify(
+                            String(value || fallbackSlug),
+                          );
 
                           if (!finalId) {
                             throw new Error("Venue ID is required");
                           }
 
                           const isDuplicate = venues.some(
-                            (venue) => normalizeId(venue.id) === normalizeId(finalId),
+                            (venue) =>
+                              normalizeId(venue.id) === normalizeId(finalId),
                           );
 
                           if (isDuplicate) {
