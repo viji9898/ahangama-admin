@@ -22,15 +22,21 @@ export async function handler(event) {
     requireAdmin(event);
 
     const qs = event.queryStringParameters || {};
-    const destinationSlug = (qs.destinationSlug || "ahangama")
+    const destinationSlug = (qs.destinationSlug || "all")
       .trim()
       .toLowerCase();
     const q = (qs.q || "").trim().toLowerCase();
     const category = (qs.category || "").trim().toLowerCase();
 
-    const where = ["destination_slug = $1"];
-    const params = [destinationSlug];
-    let idx = 2;
+    const where = [];
+    const params = [];
+    let idx = 1;
+
+    if (destinationSlug && destinationSlug !== "all") {
+      where.push(`destination_slug = $${idx}`);
+      params.push(destinationSlug);
+      idx++;
+    }
 
     if (q) {
       where.push(
@@ -66,7 +72,7 @@ export async function handler(event) {
         created_by, updated_by, last_verified_at, deleted_at, source, notes_internal,
         updated_at, created_at
       FROM ${VENUES_TABLE}
-      WHERE ${where.join(" AND ")} AND deleted_at IS NULL
+      WHERE ${where.length ? `${where.join(" AND ")} AND ` : ""}deleted_at IS NULL
       ORDER BY is_featured DESC, priority_score DESC, pass_priority DESC, staff_pick DESC, stars DESC NULLS LAST
       LIMIT 500
     `;
