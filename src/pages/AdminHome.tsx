@@ -26,27 +26,32 @@ function MetricCard({
   accent: string;
 }) {
   return (
-    <Card
-      styles={{ body: { padding: 20 } }}
+    <div
       style={{
-        borderRadius: 18,
-        border: "1px solid rgba(15, 23, 42, 0.06)",
-        boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "10px 14px",
+        borderRadius: 999,
+        border: "1px solid rgba(15, 23, 42, 0.08)",
+        background: "rgba(255, 255, 255, 0.78)",
+        boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
       }}
     >
-      <Typography.Text type="secondary">{label}</Typography.Text>
-      <div
+      <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+        {label}
+      </Typography.Text>
+      <Typography.Text
         style={{
-          marginTop: 8,
-          fontSize: 30,
+          fontSize: 18,
           lineHeight: 1,
-          fontWeight: 650,
+          fontWeight: 700,
           color: accent,
         }}
       >
         {value}
-      </div>
-    </Card>
+      </Typography.Text>
+    </div>
   );
 }
 
@@ -215,32 +220,24 @@ export default function AdminHome() {
         </Card>
       ) : (
         <>
-          <Row gutter={[16, 16]}>
-            <Col xs={12} md={6}>
-              <MetricCard
-                label="Total venues"
-                value={venues.length}
-                accent="#0f172a"
-              />
-            </Col>
-            <Col xs={12} md={6}>
-              <MetricCard label="Live" value={liveCount} accent="#0f766e" />
-            </Col>
-            <Col xs={12} md={6}>
-              <MetricCard
-                label="Coming soon"
-                value={comingSoonCount}
-                accent="#9a3412"
-              />
-            </Col>
-            <Col xs={12} md={6}>
-              <MetricCard
-                label="Staff picks"
-                value={staffPickCount}
-                accent="#7c3aed"
-              />
-            </Col>
-          </Row>
+          <Space size={[12, 12]} wrap>
+            <MetricCard
+              label="Total venues"
+              value={venues.length}
+              accent="#0f172a"
+            />
+            <MetricCard label="Live" value={liveCount} accent="#0f766e" />
+            <MetricCard
+              label="Coming soon"
+              value={comingSoonCount}
+              accent="#9a3412"
+            />
+            <MetricCard
+              label="Staff picks"
+              value={staffPickCount}
+              accent="#7c3aed"
+            />
+          </Space>
 
           <Card
             title="Workspace index"
