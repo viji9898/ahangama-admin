@@ -197,20 +197,6 @@ export default function AdminHome() {
               </Typography.Paragraph>
             </Space>
           </Col>
-
-          <Col>
-            <Space wrap>
-              <Link to="/admin/venues">
-                <Button>Open Venue Management</Button>
-              </Link>
-              <Link to="/admin/crm">
-                <Button>Open CRM</Button>
-              </Link>
-              <Link to="/admin/venues?addVenue=1">
-                <Button type="primary">Create New Venue</Button>
-              </Link>
-            </Space>
-          </Col>
         </Row>
       </Card>
 
