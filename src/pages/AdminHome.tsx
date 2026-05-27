@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   Col,
-  Empty,
   Row,
   Skeleton,
   Space,
@@ -17,23 +16,8 @@ import { useAuth } from "../auth/useAuth";
 import type { Venue } from "../types/venue";
 
 const LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
-const ACTIVITY_ENDPOINT = "/.netlify/functions/api-admin-activity-list";
 const DAILY_TEAM_EMAIL_ENDPOINT =
   "/.netlify/functions/api-daily-team-email-preview";
-
-type AdminActivity = {
-  id: string;
-  action: string;
-  actorEmail?: string | null;
-  entityType: string;
-  entityId: string;
-  entityName?: string | null;
-  venueId?: string | null;
-  contactId?: string | null;
-  changedFields?: string[];
-  details?: Record<string, unknown>;
-  createdAt: string;
-};
 
 type DailyTeamEmailResponse = {
   ok?: boolean;
@@ -73,20 +57,6 @@ type DailyTeamEmailResponse = {
     recipientEmails?: string[];
   };
 };
-
-function formatDateTime(value: unknown) {
-  if (!value) return "-";
-
-  const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) return String(value);
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
 
 function formatReportDate(value?: string) {
   if (!value) return "yesterday";
@@ -171,88 +141,6 @@ function WorkspaceCard({
   );
 }
 
-function getActivityActionLabel(activity: AdminActivity) {
-  const entityLabel =
-    {
-      venue: "venue",
-      contact: "contact",
-      touchpoint: "inventory",
-      interaction: "interaction",
-    }[activity.entityType] || activity.entityType;
-
-  const verb =
-    {
-      view: "viewed",
-      create: "created",
-      import: "imported",
-      update: "updated",
-      delete: "deleted",
-    }[activity.action] || activity.action;
-
-  return `${verb} ${entityLabel}`;
-}
-
-function getActivityActionColor(action: string) {
-  return (
-    {
-      view: "default",
-      create: "green",
-      import: "purple",
-      update: "blue",
-      delete: "red",
-    }[action] || "default"
-  );
-}
-
-function getActivityTarget(activity: AdminActivity) {
-  if (activity.entityType === "venue") {
-    const venueId = String(activity.venueId || activity.entityId || "");
-    return venueId
-      ? `/admin/venues?venue=${encodeURIComponent(venueId)}`
-      : "/admin/venues";
-  }
-
-  if (
-    activity.entityType === "contact" ||
-    activity.entityType === "touchpoint" ||
-    activity.entityType === "interaction"
-  ) {
-    return "/admin/crm";
-  }
-
-  return "/admin";
-}
-
-function getActivityDetailTags(activity: AdminActivity) {
-  const details = activity.details || {};
-  const items = [] as string[];
-
-  if (Array.isArray(activity.changedFields) && activity.changedFields.length) {
-    items.push(`Changed: ${activity.changedFields.join(", ")}`);
-  }
-
-  if (typeof details.interactionType === "string") {
-    items.push(`Type: ${details.interactionType}`);
-  }
-  if (typeof details.outcomeStatus === "string") {
-    items.push(`Outcome: ${details.outcomeStatus}`);
-  }
-  if (typeof details.role === "string") {
-    items.push(`Role: ${details.role}`);
-  }
-  if (typeof details.quantity === "number") {
-    items.push(`Quantity: ${details.quantity}`);
-  }
-  if (typeof details.importedCount === "number") {
-    items.push(`Imported: ${details.importedCount}`);
-  }
-  if (typeof details.sourceFile === "string") {
-    items.push(`Source: ${details.sourceFile}`);
-  }
-
-  return items;
-}
-
 export default function AdminHome() {
   const { user } = useAuth();
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -263,9 +151,6 @@ export default function AdminHome() {
   const [dailyEmailError, setDailyEmailError] = useState("");
   const [dailyEmailData, setDailyEmailData] =
     useState<DailyTeamEmailResponse | null>(null);
-  const [activities, setActivities] = useState<AdminActivity[]>([]);
-  const [activityLoading, setActivityLoading] = useState(true);
-  const [activityError, setActivityError] = useState("");
 
   const loadDailyTeamEmail = async ({ send = false } = {}) => {
     const params = new URLSearchParams();
@@ -336,36 +221,6 @@ export default function AdminHome() {
     };
 
     void fetchDailyEmail();
-  }, []);
-
-  useEffect(() => {
-    const fetchActivity = async () => {
-      setActivityLoading(true);
-      setActivityError("");
-
-      try {
-        const response = await fetch(`${ACTIVITY_ENDPOINT}?limit=12`, {
-          credentials: "include",
-        });
-        const data = (await response.json().catch(() => ({}))) as {
-          ok?: boolean;
-          error?: string;
-          activities?: AdminActivity[];
-        };
-
-        if (!response.ok || data?.ok === false) {
-          throw new Error(data?.error || `Failed (${response.status})`);
-        }
-
-        setActivities(Array.isArray(data?.activities) ? data.activities : []);
-      } catch (fetchError) {
-        setActivityError(String((fetchError as Error)?.message || fetchError));
-      } finally {
-        setActivityLoading(false);
-      }
-    };
-
-    void fetchActivity();
   }, []);
 
   const handleRunDailyTeamEmail = async () => {
@@ -446,7 +301,6 @@ export default function AdminHome() {
       cta: "View analytics",
     },
   ];
-  const recentActivities = activities.slice(0, 6);
   const aiChangeCount = dailyAiSummary?.changes?.length ?? 0;
   const aiIssueCount = dailyAiSummary?.issues?.length ?? 0;
   const aiReviewTargetCount = dailyAiSummary?.reviewTargets?.length ?? 0;
@@ -559,101 +413,7 @@ export default function AdminHome() {
             </Row>
           </Card>
 
-          <Row gutter={[24, 24]}>
-            <Col xs={24} xl={14}>
-              <Card
-                title="Recent activity"
-                styles={{ body: { padding: 20 } }}
-                style={{
-                  borderRadius: 20,
-                  border: "1px solid rgba(15, 23, 42, 0.06)",
-                  boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
-                }}
-              >
-                {activityLoading ? (
-                  <Skeleton active paragraph={{ rows: 6 }} />
-                ) : activityError ? (
-                  <Alert
-                    type="error"
-                    showIcon
-                    message="Activity feed unavailable"
-                    description={activityError}
-                  />
-                ) : activities.length === 0 ? (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="No admin activity yet."
-                  >
-                    <Link to="/admin/venues?addVenue=1">
-                      <Button type="primary">Create the first venue</Button>
-                    </Link>
-                  </Empty>
-                ) : (
-                  <Space direction="vertical" size={10} style={{ width: "100%" }}>
-                    {recentActivities.map((activity) => {
-                      const detailTags = getActivityDetailTags(activity);
-                      return (
-                        <div
-                          key={activity.id}
-                          style={{
-                            padding: 16,
-                            borderRadius: 16,
-                            border: "1px solid rgba(15, 23, 42, 0.08)",
-                            background: "rgba(255,255,255,0.72)",
-                          }}
-                        >
-                          <Row
-                            justify="space-between"
-                            align="middle"
-                            gutter={[12, 12]}
-                          >
-                            <Col flex="auto">
-                              <Typography.Text strong style={{ display: "block" }}>
-                                {activity.entityName ||
-                                  activity.entityId ||
-                                  "Untitled activity"}
-                              </Typography.Text>
-                              <Typography.Text type="secondary">
-                                {getActivityActionLabel(activity)}
-                              </Typography.Text>
-                              <div style={{ marginTop: 8 }}>
-                                <Space size={[8, 8]} wrap>
-                                  <Tag color={getActivityActionColor(activity.action)}>
-                                    {activity.action}
-                                  </Tag>
-                                  <Tag>{activity.entityType}</Tag>
-                                  {activity.actorEmail ? (
-                                    <Tag>{activity.actorEmail}</Tag>
-                                  ) : null}
-                                  {detailTags.map((detail) => (
-                                    <Tag key={detail}>{detail}</Tag>
-                                  ))}
-                                </Space>
-                              </div>
-                            </Col>
-                            <Col>
-                              <Space direction="vertical" size={8} align="end">
-                                <Typography.Text type="secondary">
-                                  {formatDateTime(activity.createdAt)}
-                                </Typography.Text>
-                                <Link to={getActivityTarget(activity)}>
-                                  <Button size="small">Open</Button>
-                                </Link>
-                              </Space>
-                            </Col>
-                          </Row>
-                        </div>
-                      );
-                    })}
-
-                    <Link to="/admin/venues">
-                      <Button>Open venue management</Button>
-                    </Link>
-                  </Space>
-                )}
-              </Card>
-            </Col>
-
+          <Row gutter={[24, 24]} justify="end">
             <Col xs={24} xl={10}>
               <Space direction="vertical" size={24} style={{ width: "100%" }}>
                 <Card
@@ -665,8 +425,15 @@ export default function AdminHome() {
                     boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
                   }}
                 >
-                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                    <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+                  <Space
+                    direction="vertical"
+                    size={12}
+                    style={{ width: "100%" }}
+                  >
+                    <Typography.Paragraph
+                      type="secondary"
+                      style={{ margin: 0 }}
+                    >
                       Keep the team summary moving and monitor the current ops
                       snapshot for {dailyEmailReportDate}.
                     </Typography.Paragraph>
@@ -677,7 +444,9 @@ export default function AdminHome() {
                       <>
                         <Space size={[8, 8]} wrap>
                           <Tag
-                            color={dailyEmailData?.alreadySent ? "gold" : "green"}
+                            color={
+                              dailyEmailData?.alreadySent ? "gold" : "green"
+                            }
                           >
                             {dailyEmailData?.alreadySent
                               ? "Already sent"

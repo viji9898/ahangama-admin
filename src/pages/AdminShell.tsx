@@ -6,6 +6,7 @@ import { useAuth } from "../auth/useAuth";
 
 const navItems = [
   { key: "/admin", label: "Home" },
+  { key: "/admin/activity", label: "Recent Activity" },
   { key: "/admin/links", label: "IG Link Generator" },
   { key: "/admin/qr-links", label: "QR Links" },
   { key: "/admin/venues", label: "Venues" },

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
+import AdminActivity from "./pages/AdminActivity";
 import AdminHome from "./pages/AdminHome";
 import LinkGenerator from "./pages/LinkGenerator";
 import QrLinkGenerator from "./pages/QrLinkGenerator";
@@ -24,6 +25,7 @@ export default function App() {
           }
         >
           <Route index element={<AdminHome />} />
+          <Route path="activity" element={<AdminActivity />} />
           <Route path="links" element={<LinkGenerator />} />
           <Route path="qr-links" element={<QrLinkGenerator />} />
           <Route path="venues" element={<Admin />} />
