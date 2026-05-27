@@ -1,5 +1,7 @@
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
+import { logAdminActivity } from "./_lib/adminActivity.mjs";
+import { getClientContext } from "./_lib/auth.mjs";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -55,6 +57,24 @@ export async function handler(event) {
     ]
       .filter(Boolean)
       .join("; ");
+
+    try {
+      const { ipAddress, userAgent } = getClientContext(event);
+      await logAdminActivity({
+        action: "login",
+        actorEmail: email,
+        entityType: "auth",
+        entityId: `login:${email}:${Date.now()}`,
+        entityName: p?.name || email,
+        details: {
+          source: "google-oauth",
+          ipAddress,
+          userAgent,
+        },
+      });
+    } catch {
+      // Auth should still succeed even if audit logging is unavailable.
+    }
 
     return json(200, { ok: true }, { "Set-Cookie": cookie });
   } catch {

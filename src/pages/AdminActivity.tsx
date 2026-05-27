@@ -38,12 +38,20 @@ type ActivityFilterKey =
   | "venue"
   | "crm"
   | "imports"
-  | "interactions";
+  | "interactions"
+  | "usage";
 
 type ActivityGroup = {
   key: string;
   label: string;
   items: AdminActivityItem[];
+};
+
+type ActiveUserSummary = {
+  email: string;
+  label: string;
+  lastSeen: string;
+  eventCount: number;
 };
 
 type ActivityViewMode = "compact" | "detailed";
@@ -63,6 +71,7 @@ function formatDateTime(value: unknown) {
 }
 
 function getActivityFilterKey(activity: AdminActivityItem): ActivityFilterKey {
+  if (activity.entityType === "auth") return "usage";
   if (activity.action === "import") return "imports";
   if (activity.entityType === "venue") return "venue";
   if (activity.entityType === "interaction") return "interactions";
@@ -82,6 +91,9 @@ function getActivityAccentColor(action: string) {
       view: "#94a3b8",
       create: "#16a34a",
       import: "#7c3aed",
+      login: "#0f766e",
+      session: "#0284c7",
+      logout: "#f59e0b",
       update: "#2563eb",
       delete: "#dc2626",
     }[action] || "#475569"
@@ -95,6 +107,7 @@ function getEntityLabel(entityType: string, count = 1) {
       contact: "contact",
       touchpoint: "inventory item",
       interaction: "interaction",
+      auth: "session",
     }[entityType] || entityType;
 
   if (count === 1) {
@@ -122,6 +135,18 @@ function getActivitySurfaceStyle(action: string) {
       background: "linear-gradient(135deg, rgba(22, 163, 74, 0.07), rgba(255, 255, 255, 0.9))",
       borderColor: "rgba(22, 163, 74, 0.16)",
     },
+    login: {
+      background: "linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(255, 255, 255, 0.92))",
+      borderColor: "rgba(15, 118, 110, 0.18)",
+    },
+    session: {
+      background: "linear-gradient(135deg, rgba(2, 132, 199, 0.07), rgba(255, 255, 255, 0.92))",
+      borderColor: "rgba(2, 132, 199, 0.16)",
+    },
+    logout: {
+      background: "linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(255, 255, 255, 0.92))",
+      borderColor: "rgba(245, 158, 11, 0.18)",
+    },
     update: {
       background: "rgba(255,255,255,0.78)",
       borderColor: "rgba(15, 23, 42, 0.08)",
@@ -141,6 +166,9 @@ function getActivityPriorityLabel(action: string) {
     import: "Bulk event",
     delete: "Destructive",
     create: "New record",
+    login: "Access",
+    logout: "Access",
+    session: "Usage",
   }[action];
 }
 
@@ -148,8 +176,15 @@ function getPrimarySummary(activity: AdminActivityItem) {
   const target =
     activity.entityName || activity.entityId || activity.entityType || "item";
   const details = activity.details || {};
+  const actorLabel = activity.entityName || activity.actorEmail || "A user";
 
   switch (activity.action) {
+    case "login":
+      return `${actorLabel} signed in`;
+    case "session":
+      return `${actorLabel} was active in the admin`;
+    case "logout":
+      return `${actorLabel} signed out`;
     case "create":
       return `Created ${getEntityLabel(activity.entityType)} ${target}`;
     case "update":
@@ -173,6 +208,18 @@ function getPrimarySummary(activity: AdminActivityItem) {
 function getSecondarySummary(activity: AdminActivityItem) {
   const actor = activity.actorEmail || "System";
   const details = activity.details || {};
+
+  if (activity.action === "session") {
+    return `${actor} was seen in the app today`;
+  }
+
+  if (activity.action === "login") {
+    return `${actor} started a new admin session`;
+  }
+
+  if (activity.action === "logout") {
+    return `${actor} ended their admin session`;
+  }
 
   if (activity.action === "update" && activity.changedFields?.length) {
     const changeCount = activity.changedFields.length;
@@ -220,6 +267,9 @@ function getActivityMetadata(activity: AdminActivityItem) {
   }
   if (typeof details.sourceFile === "string") {
     items.push(`Source ${details.sourceFile}`);
+  }
+  if (typeof details.source === "string" && details.source !== "admin-ui") {
+    items.push(`Via ${details.source}`);
   }
 
   return items;
@@ -270,6 +320,7 @@ function getActivityActionLabel(activity: AdminActivityItem) {
       contact: "contact",
       touchpoint: "inventory",
       interaction: "interaction",
+      auth: "session",
     }[activity.entityType] || activity.entityType;
 
   const verb =
@@ -277,6 +328,9 @@ function getActivityActionLabel(activity: AdminActivityItem) {
       view: "viewed",
       create: "created",
       import: "imported",
+      login: "signed in",
+      session: "used",
+      logout: "signed out",
       update: "updated",
       delete: "deleted",
     }[activity.action] || activity.action;
@@ -290,6 +344,9 @@ function getActivityActionColor(action: string) {
       view: "default",
       create: "green",
       import: "purple",
+      login: "cyan",
+      session: "blue",
+      logout: "gold",
       update: "blue",
       delete: "red",
     }[action] || "default"
@@ -297,6 +354,10 @@ function getActivityActionColor(action: string) {
 }
 
 function getActivityTarget(activity: AdminActivityItem) {
+  if (activity.entityType === "auth") {
+    return "/admin/activity";
+  }
+
   if (activity.entityType === "venue") {
     const venueId = String(activity.venueId || activity.entityId || "");
     return venueId
@@ -472,6 +533,40 @@ export default function AdminActivity() {
     };
   }, [activities, filteredActivities.length]);
 
+  const activeUsersToday = useMemo(() => {
+    const rows = new Map<string, ActiveUserSummary>();
+
+    for (const activity of activities) {
+      if (activity.entityType !== "auth") continue;
+      if (getActivityGroupMeta(activity).key !== "today") continue;
+      const email = String(activity.actorEmail || "").toLowerCase();
+      if (!email) continue;
+
+      const current = rows.get(email);
+      const label = String(activity.entityName || activity.actorEmail || email);
+
+      if (!current) {
+        rows.set(email, {
+          email,
+          label,
+          lastSeen: activity.createdAt,
+          eventCount: 1,
+        });
+        continue;
+      }
+
+      current.eventCount += 1;
+      if (new Date(activity.createdAt).getTime() > new Date(current.lastSeen).getTime()) {
+        current.lastSeen = activity.createdAt;
+      }
+    }
+
+    return [...rows.values()].sort(
+      (left, right) =>
+        new Date(right.lastSeen).getTime() - new Date(left.lastSeen).getTime(),
+    );
+  }, [activities]);
+
   const toggleExpanded = (activityId: string) => {
     setExpandedActivityIds((current) =>
       current.includes(activityId)
@@ -511,8 +606,8 @@ export default function AdminActivity() {
           style={{
             display: "grid",
             gap: 12,
-            gridTemplateColumns: "repeat(4, minmax(120px, 1fr))",
-            minWidth: 520,
+            gridTemplateColumns: "repeat(5, minmax(120px, 1fr))",
+            minWidth: 640,
           }}
         >
           <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
@@ -527,8 +622,35 @@ export default function AdminActivity() {
           <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
             <Statistic title="Recent total" value={summary.total} valueStyle={{ fontSize: 24 }} />
           </Card>
+          <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
+            <Statistic title="Active users today" value={activeUsersToday.length} valueStyle={{ fontSize: 24 }} />
+          </Card>
         </div>
       </div>
+
+      <Card
+        title="Active today"
+        styles={{ body: { padding: 20 } }}
+        style={{
+          borderRadius: 20,
+          border: "1px solid rgba(15, 23, 42, 0.06)",
+          boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+        }}
+      >
+        {activeUsersToday.length ? (
+          <Space size={[8, 8]} wrap>
+            {activeUsersToday.map((user) => (
+              <Tag key={user.email} color="blue" style={{ padding: "6px 10px", borderRadius: 999 }}>
+                {user.label} · {user.eventCount} events · last seen {formatDateTime(user.lastSeen)}
+              </Tag>
+            ))}
+          </Space>
+        ) : (
+          <Typography.Text type="secondary">
+            No recorded user activity yet for today. New sign-ins and daily presence checks will appear here.
+          </Typography.Text>
+        )}
+      </Card>
 
       <Card
         styles={{ body: { padding: 20 } }}
@@ -571,6 +693,7 @@ export default function AdminActivity() {
               { label: "Venues", value: "venue" },
               { label: "CRM", value: "crm" },
               { label: "Imports", value: "imports" },
+              { label: "Usage", value: "usage" },
               { label: "Interactions", value: "interactions" },
             ]}
           />
