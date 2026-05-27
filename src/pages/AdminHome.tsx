@@ -75,7 +75,7 @@ type DailyTeamEmailResponse = {
 };
 
 function formatDateTime(value: unknown) {
-  if (!value) return "—";
+  if (!value) return "-";
 
   const date = new Date(String(value));
   if (Number.isNaN(date.getTime())) return String(value);
@@ -131,6 +131,42 @@ function MetricCard({
       >
         {value}
       </div>
+    </Card>
+  );
+}
+
+function WorkspaceCard({
+  title,
+  description,
+  to,
+  cta,
+}: {
+  title: string;
+  description: string;
+  to: string;
+  cta: string;
+}) {
+  return (
+    <Card
+      styles={{ body: { padding: 20 } }}
+      style={{
+        height: "100%",
+        borderRadius: 20,
+        border: "1px solid rgba(15, 23, 42, 0.06)",
+        boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+      }}
+    >
+      <Space direction="vertical" size={12} style={{ width: "100%" }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>
+          {title}
+        </Typography.Title>
+        <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+          {description}
+        </Typography.Paragraph>
+        <Link to={to}>
+          <Button type="primary">{cta}</Button>
+        </Link>
+      </Space>
     </Card>
   );
 }
@@ -387,6 +423,49 @@ export default function AdminHome() {
     dailyEmailData?.sendResult?.recipientEmails?.length;
   const dailyAiSummary = dailyEmailData?.preview?.aiSummary;
   const dailyVenueReview = dailyEmailData?.preview?.venueReview;
+  const workspaceCards = [
+    {
+      title: "Venue management",
+      description:
+        "Create, edit, review, and publish venue listings across the directory.",
+      to: "/admin/venues",
+      cta: "Open venues",
+    },
+    {
+      title: "Partner CRM",
+      description:
+        "Manage contacts, inventory touchpoints, and relationship activity for partners.",
+      to: "/admin/crm",
+      cta: "Open CRM",
+    },
+    {
+      title: "QR analytics",
+      description:
+        "Review scan performance and attribution trends from QR campaigns.",
+      to: "/admin/qr",
+      cta: "View analytics",
+    },
+    {
+      title: "QR link builder",
+      description:
+        "Generate canonical QR destination links with the correct tracking payload.",
+      to: "/admin/qr-links",
+      cta: "Build QR links",
+    },
+    {
+      title: "IG link builder",
+      description:
+        "Create tracked Instagram links for posts, offers, and campaigns.",
+      to: "/admin/links",
+      cta: "Build IG links",
+    },
+  ];
+  const recentActivities = activities.slice(0, 6);
+  const aiChangeCount = dailyAiSummary?.changes?.length ?? 0;
+  const aiIssueCount = dailyAiSummary?.issues?.length ?? 0;
+  const aiReviewTargetCount = dailyAiSummary?.reviewTargets?.length ?? 0;
+  const updatedVenueCount = dailyVenueReview?.updatedVenues?.length ?? 0;
+  const incompleteVenueCount = dailyVenueReview?.incompleteVenues?.length ?? 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -411,26 +490,23 @@ export default function AdminHome() {
                 type="secondary"
                 style={{ margin: 0, maxWidth: 720 }}
               >
-                This is the operational home page for the admin dashboard. Start
-                from venue management, review the current directory state, or
-                create a new venue entry.
+                Use this as the index for the admin workspace. Jump into the
+                main tools, check the latest operational signals, and start the
+                next venue or CRM task without digging through a long dashboard.
               </Typography.Paragraph>
             </Space>
           </Col>
 
           <Col>
             <Space wrap>
-              <Link to="/admin/links">
-                <Button>Generate Instagram Link</Button>
+              <Link to="/admin/venues">
+                <Button>Open Venue Management</Button>
               </Link>
-              <Link to="/admin/qr-links">
-                <Button>Generate QR Link</Button>
+              <Link to="/admin/crm">
+                <Button>Open CRM</Button>
               </Link>
               <Link to="/admin/venues?addVenue=1">
                 <Button type="primary">Create New Venue</Button>
-              </Link>
-              <Link to="/admin/venues">
-                <Button>Open Venue Management</Button>
               </Link>
             </Space>
           </Col>
@@ -479,50 +555,25 @@ export default function AdminHome() {
             </Col>
           </Row>
 
+          <Card
+            title="Workspace index"
+            styles={{ body: { padding: 20 } }}
+            style={{
+              borderRadius: 20,
+              border: "1px solid rgba(15, 23, 42, 0.06)",
+              boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+            }}
+          >
+            <Row gutter={[16, 16]}>
+              {workspaceCards.map((card) => (
+                <Col key={card.to} xs={24} md={12} xl={8}>
+                  <WorkspaceCard {...card} />
+                </Col>
+              ))}
+            </Row>
+          </Card>
+
           <Row gutter={[24, 24]}>
-            <Col xs={24} xl={10}>
-              <Card
-                title="QR link generator"
-                styles={{ body: { padding: 20 } }}
-                style={{
-                  borderRadius: 20,
-                  border: "1px solid rgba(15, 23, 42, 0.06)",
-                  boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
-                }}
-              >
-                <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                  <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
-                    Build the canonical UTM destination links used behind QR
-                    codes so scans land on the correct page with the right
-                    attribution payload.
-                  </Typography.Paragraph>
-                  <Link to="/admin/qr-links">
-                    <Button type="primary">Open QR Link Generator</Button>
-                  </Link>
-                </Space>
-              </Card>
-            </Col>
-            <Col xs={24} xl={10}>
-              <Card
-                title="IG Link generator"
-                styles={{ body: { padding: 20 } }}
-                style={{
-                  borderRadius: 20,
-                  border: "1px solid rgba(15, 23, 42, 0.06)",
-                  boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
-                }}
-              >
-                <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                  <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
-                    Create tracked Instagram links for the pass, guides, or
-                    venue posts without rebuilding the path manually.
-                  </Typography.Paragraph>
-                  <Link to="/admin/links">
-                    <Button type="primary">Open Link Generator</Button>
-                  </Link>
-                </Space>
-              </Card>
-            </Col>
             <Col xs={24} xl={14}>
               <Card
                 title="Recent activity"
@@ -552,20 +603,16 @@ export default function AdminHome() {
                     </Link>
                   </Empty>
                 ) : (
-                  <Space
-                    direction="vertical"
-                    size={12}
-                    style={{ width: "100%" }}
-                  >
-                    {activities.map((activity) => {
+                  <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                    {recentActivities.map((activity) => {
                       const detailTags = getActivityDetailTags(activity);
                       return (
-                        <Card
+                        <div
                           key={activity.id}
-                          size="small"
-                          styles={{ body: { padding: 16 } }}
                           style={{
+                            padding: 16,
                             borderRadius: 16,
+                            border: "1px solid rgba(15, 23, 42, 0.08)",
                             background: "rgba(255,255,255,0.72)",
                           }}
                         >
@@ -575,10 +622,7 @@ export default function AdminHome() {
                             gutter={[12, 12]}
                           >
                             <Col flex="auto">
-                              <Typography.Text
-                                strong
-                                style={{ display: "block" }}
-                              >
+                              <Typography.Text strong style={{ display: "block" }}>
                                 {activity.entityName ||
                                   activity.entityId ||
                                   "Untitled activity"}
@@ -588,11 +632,7 @@ export default function AdminHome() {
                               </Typography.Text>
                               <div style={{ marginTop: 8 }}>
                                 <Space size={[8, 8]} wrap>
-                                  <Tag
-                                    color={getActivityActionColor(
-                                      activity.action,
-                                    )}
-                                  >
+                                  <Tag color={getActivityActionColor(activity.action)}>
                                     {activity.action}
                                   </Tag>
                                   <Tag>{activity.entityType}</Tag>
@@ -616,9 +656,13 @@ export default function AdminHome() {
                               </Space>
                             </Col>
                           </Row>
-                        </Card>
+                        </div>
                       );
                     })}
+
+                    <Link to="/admin/venues">
+                      <Button>Open venue management</Button>
+                    </Link>
                   </Space>
                 )}
               </Card>
@@ -627,7 +671,7 @@ export default function AdminHome() {
             <Col xs={24} xl={10}>
               <Space direction="vertical" size={24} style={{ width: "100%" }}>
                 <Card
-                  title="Quick actions"
+                  title="Daily operations"
                   styles={{ body: { padding: 20 } }}
                   style={{
                     borderRadius: 20,
@@ -635,55 +679,19 @@ export default function AdminHome() {
                     boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
                   }}
                 >
-                  <Space
-                    direction="vertical"
-                    size={12}
-                    style={{ width: "100%" }}
-                  >
-                    <Link to="/admin/venues">
-                      <Button block>Open venue management</Button>
-                    </Link>
-                    <Link to="/admin/venues?addVenue=1">
-                      <Button type="primary" block>
-                        Create new venue
-                      </Button>
-                    </Link>
-                  </Space>
-                </Card>
-
-                <Card
-                  title="Daily team email"
-                  styles={{ body: { padding: 20 } }}
-                  style={{
-                    borderRadius: 20,
-                    border: "1px solid rgba(15, 23, 42, 0.06)",
-                    boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
-                  }}
-                >
-                  <Space
-                    direction="vertical"
-                    size={12}
-                    style={{ width: "100%" }}
-                  >
-                    <Typography.Paragraph
-                      type="secondary"
-                      style={{ margin: 0 }}
-                    >
-                      Send the daily ops summary for {dailyEmailReportDate}{" "}
-                      using the current dashboard email report.
+                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                    <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+                      Keep the team summary moving and monitor the current ops
+                      snapshot for {dailyEmailReportDate}.
                     </Typography.Paragraph>
 
                     {dailyEmailLoading ? (
                       <Skeleton active paragraph={{ rows: 2 }} />
-                    ) : null}
-
-                    {!dailyEmailLoading ? (
+                    ) : (
                       <>
                         <Space size={[8, 8]} wrap>
                           <Tag
-                            color={
-                              dailyEmailData?.alreadySent ? "gold" : "green"
-                            }
+                            color={dailyEmailData?.alreadySent ? "gold" : "green"}
                           >
                             {dailyEmailData?.alreadySent
                               ? "Already sent"
@@ -700,85 +708,34 @@ export default function AdminHome() {
                         </Typography.Text>
 
                         {dailyAiSummary?.summary ? (
-                          <Card
-                            size="small"
-                            styles={{ body: { padding: 16 } }}
-                            style={{
-                              borderRadius: 16,
-                              background: "rgba(248,250,252,0.8)",
-                            }}
-                          >
-                            <Space
-                              direction="vertical"
-                              size={10}
-                              style={{ width: "100%" }}
-                            >
-                              <Typography.Text strong>
-                                AI Admin Summary
-                              </Typography.Text>
-                              <Typography.Paragraph style={{ margin: 0 }}>
-                                {dailyAiSummary.summary}
-                              </Typography.Paragraph>
-
-                              {dailyAiSummary.changes?.length ? (
-                                <div>
-                                  <Typography.Text strong>
-                                    What changed
-                                  </Typography.Text>
-                                  <ul
-                                    style={{
-                                      margin: "8px 0 0",
-                                      paddingLeft: 18,
-                                    }}
-                                  >
-                                    {dailyAiSummary.changes.map((item) => (
-                                      <li key={item}>{item}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              ) : null}
-
-                              {dailyAiSummary.issues?.length ? (
-                                <div>
-                                  <Typography.Text strong>
-                                    Needs attention
-                                  </Typography.Text>
-                                  <ul
-                                    style={{
-                                      margin: "8px 0 0",
-                                      paddingLeft: 18,
-                                    }}
-                                  >
-                                    {dailyAiSummary.issues.map((item) => (
-                                      <li key={item}>{item}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              ) : null}
-
-                              {dailyAiSummary.reviewTargets?.length ? (
-                                <div>
-                                  <Typography.Text strong>
-                                    Review targets
-                                  </Typography.Text>
-                                  <Space
-                                    size={[8, 8]}
-                                    wrap
-                                    style={{ display: "flex", marginTop: 8 }}
-                                  >
-                                    {dailyAiSummary.reviewTargets.map(
-                                      (item) => (
-                                        <Tag key={item} color="gold">
-                                          {item}
-                                        </Tag>
-                                      ),
-                                    )}
-                                  </Space>
-                                </div>
-                              ) : null}
-                            </Space>
-                          </Card>
+                          <Typography.Paragraph style={{ margin: 0 }}>
+                            {dailyAiSummary.summary}
+                          </Typography.Paragraph>
                         ) : null}
+
+                        <Space size={[8, 8]} wrap>
+                          {aiChangeCount ? (
+                            <Tag color="blue">{aiChangeCount} changes</Tag>
+                          ) : null}
+                          {aiIssueCount ? (
+                            <Tag color="red">{aiIssueCount} issues</Tag>
+                          ) : null}
+                          {aiReviewTargetCount ? (
+                            <Tag color="gold">
+                              {aiReviewTargetCount} review targets
+                            </Tag>
+                          ) : null}
+                          {updatedVenueCount ? (
+                            <Tag color="green">
+                              {updatedVenueCount} updated venues
+                            </Tag>
+                          ) : null}
+                          {incompleteVenueCount ? (
+                            <Tag color="orange">
+                              {incompleteVenueCount} incomplete venues
+                            </Tag>
+                          ) : null}
+                        </Space>
 
                         {dailyEmailData?.preview?.aiSummaryError ? (
                           <Alert
@@ -787,90 +744,6 @@ export default function AdminHome() {
                             message="AI summary unavailable"
                             description={dailyEmailData.preview.aiSummaryError}
                           />
-                        ) : null}
-
-                        {dailyVenueReview ? (
-                          <Card
-                            size="small"
-                            styles={{ body: { padding: 16 } }}
-                            style={{ borderRadius: 16 }}
-                          >
-                            <Space
-                              direction="vertical"
-                              size={10}
-                              style={{ width: "100%" }}
-                            >
-                              <Typography.Text strong>
-                                Venue review snapshot
-                              </Typography.Text>
-                              <div>
-                                <Typography.Text strong>
-                                  Updated venues
-                                </Typography.Text>
-                                <div style={{ marginTop: 8 }}>
-                                  <Space size={[8, 8]} wrap>
-                                    {dailyVenueReview.updatedVenues?.length ? (
-                                      dailyVenueReview.updatedVenues.map(
-                                        (venue) => (
-                                          <Tag
-                                            key={
-                                              venue.id ||
-                                              venue.slug ||
-                                              venue.name
-                                            }
-                                          >
-                                            {venue.name ||
-                                              venue.slug ||
-                                              venue.id}
-                                          </Tag>
-                                        ),
-                                      )
-                                    ) : (
-                                      <Typography.Text type="secondary">
-                                        No venue updates captured for this day.
-                                      </Typography.Text>
-                                    )}
-                                  </Space>
-                                </div>
-                              </div>
-                              <div>
-                                <Typography.Text strong>
-                                  Incomplete venues
-                                </Typography.Text>
-                                <div style={{ marginTop: 8 }}>
-                                  <Space
-                                    direction="vertical"
-                                    size={8}
-                                    style={{ width: "100%" }}
-                                  >
-                                    {dailyVenueReview.incompleteVenues
-                                      ?.length ? (
-                                      dailyVenueReview.incompleteVenues.map(
-                                        (venue) => (
-                                          <Typography.Text
-                                            key={
-                                              venue.id ||
-                                              venue.slug ||
-                                              venue.name
-                                            }
-                                          >
-                                            {venue.name ||
-                                              venue.slug ||
-                                              venue.id}
-                                            : {venue.missingFields?.join(", ")}
-                                          </Typography.Text>
-                                        ),
-                                      )
-                                    ) : (
-                                      <Typography.Text type="secondary">
-                                        No incomplete venue flags for this day.
-                                      </Typography.Text>
-                                    )}
-                                  </Space>
-                                </div>
-                              </div>
-                            </Space>
-                          </Card>
                         ) : null}
 
                         {dailyEmailError ? (
@@ -891,7 +764,7 @@ export default function AdminHome() {
                           Send Daily Team Email
                         </Button>
                       </>
-                    ) : null}
+                    )}
                   </Space>
                 </Card>
 
