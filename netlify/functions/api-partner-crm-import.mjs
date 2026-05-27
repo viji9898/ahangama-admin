@@ -22,6 +22,16 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
+function normalizeCsvKey(value) {
+  return String(value || "")
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function asBoolean(value, fallback = false) {
   const normalized = String(value || "").trim().toLowerCase();
   if (!normalized) return fallback;
@@ -29,12 +39,49 @@ function asBoolean(value, fallback = false) {
 }
 
 function pick(row, ...keys) {
+  const exactKeys = new Set(keys);
+  for (const [rowKey, rowValue] of Object.entries(row)) {
+    if (exactKeys.has(rowKey)) {
+      return rowValue;
+    }
+  }
+
+  const wantedKeys = new Set(keys.map((key) => normalizeCsvKey(key)));
   for (const key of keys) {
     if (Object.prototype.hasOwnProperty.call(row, key)) {
       return row[key];
     }
   }
+
+  for (const [rowKey, rowValue] of Object.entries(row)) {
+    if (wantedKeys.has(normalizeCsvKey(rowKey))) {
+      return rowValue;
+    }
+  }
+
   return undefined;
+}
+
+function inferContactRole(row) {
+  const explicitRole = normalizeOptionalText(pick(row, "role"));
+  if (explicitRole) {
+    return normalizeContactRole(explicitRole, "other");
+  }
+
+  const notes = normalizeLowerText(pick(row, "notes"));
+  if (!notes) {
+    return "other";
+  }
+
+  if (notes === "owner" || notes.endsWith(" owner")) {
+    return "owner";
+  }
+
+  if (notes.includes("manager")) {
+    return "manager";
+  }
+
+  return "other";
 }
 
 export async function handler(event) {
@@ -67,11 +114,14 @@ export async function handler(event) {
       const row = rows[index];
       try {
         if (resource === "contacts") {
-          const role = normalizeContactRole(pick(row, "role"), "other");
+          const role = inferContactRole(row);
           const venueId = normalizeLowerText(pick(row, "venue_id", "venueId"));
           const contactName = normalizeOptionalText(
             pick(row, "contact_name", "contactName"),
           );
+          const phone = normalizeOptionalText(pick(row, "phone"));
+          const whatsapp =
+            normalizeOptionalText(pick(row, "whatsapp")) || phone;
 
           if (!venueId || !contactName) {
             throw new Error("venue_id and contact_name are required");
@@ -79,7 +129,7 @@ export async function handler(event) {
 
           const id =
             normalizeLowerText(pick(row, "id")) ||
-            makePartnerContactId(venueId, role);
+            makePartnerContactId(venueId, role, contactName);
 
           await query(
             `
@@ -114,8 +164,8 @@ export async function handler(event) {
               contactName,
               role,
               normalizeLowerText(pick(row, "email")),
-              normalizeOptionalText(pick(row, "whatsapp")),
-              normalizeOptionalText(pick(row, "phone")),
+              whatsapp,
+              phone,
               normalizeOptionalText(pick(row, "notes")),
               asBoolean(pick(row, "is_primary", "isPrimary"), false),
               asBoolean(pick(row, "active"), true),

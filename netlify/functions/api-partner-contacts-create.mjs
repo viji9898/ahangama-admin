@@ -43,7 +43,9 @@ export async function handler(event) {
     if (!venueId) return badRequest("venueId is required");
     if (!contactName) return badRequest("contactName is required");
 
-    const id = normalizeLowerText(body.id) || makePartnerContactId(venueId, role);
+    const id =
+      normalizeLowerText(body.id) ||
+      makePartnerContactId(venueId, role, contactName);
 
     const email = normalizeLowerText(body.email);
     const whatsapp = normalizeOptionalText(body.whatsapp);

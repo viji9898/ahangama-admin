@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "migrate": "dotenv -e .env node scripts/migrate.mjs",
-    "import:venues260414": "dotenv -e .env node scripts/import-venues260414.mjs"
+    "import:venues260414": "dotenv -e .env node scripts/import-venues260414.mjs",
+    "import:partner-contacts": "dotenv -e .env -- node scripts/import-partner-contacts.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.888.0",

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 export const PARTNER_CONTACTS_TABLE = "partner_contacts";
 export const PARTNER_TOUCHPOINT_INVENTORY_TABLE = "partner_touchpoint_inventory";
 export const PARTNER_INTERACTIONS_TABLE = "partner_interactions";
@@ -26,7 +28,9 @@ export const VALID_INTERACTION_OUTCOMES = new Set([
 
 export function normalizeOptionalText(value) {
   if (value === null || value === undefined) return null;
-  const normalized = String(value).trim();
+  const normalized = String(value)
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+    .trim();
   return normalized ? normalized : null;
 }
 
@@ -107,14 +111,29 @@ export function normalizeInteractionOutcome(value, fallback = "pending") {
   return normalized;
 }
 
-export function makePartnerContactId(venueId, role) {
-  const now = Date.now().toString(36);
+export function makePartnerContactId(venueId, role, contactName = "") {
   const safeVenueId = String(venueId || "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "")
     .slice(0, 32);
-  return `${safeVenueId || "venue"}-${role}-${now}`;
+  const safeRole = String(role || "other")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "")
+    .slice(0, 16);
+  const safeContactName = String(contactName || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 24);
+  const hash = createHash("sha1")
+    .update(`${safeVenueId}:${safeRole}:${safeContactName || "contact"}`)
+    .digest("hex")
+    .slice(0, 10);
+
+  return `${safeVenueId || "venue"}-${safeRole || "other"}-${safeContactName || "contact"}-${hash}`;
 }
 
 export function makeInteractionId(venueId, interactionType) {

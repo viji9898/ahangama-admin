@@ -146,6 +146,7 @@ function getActivityActionLabel(activity: AdminActivity) {
   const verb = {
     view: "viewed",
     create: "created",
+    import: "imported",
     update: "updated",
     delete: "deleted",
   }[activity.action] || activity.action;
@@ -157,6 +158,7 @@ function getActivityActionColor(action: string) {
   return {
     view: "default",
     create: "green",
+    import: "purple",
     update: "blue",
     delete: "red",
   }[action] || "default";
@@ -198,6 +200,12 @@ function getActivityDetailTags(activity: AdminActivity) {
   }
   if (typeof details.quantity === "number") {
     items.push(`Quantity: ${details.quantity}`);
+  }
+  if (typeof details.importedCount === "number") {
+    items.push(`Imported: ${details.importedCount}`);
+  }
+  if (typeof details.sourceFile === "string") {
+    items.push(`Source: ${details.sourceFile}`);
   }
 
   return items;

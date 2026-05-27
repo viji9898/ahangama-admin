@@ -34,6 +34,7 @@ export async function logAdminActivity({
   contactId = null,
   changedFields = [],
   details = {},
+  execute = query,
 }) {
   const normalizedActorEmail = normalizeActivityLowerText(actorEmail);
   const normalizedAction = normalizeActivityLowerText(action);
@@ -55,7 +56,7 @@ export async function logAdminActivity({
     ),
   );
 
-  await query(
+  await execute(
     `
       INSERT INTO ${ADMIN_ACTIVITY_TABLE} (
         id, action, actor_email, entity_type, entity_id,
