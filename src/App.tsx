@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 import AdminActivity from "./pages/AdminActivity";
 import AdminHome from "./pages/AdminHome";
+import AdminOperations from "./pages/AdminOperations";
 import LinkGenerator from "./pages/LinkGenerator";
 import QrLinkGenerator from "./pages/QrLinkGenerator";
 import QRDashboard from "./pages/QRDashboard.jsx";
@@ -26,6 +27,7 @@ export default function App() {
         >
           <Route index element={<AdminHome />} />
           <Route path="activity" element={<AdminActivity />} />
+          <Route path="operations" element={<AdminOperations />} />
           <Route path="links" element={<LinkGenerator />} />
           <Route path="qr-links" element={<QrLinkGenerator />} />
           <Route path="venues" element={<Admin />} />
