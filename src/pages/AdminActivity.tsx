@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
   Card,
   Col,
   Empty,
+  Input,
   Row,
+  Segmented,
+  Select,
   Skeleton,
   Space,
+  Statistic,
   Tag,
   Typography,
 } from "antd";
@@ -29,6 +33,21 @@ type AdminActivityItem = {
   createdAt: string;
 };
 
+type ActivityFilterKey =
+  | "all"
+  | "venue"
+  | "crm"
+  | "imports"
+  | "interactions";
+
+type ActivityGroup = {
+  key: string;
+  label: string;
+  items: AdminActivityItem[];
+};
+
+type ActivityViewMode = "compact" | "detailed";
+
 function formatDateTime(value: unknown) {
   if (!value) return "-";
 
@@ -41,6 +60,207 @@ function formatDateTime(value: unknown) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+function getActivityFilterKey(activity: AdminActivityItem): ActivityFilterKey {
+  if (activity.action === "import") return "imports";
+  if (activity.entityType === "venue") return "venue";
+  if (activity.entityType === "interaction") return "interactions";
+  if (
+    activity.entityType === "contact" ||
+    activity.entityType === "touchpoint"
+  ) {
+    return "crm";
+  }
+
+  return "all";
+}
+
+function getActivityAccentColor(action: string) {
+  return (
+    {
+      view: "#94a3b8",
+      create: "#16a34a",
+      import: "#7c3aed",
+      update: "#2563eb",
+      delete: "#dc2626",
+    }[action] || "#475569"
+  );
+}
+
+function getEntityLabel(entityType: string, count = 1) {
+  const baseLabel =
+    {
+      venue: "venue",
+      contact: "contact",
+      touchpoint: "inventory item",
+      interaction: "interaction",
+    }[entityType] || entityType;
+
+  if (count === 1) {
+    return baseLabel;
+  }
+
+  if (baseLabel === "inventory item") {
+    return "inventory items";
+  }
+
+  return `${baseLabel}s`;
+}
+
+function getActivitySurfaceStyle(action: string) {
+  return {
+    import: {
+      background: "linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(255, 255, 255, 0.9))",
+      borderColor: "rgba(124, 58, 237, 0.18)",
+    },
+    delete: {
+      background: "linear-gradient(135deg, rgba(220, 38, 38, 0.08), rgba(255, 255, 255, 0.9))",
+      borderColor: "rgba(220, 38, 38, 0.18)",
+    },
+    create: {
+      background: "linear-gradient(135deg, rgba(22, 163, 74, 0.07), rgba(255, 255, 255, 0.9))",
+      borderColor: "rgba(22, 163, 74, 0.16)",
+    },
+    update: {
+      background: "rgba(255,255,255,0.78)",
+      borderColor: "rgba(15, 23, 42, 0.08)",
+    },
+    view: {
+      background: "rgba(255,255,255,0.72)",
+      borderColor: "rgba(15, 23, 42, 0.07)",
+    },
+  }[action] || {
+    background: "rgba(255,255,255,0.78)",
+    borderColor: "rgba(15, 23, 42, 0.08)",
+  };
+}
+
+function getActivityPriorityLabel(action: string) {
+  return {
+    import: "Bulk event",
+    delete: "Destructive",
+    create: "New record",
+  }[action];
+}
+
+function getPrimarySummary(activity: AdminActivityItem) {
+  const target =
+    activity.entityName || activity.entityId || activity.entityType || "item";
+  const details = activity.details || {};
+
+  switch (activity.action) {
+    case "create":
+      return `Created ${getEntityLabel(activity.entityType)} ${target}`;
+    case "update":
+      return `Updated ${target}`;
+    case "delete":
+      return `Deleted ${getEntityLabel(activity.entityType)} ${target}`;
+    case "import": {
+      const importedCount = details.importedCount;
+      if (typeof importedCount === "number") {
+        return `Imported ${importedCount} ${getEntityLabel(activity.entityType, importedCount)}`;
+      }
+      return activity.entityName || `Imported ${target}`;
+    }
+    case "view":
+      return `Viewed ${target}`;
+    default:
+      return `${activity.action} ${target}`;
+  }
+}
+
+function getSecondarySummary(activity: AdminActivityItem) {
+  const actor = activity.actorEmail || "System";
+  const details = activity.details || {};
+
+  if (activity.action === "update" && activity.changedFields?.length) {
+    const changeCount = activity.changedFields.length;
+    return `${actor} updated ${changeCount} ${changeCount === 1 ? "field" : "fields"}`;
+  }
+
+  if (activity.action === "import" && typeof details.sourceFile === "string") {
+    return `${actor} ran an import from ${details.sourceFile}`;
+  }
+
+  if (activity.action === "delete") {
+    return `${actor} removed this ${getEntityLabel(activity.entityType)}`;
+  }
+
+  if (activity.action === "create") {
+    return `${actor} added a new ${getEntityLabel(activity.entityType)}`;
+  }
+
+  return `${getActivityActionLabel(activity)} by ${actor}`;
+}
+
+function getActivityMetadata(activity: AdminActivityItem) {
+  const details = activity.details || {};
+  const items = [] as string[];
+
+  if (Array.isArray(activity.changedFields) && activity.changedFields.length) {
+    items.push(
+      activity.changedFields.length === 1
+        ? "1 field changed"
+        : `${activity.changedFields.length} fields changed`,
+    );
+  }
+
+  if (typeof details.interactionType === "string") {
+    items.push(`Type ${details.interactionType}`);
+  }
+  if (typeof details.outcomeStatus === "string") {
+    items.push(`Outcome ${details.outcomeStatus}`);
+  }
+  if (typeof details.role === "string") {
+    items.push(`Role ${details.role}`);
+  }
+  if (typeof details.quantity === "number") {
+    items.push(`Quantity ${details.quantity}`);
+  }
+  if (typeof details.sourceFile === "string") {
+    items.push(`Source ${details.sourceFile}`);
+  }
+
+  return items;
+}
+
+function isSameDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function getDayStart(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+function getActivityGroupMeta(activity: AdminActivityItem) {
+  const createdAt = new Date(activity.createdAt);
+  if (Number.isNaN(createdAt.getTime())) {
+    return { key: "older", label: "Older" };
+  }
+
+  const now = new Date();
+  const today = getDayStart(now);
+  const activityDay = getDayStart(createdAt);
+  const diffDays = Math.floor(
+    (today.getTime() - activityDay.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  if (isSameDay(now, createdAt)) {
+    return { key: "today", label: "Today" };
+  }
+  if (diffDays === 1) {
+    return { key: "yesterday", label: "Yesterday" };
+  }
+  if (diffDays <= 7) {
+    return { key: "week", label: "Last 7 days" };
+  }
+
+  return { key: "older", label: "Older" };
 }
 
 function getActivityActionLabel(activity: AdminActivityItem) {
@@ -129,6 +349,12 @@ export default function AdminActivity() {
   const [activities, setActivities] = useState<AdminActivityItem[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState("");
+  const [search, setSearch] = useState("");
+  const [filterKey, setFilterKey] =
+    useState<ActivityFilterKey>("all");
+  const [actorFilter, setActorFilter] = useState<string>();
+  const [viewMode, setViewMode] = useState<ActivityViewMode>("compact");
+  const [expandedActivityIds, setExpandedActivityIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchActivity = async () => {
@@ -160,6 +386,100 @@ export default function AdminActivity() {
     void fetchActivity();
   }, []);
 
+  const actorOptions = useMemo(() => {
+    return [...new Set(activities.map((activity) => activity.actorEmail).filter(Boolean))]
+      .sort((left, right) => String(left).localeCompare(String(right)))
+      .map((actorEmail) => ({
+        label: String(actorEmail),
+        value: String(actorEmail),
+      }));
+  }, [activities]);
+
+  const filteredActivities = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return activities.filter((activity) => {
+      if (filterKey !== "all" && getActivityFilterKey(activity) !== filterKey) {
+        return false;
+      }
+
+      if (actorFilter && activity.actorEmail !== actorFilter) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      const haystack = [
+        activity.entityName,
+        activity.entityId,
+        activity.entityType,
+        activity.action,
+        activity.actorEmail,
+        ...getActivityDetailTags(activity),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [activities, actorFilter, filterKey, search]);
+
+  const groupedActivities = useMemo(() => {
+    const groups = new Map<string, ActivityGroup>();
+
+    for (const activity of filteredActivities) {
+      const groupMeta = getActivityGroupMeta(activity);
+      const current = groups.get(groupMeta.key);
+
+      if (current) {
+        current.items.push(activity);
+      } else {
+        groups.set(groupMeta.key, {
+          key: groupMeta.key,
+          label: groupMeta.label,
+          items: [activity],
+        });
+      }
+    }
+
+    return ["today", "yesterday", "week", "older"]
+      .map((key) => groups.get(key))
+      .filter((group): group is ActivityGroup => Boolean(group));
+  }, [filteredActivities]);
+
+  const summary = useMemo(() => {
+    let todayCount = 0;
+    let weekCount = 0;
+
+    for (const activity of activities) {
+      const groupMeta = getActivityGroupMeta(activity);
+      if (groupMeta.key === "today") {
+        todayCount += 1;
+      }
+      if (groupMeta.key === "today" || groupMeta.key === "yesterday" || groupMeta.key === "week") {
+        weekCount += 1;
+      }
+    }
+
+    return {
+      total: activities.length,
+      today: todayCount,
+      last7Days: weekCount,
+      showing: filteredActivities.length,
+    };
+  }, [activities, filteredActivities.length]);
+
+  const toggleExpanded = (activityId: string) => {
+    setExpandedActivityIds((current) =>
+      current.includes(activityId)
+        ? current.filter((id) => id !== activityId)
+        : [...current, activityId],
+    );
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <Card
@@ -180,8 +500,89 @@ export default function AdminActivity() {
             style={{ margin: 0, maxWidth: 760 }}
           >
             Review the latest venue, CRM, inventory, interaction, and import
-            events across the admin workspace.
+            events across the admin workspace. Filter by type or actor, then
+            scan the feed in time groups instead of one long flat list.
           </Typography.Paragraph>
+        </Space>
+      </Card>
+
+      <div style={{ overflowX: "auto" }}>
+        <div
+          style={{
+            display: "grid",
+            gap: 12,
+            gridTemplateColumns: "repeat(4, minmax(120px, 1fr))",
+            minWidth: 520,
+          }}
+        >
+          <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
+            <Statistic title="Showing" value={summary.showing} valueStyle={{ fontSize: 24 }} />
+          </Card>
+          <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
+            <Statistic title="Today" value={summary.today} valueStyle={{ fontSize: 24 }} />
+          </Card>
+          <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
+            <Statistic title="Last 7 days" value={summary.last7Days} valueStyle={{ fontSize: 24 }} />
+          </Card>
+          <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
+            <Statistic title="Recent total" value={summary.total} valueStyle={{ fontSize: 24 }} />
+          </Card>
+        </div>
+      </div>
+
+      <Card
+        styles={{ body: { padding: 20 } }}
+        style={{
+          borderRadius: 20,
+          border: "1px solid rgba(15, 23, 42, 0.06)",
+          boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+        }}
+      >
+        <Space direction="vertical" size={14} style={{ width: "100%" }}>
+          <Row gutter={[12, 12]} align="middle">
+            <Col xs={24} xl={14}>
+              <Input.Search
+                allowClear
+                size="large"
+                placeholder="Search by entity, ID, actor, or activity details"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </Col>
+            <Col xs={24} xl={10}>
+              <Segmented
+                block
+                value={viewMode}
+                onChange={(value) => setViewMode(value as ActivityViewMode)}
+                options={[
+                  { label: "Compact", value: "compact" },
+                  { label: "Detailed", value: "detailed" },
+                ]}
+              />
+            </Col>
+          </Row>
+
+          <Segmented
+            block
+            value={filterKey}
+            onChange={(value) => setFilterKey(value as ActivityFilterKey)}
+            options={[
+              { label: "All", value: "all" },
+              { label: "Venues", value: "venue" },
+              { label: "CRM", value: "crm" },
+              { label: "Imports", value: "imports" },
+              { label: "Interactions", value: "interactions" },
+            ]}
+          />
+
+          <Select
+            allowClear
+            size="large"
+            placeholder="Filter by actor"
+            value={actorFilter}
+            options={actorOptions}
+            onChange={(value) => setActorFilter(value)}
+          />
         </Space>
       </Card>
 
@@ -211,59 +612,126 @@ export default function AdminActivity() {
               <Button type="primary">Create the first venue</Button>
             </Link>
           </Empty>
+        ) : filteredActivities.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="No activity matches the current filters."
+          >
+            <Button
+              onClick={() => {
+                setSearch("");
+                setFilterKey("all");
+                setActorFilter(undefined);
+              }}
+            >
+              Clear filters
+            </Button>
+          </Empty>
         ) : (
           <Space direction="vertical" size={10} style={{ width: "100%" }}>
-            {activities.map((activity) => {
-              const detailTags = getActivityDetailTags(activity);
-              return (
-                <div
-                  key={activity.id}
-                  style={{
-                    padding: 16,
-                    borderRadius: 16,
-                    border: "1px solid rgba(15, 23, 42, 0.08)",
-                    background: "rgba(255,255,255,0.72)",
-                  }}
+            {groupedActivities.map((group) => (
+              <div key={group.key}>
+                <Space
+                  align="center"
+                  size={10}
+                  style={{ marginBottom: 12 }}
                 >
-                  <Row justify="space-between" align="middle" gutter={[12, 12]}>
-                    <Col flex="auto">
-                      <Typography.Text strong style={{ display: "block" }}>
-                        {activity.entityName ||
-                          activity.entityId ||
-                          "Untitled activity"}
-                      </Typography.Text>
-                      <Typography.Text type="secondary">
-                        {getActivityActionLabel(activity)}
-                      </Typography.Text>
-                      <div style={{ marginTop: 8 }}>
-                        <Space size={[8, 8]} wrap>
-                          <Tag color={getActivityActionColor(activity.action)}>
-                            {activity.action}
-                          </Tag>
-                          <Tag>{activity.entityType}</Tag>
-                          {activity.actorEmail ? (
-                            <Tag>{activity.actorEmail}</Tag>
-                          ) : null}
-                          {detailTags.map((detail) => (
-                            <Tag key={detail}>{detail}</Tag>
-                          ))}
-                        </Space>
+                  <Typography.Title level={4} style={{ margin: 0 }}>
+                    {group.label}
+                  </Typography.Title>
+                  <Tag>{group.items.length}</Tag>
+                </Space>
+
+                <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                  {group.items.map((activity) => {
+                    const metadata = getActivityMetadata(activity);
+                    const detailTags = getActivityDetailTags(activity);
+                    const accent = getActivityAccentColor(activity.action);
+                    const surfaceStyle = getActivitySurfaceStyle(activity.action);
+                    const priorityLabel = getActivityPriorityLabel(activity.action);
+                    const isExpanded = expandedActivityIds.includes(activity.id);
+                    const showDetails = viewMode === "detailed" || isExpanded;
+
+                    return (
+                      <div
+                        key={activity.id}
+                        style={{
+                          padding: 16,
+                          borderRadius: 16,
+                          border: `1px solid ${surfaceStyle.borderColor}`,
+                          borderLeft: `4px solid ${accent}`,
+                          background: surfaceStyle.background,
+                        }}
+                      >
+                        <Row justify="space-between" align="top" gutter={[12, 12]}>
+                          <Col flex="auto">
+                            <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                              <Space size={[8, 8]} wrap>
+                                <Tag color={getActivityActionColor(activity.action)}>
+                                  {activity.action}
+                                </Tag>
+                                <Tag>{activity.entityType}</Tag>
+                                {priorityLabel ? <Tag color="gold">{priorityLabel}</Tag> : null}
+                              </Space>
+
+                              <div>
+                                <Typography.Text strong style={{ display: "block", fontSize: 16 }}>
+                                  {getPrimarySummary(activity)}
+                                </Typography.Text>
+                                <Typography.Text type="secondary">
+                                  {getSecondarySummary(activity)}
+                                </Typography.Text>
+                              </div>
+
+                              {metadata.length ? (
+                                <Space size={[8, 8]} wrap>
+                                  {metadata.map((item) => (
+                                    <Tag key={item}>{item}</Tag>
+                                  ))}
+                                </Space>
+                              ) : null}
+
+                              {showDetails && detailTags.length ? (
+                                <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                                  <Typography.Text type="secondary">
+                                    Details
+                                  </Typography.Text>
+                                  <Space size={[8, 8]} wrap>
+                                    {detailTags.map((detail) => (
+                                      <Tag key={detail}>{detail}</Tag>
+                                    ))}
+                                  </Space>
+                                </Space>
+                              ) : null}
+                            </Space>
+                          </Col>
+
+                          <Col>
+                            <Space direction="vertical" size={8} align="end">
+                              <Typography.Text type="secondary">
+                                {formatDateTime(activity.createdAt)}
+                              </Typography.Text>
+                              <Link to={getActivityTarget(activity)}>
+                                <Button size="small">Open</Button>
+                              </Link>
+                              {viewMode === "compact" && detailTags.length ? (
+                                <Button
+                                  size="small"
+                                  type="text"
+                                  onClick={() => toggleExpanded(activity.id)}
+                                >
+                                  {isExpanded ? "Hide details" : "Show details"}
+                                </Button>
+                              ) : null}
+                            </Space>
+                          </Col>
+                        </Row>
                       </div>
-                    </Col>
-                    <Col>
-                      <Space direction="vertical" size={8} align="end">
-                        <Typography.Text type="secondary">
-                          {formatDateTime(activity.createdAt)}
-                        </Typography.Text>
-                        <Link to={getActivityTarget(activity)}>
-                          <Button size="small">Open</Button>
-                        </Link>
-                      </Space>
-                    </Col>
-                  </Row>
-                </div>
-              );
-            })}
+                    );
+                  })}
+                </Space>
+              </div>
+            ))}
           </Space>
         )}
       </Card>
