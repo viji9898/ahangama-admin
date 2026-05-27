@@ -22,7 +22,7 @@ export async function handler(event) {
     const qs = event.queryStringParameters || {};
     const requestedLimit = Number(qs.limit);
     const limit = Number.isFinite(requestedLimit)
-      ? Math.min(Math.max(requestedLimit, 1), 100)
+      ? Math.min(Math.max(requestedLimit, 1), 500)
       : 20;
 
     const result = await query(

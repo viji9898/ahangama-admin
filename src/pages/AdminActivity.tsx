@@ -54,6 +54,28 @@ type ActiveUserSummary = {
   eventCount: number;
 };
 
+type DailyUsageUserSummary = {
+  email: string;
+  label: string;
+  totalEvents: number;
+  authEvents: number;
+  lastSeen: string;
+};
+
+type DailyUsageSummary = {
+  dateKey: string;
+  label: string;
+  users: DailyUsageUserSummary[];
+};
+
+function getUserDisplayName(activity: AdminActivityItem) {
+  if (activity.entityType === "auth" && activity.entityName) {
+    return String(activity.entityName);
+  }
+
+  return String(activity.actorEmail || "").toLowerCase() || "Unknown user";
+}
+
 type ActivityViewMode = "compact" | "detailed";
 
 function formatDateTime(value: unknown) {
@@ -67,6 +89,16 @@ function formatDateTime(value: unknown) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+  }).format(date);
+}
+
+function formatDayLabel(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "2-digit",
   }).format(date);
 }
 
@@ -287,6 +319,12 @@ function getDayStart(value: Date) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
 
+function getDateKey(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
 function getActivityGroupMeta(activity: AdminActivityItem) {
   const createdAt = new Date(activity.createdAt);
   if (Number.isNaN(createdAt.getTime())) {
@@ -423,7 +461,7 @@ export default function AdminActivity() {
       setActivityError("");
 
       try {
-        const response = await fetch(`${ACTIVITY_ENDPOINT}?limit=50`, {
+        const response = await fetch(`${ACTIVITY_ENDPOINT}?limit=250`, {
           credentials: "include",
         });
         const data = (await response.json().catch(() => ({}))) as {
@@ -543,7 +581,7 @@ export default function AdminActivity() {
       if (!email) continue;
 
       const current = rows.get(email);
-      const label = String(activity.entityName || activity.actorEmail || email);
+      const label = getUserDisplayName(activity);
 
       if (!current) {
         rows.set(email, {
@@ -556,6 +594,9 @@ export default function AdminActivity() {
       }
 
       current.eventCount += 1;
+      if (activity.entityType === "auth" && activity.entityName) {
+        current.label = getUserDisplayName(activity);
+      }
       if (new Date(activity.createdAt).getTime() > new Date(current.lastSeen).getTime()) {
         current.lastSeen = activity.createdAt;
       }
@@ -565,6 +606,70 @@ export default function AdminActivity() {
       (left, right) =>
         new Date(right.lastSeen).getTime() - new Date(left.lastSeen).getTime(),
     );
+  }, [activities]);
+
+  const dailyUsage = useMemo(() => {
+    const today = new Date();
+    const todayStart = getDayStart(today);
+    const dayBuckets = new Map<string, Map<string, DailyUsageUserSummary>>();
+
+    for (const activity of activities) {
+      const dateKey = getDateKey(activity.createdAt);
+      if (!dateKey) continue;
+
+      const activityDate = new Date(activity.createdAt);
+      const diffDays = Math.floor(
+        (todayStart.getTime() - getDayStart(activityDate).getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
+      if (diffDays < 0 || diffDays > 6) continue;
+
+      const email = String(activity.actorEmail || "").toLowerCase();
+      if (!email) continue;
+
+      const users = dayBuckets.get(dateKey) || new Map<string, DailyUsageUserSummary>();
+      const current = users.get(email);
+      const isAuthEvent = activity.entityType === "auth";
+      const label = getUserDisplayName(activity);
+
+      if (!current) {
+        users.set(email, {
+          email,
+          label,
+          totalEvents: 1,
+          authEvents: isAuthEvent ? 1 : 0,
+          lastSeen: activity.createdAt,
+        });
+      } else {
+        current.totalEvents += 1;
+        current.authEvents += isAuthEvent ? 1 : 0;
+        if (isAuthEvent && activity.entityName) {
+          current.label = label;
+        }
+        if (
+          new Date(activity.createdAt).getTime() >
+          new Date(current.lastSeen).getTime()
+        ) {
+          current.lastSeen = activity.createdAt;
+        }
+      }
+
+      dayBuckets.set(dateKey, users);
+    }
+
+    return [...dayBuckets.entries()]
+      .sort(([left], [right]) => right.localeCompare(left))
+      .map(([dateKey, users]) => ({
+        dateKey,
+        label: dateKey === new Date().toISOString().slice(0, 10)
+          ? "Today"
+          : formatDayLabel(dateKey),
+        users: [...users.values()].sort(
+          (left, right) =>
+            new Date(right.lastSeen).getTime() -
+            new Date(left.lastSeen).getTime(),
+        ),
+      } satisfies DailyUsageSummary));
   }, [activities]);
 
   const toggleExpanded = (activityId: string) => {
@@ -648,6 +753,68 @@ export default function AdminActivity() {
         ) : (
           <Typography.Text type="secondary">
             No recorded user activity yet for today. New sign-ins and daily presence checks will appear here.
+          </Typography.Text>
+        )}
+      </Card>
+
+      <Card
+        title="Daily usage"
+        extra={
+          <Typography.Text type="secondary">Last 7 days</Typography.Text>
+        }
+        styles={{ body: { padding: 20 } }}
+        style={{
+          borderRadius: 20,
+          border: "1px solid rgba(15, 23, 42, 0.06)",
+          boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+        }}
+      >
+        {dailyUsage.length ? (
+          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            {dailyUsage.map((day) => (
+              <div key={day.dateKey}>
+                <Space align="center" size={10} style={{ marginBottom: 10 }}>
+                  <Typography.Text strong>{day.label}</Typography.Text>
+                  <Tag>{day.users.length} active users</Tag>
+                </Space>
+
+                <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                  {day.users.map((user) => (
+                    <div
+                      key={`${day.dateKey}:${user.email}`}
+                      style={{
+                        padding: 12,
+                        borderRadius: 14,
+                        border: "1px solid rgba(15, 23, 42, 0.08)",
+                        background: "rgba(248,250,252,0.8)",
+                      }}
+                    >
+                      <Row justify="space-between" align="middle" gutter={[12, 12]}>
+                        <Col flex="auto">
+                          <Typography.Text strong style={{ display: "block" }}>
+                            {user.label}
+                          </Typography.Text>
+                          <Typography.Text type="secondary">
+                            {user.email}
+                          </Typography.Text>
+                        </Col>
+                        <Col>
+                          <Space size={[8, 8]} wrap>
+                            <Tag color="blue">{user.totalEvents} events</Tag>
+                            <Tag color="cyan">{user.authEvents} auth events</Tag>
+                            <Tag>Last seen {formatDateTime(user.lastSeen)}</Tag>
+                          </Space>
+                        </Col>
+                      </Row>
+                    </div>
+                  ))}
+                </Space>
+              </div>
+            ))}
+          </Space>
+        ) : (
+          <Typography.Text type="secondary">
+            No usage history recorded yet for the last 7 days.
           </Typography.Text>
         )}
       </Card>
