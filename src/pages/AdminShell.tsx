@@ -1,16 +1,33 @@
-import { Button, Layout, Space, Typography, message } from "antd";
+import { Button, Grid, Layout, Menu, Space, Typography, message } from "antd";
 import "antd/dist/reset.css";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../auth/useAuth";
+
+const navItems = [
+  { key: "/admin", label: "Home" },
+  { key: "/admin/links", label: "IG Link Generator" },
+  { key: "/admin/qr-links", label: "QR Links" },
+  { key: "/admin/venues", label: "Venues" },
+  { key: "/admin/crm", label: "CRM" },
+  { key: "/admin/qr", label: "QR Analytics" },
+];
 
 export default function AdminShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const screens = Grid.useBreakpoint();
   const [loggingOut, setLoggingOut] = useState(false);
 
   const displayName = (user?.name || user?.email || "").toString();
+  const isSmallScreen = !screens.md;
+  const selectedKey =
+    navItems.find((item) =>
+      item.key === "/admin"
+        ? location.pathname === item.key
+        : location.pathname.startsWith(item.key),
+    )?.key || "/admin";
 
   const logout = async () => {
     setLoggingOut(true);
@@ -29,102 +46,85 @@ export default function AdminShell() {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Layout.Header
+      <Layout
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          background: "#0f172a",
+          minHeight: "100vh",
+          flexDirection: isSmallScreen ? "column" : "row",
         }}
       >
-        <Typography.Text style={{ color: "#fff", fontWeight: 600 }}>
-          Ahangama Admin
-        </Typography.Text>
-        <Space size={16}>
-          <Link
-            to="/admin"
+        <Layout.Sider
+          theme="dark"
+          width={260}
+          style={{
+            background: "#0f172a",
+            flex: isSmallScreen ? "0 0 auto" : undefined,
+            width: isSmallScreen ? "100%" : undefined,
+            maxWidth: isSmallScreen ? "100%" : undefined,
+          }}
+        >
+          <div
             style={{
-              color: "#fff",
-              textDecoration:
-                location.pathname === "/admin" ? "underline" : "none",
+              padding: 24,
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            Home
-          </Link>
-          <Link
-            to="/admin/links"
-            style={{
-              color: "#fff",
-              textDecoration: location.pathname.startsWith("/admin/links")
-                ? "underline"
-                : "none",
-            }}
-          >
-            IG Link Generator
-          </Link>
-          <Link
-            to="/admin/qr-links"
-            style={{
-              color: "#fff",
-              textDecoration: location.pathname.startsWith("/admin/qr-links")
-                ? "underline"
-                : "none",
-            }}
-          >
-            QR Links
-          </Link>
-          <Link
-            to="/admin/venues"
-            style={{
-              color: "#fff",
-              textDecoration: location.pathname.startsWith("/admin/venues")
-                ? "underline"
-                : "none",
-            }}
-          >
-            Venues
-          </Link>
-          <Link
-            to="/admin/crm"
-            style={{
-              color: "#fff",
-              textDecoration: location.pathname.startsWith("/admin/crm")
-                ? "underline"
-                : "none",
-            }}
-          >
-            CRM
-          </Link>
-          <Link
-            to="/admin/qr"
-            style={{
-              color: "#fff",
-              textDecoration: location.pathname.startsWith("/admin/qr")
-                ? "underline"
-                : "none",
-            }}
-          >
-            QR Analytics
-          </Link>
-          {displayName ? (
-            <Typography.Text style={{ color: "#fff" }}>
-              {displayName}
+            <Typography.Text style={{ color: "#fff", fontWeight: 600 }}>
+              Ahangama Admin
             </Typography.Text>
-          ) : null}
-          <Button
-            type="link"
-            onClick={logout}
-            loading={loggingOut}
-            style={{ color: "#fff", padding: 0 }}
-          >
-            Logout
-          </Button>
-        </Space>
-      </Layout.Header>
+          </div>
 
-      <Layout.Content style={{ padding: 24 }}>
-        <Outlet />
-      </Layout.Content>
+          <Menu
+            theme="dark"
+            mode={isSmallScreen ? "horizontal" : "inline"}
+            selectedKeys={[selectedKey]}
+            items={navItems}
+            onClick={({ key }) => navigate(key)}
+            style={{
+              borderInlineEnd: 0,
+              flexWrap: isSmallScreen ? "wrap" : undefined,
+            }}
+          />
+
+          <Space
+            direction={isSmallScreen ? "horizontal" : "vertical"}
+            size={12}
+            style={{
+              padding: 24,
+              width: "100%",
+              justifyContent: "space-between",
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            {displayName ? (
+              <Typography.Text style={{ color: "#fff" }}>
+                {displayName}
+              </Typography.Text>
+            ) : (
+              <span />
+            )}
+            <Button
+              type="link"
+              onClick={logout}
+              loading={loggingOut}
+              style={{ color: "#fff", padding: 0 }}
+            >
+              Logout
+            </Button>
+          </Space>
+        </Layout.Sider>
+
+        <Layout>
+          <Layout.Content
+            style={{
+              padding: 24,
+              minWidth: 0,
+              overflow: "auto",
+            }}
+          >
+            <Outlet />
+          </Layout.Content>
+        </Layout>
+      </Layout>
     </Layout>
   );
 }
