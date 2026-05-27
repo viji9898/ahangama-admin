@@ -1,4 +1,5 @@
 import { requireAdmin } from "./_lib/auth.mjs";
+import { logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
 import {
   VENUES_TABLE,
@@ -167,6 +168,20 @@ export async function handler(event) {
 
     const r = await query(sql, params);
     const row = r.rows[0];
+
+    await logAdminActivity({
+      action: "create",
+      actorEmail: actor?.email,
+      entityType: "venue",
+      entityId: row.id,
+      entityName: row.name,
+      venueId: row.id,
+      details: {
+        status: row.status,
+        live: row.live,
+      },
+    });
+
     return json(200, { ok: true, inserted: true, venue: toVenueDto(row) });
   } catch (e) {
     if (e?.code === "23505") {

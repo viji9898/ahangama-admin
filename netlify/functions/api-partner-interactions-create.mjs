@@ -1,4 +1,5 @@
 import { requireAdmin } from "./_lib/auth.mjs";
+import { logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
 import {
   PARTNER_CONTACTS_TABLE,
@@ -93,9 +94,26 @@ export async function handler(event) {
       createdBy,
     ]);
 
+    const row = result.rows[0];
+
+    await logAdminActivity({
+      action: "create",
+      actorEmail: actor?.email,
+      entityType: "interaction",
+      entityId: row.id,
+      entityName: row.summary,
+      venueId: row.venue_id,
+      contactId: row.contact_id,
+      details: {
+        interactionType: row.interaction_type,
+        outcomeStatus: row.outcome_status,
+        contactName: row.contact_name,
+      },
+    });
+
     return json(200, {
       ok: true,
-      interaction: toPartnerInteractionDto(result.rows[0]),
+      interaction: toPartnerInteractionDto(row),
     });
   } catch (e) {
     return json(e?.statusCode || 500, {

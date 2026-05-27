@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Button,
@@ -48,6 +48,7 @@ const INTERACTIONS_LIST_ENDPOINT =
 const INTERACTIONS_CREATE_ENDPOINT =
   "/.netlify/functions/api-partner-interactions-create";
 const VENUES_LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
+const ACTIVITY_TRACK_ENDPOINT = "/.netlify/functions/api-admin-activity-track";
 
 const ROLE_OPTIONS: { label: string; value: PartnerContactRole }[] = [
   { label: "Owner", value: "owner" },
@@ -164,11 +165,34 @@ export default function CRM() {
   const [contactModalTab, setContactModalTab] = useState<ContactModalTab>("info");
   const [createForm] = Form.useForm();
   const [interactionForm] = Form.useForm();
+  const lastTrackedContactIdRef = useRef<string>("");
 
   const selectedContact = useMemo(
     () => contacts.find((item) => item.id === selectedContactId) || null,
     [contacts, selectedContactId],
   );
+
+  useEffect(() => {
+    if (!selectedContact?.id || lastTrackedContactIdRef.current === selectedContact.id) {
+      return;
+    }
+
+    lastTrackedContactIdRef.current = selectedContact.id;
+
+    void fetch(ACTIVITY_TRACK_ENDPOINT, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        entityType: "contact",
+        entityId: selectedContact.id,
+        entityName: selectedContact.contactName,
+        venueId: selectedContact.venueId,
+        contactId: selectedContact.id,
+        source: "crm",
+      }),
+    }).catch(() => undefined);
+  }, [selectedContact?.id, selectedContact?.contactName, selectedContact?.venueId]);
 
   const filteredContacts = useMemo(() => {
     const q = search.trim().toLowerCase();

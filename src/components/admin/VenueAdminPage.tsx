@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Button,
@@ -269,6 +269,7 @@ const DELETE_ENDPOINT = "/.netlify/functions/api-venues-delete";
 const LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
 const UPDATE_ENDPOINT = "/.netlify/functions/api-venues-update";
 const AI_ASSIST_ENDPOINT = "/.netlify/functions/api-venues-ai-assist";
+const ACTIVITY_TRACK_ENDPOINT = "/.netlify/functions/api-admin-activity-track";
 
 function buildEditableSnapshot(venue?: Venue) {
   return {
@@ -356,6 +357,7 @@ export function VenueAdminPage() {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
+  const lastTrackedVenueIdRef = useRef<string>("");
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [aiQuery, setAiQuery] = useState("");
@@ -392,6 +394,28 @@ export function VenueAdminPage() {
     () => venues.find((venue) => normalizeId(venue.id) === selectedVenueId),
     [selectedVenueId, venues],
   );
+
+  useEffect(() => {
+    const venueId = normalizeId(selectedVenue?.id);
+    if (!venueId || lastTrackedVenueIdRef.current === venueId) {
+      return;
+    }
+
+    lastTrackedVenueIdRef.current = venueId;
+
+    void fetch(ACTIVITY_TRACK_ENDPOINT, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        entityType: "venue",
+        entityId: venueId,
+        entityName: selectedVenue?.name || venueId,
+        venueId,
+        source: "venue-admin",
+      }),
+    }).catch(() => undefined);
+  }, [selectedVenue?.id, selectedVenue?.name]);
 
   useEffect(() => {
     const fetchVenues = async () => {

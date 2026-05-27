@@ -17,8 +17,23 @@ import { useAuth } from "../auth/useAuth";
 import type { Venue } from "../types/venue";
 
 const LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
+const ACTIVITY_ENDPOINT = "/.netlify/functions/api-admin-activity-list";
 const DAILY_TEAM_EMAIL_ENDPOINT =
   "/.netlify/functions/api-daily-team-email-preview";
+
+type AdminActivity = {
+  id: string;
+  action: string;
+  actorEmail?: string | null;
+  entityType: string;
+  entityId: string;
+  entityName?: string | null;
+  venueId?: string | null;
+  contactId?: string | null;
+  changedFields?: string[];
+  details?: Record<string, unknown>;
+  createdAt: string;
+};
 
 type DailyTeamEmailResponse = {
   ok?: boolean;
@@ -120,6 +135,74 @@ function MetricCard({
   );
 }
 
+function getActivityActionLabel(activity: AdminActivity) {
+  const entityLabel = {
+    venue: "venue",
+    contact: "contact",
+    touchpoint: "inventory",
+    interaction: "interaction",
+  }[activity.entityType] || activity.entityType;
+
+  const verb = {
+    view: "viewed",
+    create: "created",
+    update: "updated",
+    delete: "deleted",
+  }[activity.action] || activity.action;
+
+  return `${verb} ${entityLabel}`;
+}
+
+function getActivityActionColor(action: string) {
+  return {
+    view: "default",
+    create: "green",
+    update: "blue",
+    delete: "red",
+  }[action] || "default";
+}
+
+function getActivityTarget(activity: AdminActivity) {
+  if (activity.entityType === "venue") {
+    const venueId = String(activity.venueId || activity.entityId || "");
+    return venueId ? `/admin/venues?venue=${encodeURIComponent(venueId)}` : "/admin/venues";
+  }
+
+  if (
+    activity.entityType === "contact" ||
+    activity.entityType === "touchpoint" ||
+    activity.entityType === "interaction"
+  ) {
+    return "/admin/crm";
+  }
+
+  return "/admin";
+}
+
+function getActivityDetailTags(activity: AdminActivity) {
+  const details = activity.details || {};
+  const items = [] as string[];
+
+  if (Array.isArray(activity.changedFields) && activity.changedFields.length) {
+    items.push(`Changed: ${activity.changedFields.join(", ")}`);
+  }
+
+  if (typeof details.interactionType === "string") {
+    items.push(`Type: ${details.interactionType}`);
+  }
+  if (typeof details.outcomeStatus === "string") {
+    items.push(`Outcome: ${details.outcomeStatus}`);
+  }
+  if (typeof details.role === "string") {
+    items.push(`Role: ${details.role}`);
+  }
+  if (typeof details.quantity === "number") {
+    items.push(`Quantity: ${details.quantity}`);
+  }
+
+  return items;
+}
+
 export default function AdminHome() {
   const { user } = useAuth();
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -130,6 +213,9 @@ export default function AdminHome() {
   const [dailyEmailError, setDailyEmailError] = useState("");
   const [dailyEmailData, setDailyEmailData] =
     useState<DailyTeamEmailResponse | null>(null);
+  const [activities, setActivities] = useState<AdminActivity[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState("");
 
   const loadDailyTeamEmail = async ({ send = false } = {}) => {
     const params = new URLSearchParams();
@@ -202,6 +288,36 @@ export default function AdminHome() {
     void fetchDailyEmail();
   }, []);
 
+  useEffect(() => {
+    const fetchActivity = async () => {
+      setActivityLoading(true);
+      setActivityError("");
+
+      try {
+        const response = await fetch(`${ACTIVITY_ENDPOINT}?limit=12`, {
+          credentials: "include",
+        });
+        const data = (await response.json().catch(() => ({}))) as {
+          ok?: boolean;
+          error?: string;
+          activities?: AdminActivity[];
+        };
+
+        if (!response.ok || data?.ok === false) {
+          throw new Error(data?.error || `Failed (${response.status})`);
+        }
+
+        setActivities(Array.isArray(data?.activities) ? data.activities : []);
+      } catch (fetchError) {
+        setActivityError(String((fetchError as Error)?.message || fetchError));
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+
+    void fetchActivity();
+  }, []);
+
   const handleRunDailyTeamEmail = async () => {
     setDailyEmailSending(true);
     setDailyEmailError("");
@@ -231,20 +347,6 @@ export default function AdminHome() {
   const staffPickCount = venues.filter(
     (venue) => venue.staffPick === true,
   ).length;
-
-  const recentVenues = useMemo(() => {
-    return [...venues]
-      .sort((a, b) => {
-        const aTime = new Date(
-          String(a.updatedAt || a.updated_at || 0),
-        ).getTime();
-        const bTime = new Date(
-          String(b.updatedAt || b.updated_at || 0),
-        ).getTime();
-        return bTime - aTime;
-      })
-      .slice(0, 5);
-  }, [venues]);
 
   const categorySummary = useMemo(() => {
     const counts = new Map<string, number>();
@@ -409,7 +511,7 @@ export default function AdminHome() {
             </Col>
             <Col xs={24} xl={14}>
               <Card
-                title="Recent venue activity"
+                title="Recent activity"
                 styles={{ body: { padding: 20 } }}
                 style={{
                   borderRadius: 20,
@@ -417,10 +519,19 @@ export default function AdminHome() {
                   boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
                 }}
               >
-                {recentVenues.length === 0 ? (
+                {activityLoading ? (
+                  <Skeleton active paragraph={{ rows: 6 }} />
+                ) : activityError ? (
+                  <Alert
+                    type="error"
+                    showIcon
+                    message="Activity feed unavailable"
+                    description={activityError}
+                  />
+                ) : activities.length === 0 ? (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="No venues available yet."
+                    description="No admin activity yet."
                   >
                     <Link to="/admin/venues?addVenue=1">
                       <Button type="primary">Create the first venue</Button>
@@ -432,9 +543,11 @@ export default function AdminHome() {
                     size={12}
                     style={{ width: "100%" }}
                   >
-                    {recentVenues.map((venue) => (
+                    {activities.map((activity) => {
+                      const detailTags = getActivityDetailTags(activity);
+                      return (
                       <Card
-                        key={venue.id || venue.slug || venue.name}
+                        key={activity.id}
                         size="small"
                         styles={{ body: { padding: 16 } }}
                         style={{
@@ -452,47 +565,40 @@ export default function AdminHome() {
                               strong
                               style={{ display: "block" }}
                             >
-                              {venue.name || "Untitled venue"}
+                              {activity.entityName || activity.entityId || "Untitled activity"}
                             </Typography.Text>
                             <Typography.Text type="secondary">
-                              {venue.slug || venue.id || "No identifier"}
+                              {getActivityActionLabel(activity)}
                             </Typography.Text>
                             <div style={{ marginTop: 8 }}>
                               <Space size={[8, 8]} wrap>
-                                <Tag
-                                  color={
-                                    (venue.live ?? true) ? "green" : "default"
-                                  }
-                                >
-                                  {(venue.live ?? true)
-                                    ? "Live"
-                                    : "Coming soon"}
+                                <Tag color={getActivityActionColor(activity.action)}>
+                                  {activity.action}
                                 </Tag>
-                                {venue.status ? (
-                                  <Tag>{venue.status}</Tag>
+                                <Tag>{activity.entityType}</Tag>
+                                {activity.actorEmail ? (
+                                  <Tag>{activity.actorEmail}</Tag>
                                 ) : null}
-                                {venue.area ? <Tag>{venue.area}</Tag> : null}
+                                {detailTags.map((detail) => (
+                                  <Tag key={detail}>{detail}</Tag>
+                                ))}
                               </Space>
                             </div>
                           </Col>
                           <Col>
                             <Space direction="vertical" size={8} align="end">
                               <Typography.Text type="secondary">
-                                Updated{" "}
-                                {formatDateTime(
-                                  venue.updatedAt || venue.updated_at,
-                                )}
+                                {formatDateTime(activity.createdAt)}
                               </Typography.Text>
-                              <Link
-                                to={`/admin/venues?venue=${encodeURIComponent(String(venue.id || ""))}`}
-                              >
+                              <Link to={getActivityTarget(activity)}>
                                 <Button size="small">Open</Button>
                               </Link>
                             </Space>
                           </Col>
                         </Row>
                       </Card>
-                    ))}
+                      );
+                    })}
                   </Space>
                 )}
               </Card>

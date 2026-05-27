@@ -1,4 +1,5 @@
 import { requireAdmin } from "./_lib/auth.mjs";
+import { logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
 import { VENUES_TABLE } from "./_lib/venues260414.mjs";
 
@@ -56,7 +57,7 @@ export async function handler(event) {
             updated_by = $2
         WHERE id = $1
           AND deleted_at IS NULL
-        RETURNING id;
+        RETURNING id, name;
       `,
       [id, actorEmail || null],
     );
@@ -64,6 +65,15 @@ export async function handler(event) {
     if (r.rowCount === 0) {
       return json(404, { ok: false, error: "Venue not found" });
     }
+
+    await logAdminActivity({
+      action: "delete",
+      actorEmail,
+      entityType: "venue",
+      entityId: r.rows[0].id,
+      entityName: r.rows[0].name,
+      venueId: r.rows[0].id,
+    });
 
     return json(200, { ok: true, deletedId: r.rows[0].id });
   } catch (e) {

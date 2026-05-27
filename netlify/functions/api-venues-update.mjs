@@ -1,4 +1,5 @@
 import { requireAdmin } from "./_lib/auth.mjs";
+import { diffFields, logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
 import {
   VENUES_TABLE,
@@ -14,6 +15,49 @@ const json = (statusCode, body) => ({
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
 });
+
+const VENUE_ACTIVITY_FIELDS = {
+  destination_slug: "destination",
+  category: "category",
+  name: "name",
+  slug: "slug",
+  status: "status",
+  live: "live",
+  editorial_tags: "editorial tags",
+  is_pass_venue: "pass venue",
+  staff_pick: "staff pick",
+  is_featured: "featured",
+  priority_score: "priority score",
+  pass_priority: "pass priority",
+  stars: "stars",
+  reviews: "reviews",
+  discount: "discount",
+  excerpt: "excerpt",
+  description: "description",
+  best_for: "best for",
+  tags: "tags",
+  card_perk: "card perk",
+  offer: "offers",
+  how_to_claim: "how to claim",
+  restrictions: "restrictions",
+  price: "price",
+  hours: "hours",
+  area: "area",
+  lat: "latitude",
+  lng: "longitude",
+  logo: "logo",
+  image: "image",
+  og_image: "og image",
+  map_url: "map url",
+  google_place_id: "google place id",
+  email: "email",
+  instagram: "instagram",
+  whatsapp: "whatsapp",
+  last_verified_at: "last verified at",
+  source: "source",
+  notes_internal: "internal notes",
+  deleted_at: "deleted at",
+};
 
 export async function handler(event) {
   try {
@@ -34,6 +78,20 @@ export async function handler(event) {
       .trim()
       .toLowerCase();
     if (!id) return json(400, { ok: false, error: "id is required" });
+
+    const beforeResult = await query(
+      `
+        SELECT *
+        FROM ${VENUES_TABLE}
+        WHERE id = $1
+          AND deleted_at IS NULL
+      `,
+      [id],
+    );
+    if (beforeResult.rowCount === 0) {
+      return json(404, { ok: false, error: "Venue not found" });
+    }
+    const beforeRow = beforeResult.rows[0];
 
     // Helper to support PATCH while allowing explicit nulls
     const has = (k) => Object.prototype.hasOwnProperty.call(body, k);
@@ -218,7 +276,21 @@ export async function handler(event) {
       const r = await query(sql, params);
       if (r.rowCount === 0)
         return json(404, { ok: false, error: "Venue not found" });
-      return json(200, { ok: true, venue: toVenueDto(r.rows[0]) });
+
+      const row = r.rows[0];
+      const changedFields = diffFields(beforeRow, row, VENUE_ACTIVITY_FIELDS);
+
+      await logAdminActivity({
+        action: "update",
+        actorEmail: actor?.email,
+        entityType: "venue",
+        entityId: row.id,
+        entityName: row.name,
+        venueId: row.id,
+        changedFields,
+      });
+
+      return json(200, { ok: true, venue: toVenueDto(row) });
     } catch (e) {
       const msg = String(e?.message || e);
       if (msg.toLowerCase().includes("duplicate")) {

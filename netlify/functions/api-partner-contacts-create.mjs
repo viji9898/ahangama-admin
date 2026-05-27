@@ -1,4 +1,5 @@
 import { requireAdmin } from "./_lib/auth.mjs";
+import { logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
 import {
   PARTNER_CONTACTS_TABLE,
@@ -89,7 +90,23 @@ export async function handler(event) {
       actorEmail,
     ]);
 
-    return json(200, { ok: true, contact: toPartnerContactDto(result.rows[0]) });
+    const row = result.rows[0];
+
+    await logAdminActivity({
+      action: "create",
+      actorEmail: actor?.email,
+      entityType: "contact",
+      entityId: row.id,
+      entityName: row.contact_name,
+      venueId: row.venue_id,
+      contactId: row.id,
+      details: {
+        role: row.role,
+        venueName: row.venue_name,
+      },
+    });
+
+    return json(200, { ok: true, contact: toPartnerContactDto(row) });
   } catch (e) {
     const msg = String(e?.message || e);
     if (msg.toLowerCase().includes("duplicate")) {

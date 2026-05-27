@@ -1,4 +1,5 @@
 import { requireAdmin } from "./_lib/auth.mjs";
+import { logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
 import {
   PARTNER_CONTACTS_TABLE,
@@ -44,7 +45,7 @@ export async function handler(event) {
             updated_by = $2
         WHERE id = $1
           AND deleted_at IS NULL
-        RETURNING id;
+        RETURNING id, venue_id, contact_name;
       `,
       [id, actorEmail],
     );
@@ -52,6 +53,16 @@ export async function handler(event) {
     if (result.rowCount === 0) {
       return json(404, { ok: false, error: "Contact not found" });
     }
+
+    await logAdminActivity({
+      action: "delete",
+      actorEmail: actor?.email,
+      entityType: "contact",
+      entityId: result.rows[0].id,
+      entityName: result.rows[0].contact_name,
+      venueId: result.rows[0].venue_id,
+      contactId: result.rows[0].id,
+    });
 
     return json(200, { ok: true, deletedId: result.rows[0].id });
   } catch (e) {

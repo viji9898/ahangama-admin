@@ -1,4 +1,5 @@
 import { requireAdmin } from "./_lib/auth.mjs";
+import { diffFields, logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
 import {
   PARTNER_TOUCHPOINT_INVENTORY_TABLE,
@@ -44,6 +45,17 @@ export async function handler(event) {
     const notes = normalizeOptionalText(body.notes);
     const actorEmail = normalizeLowerText(actor?.email);
 
+    const beforeResult = await query(
+      `
+        SELECT *
+        FROM ${PARTNER_TOUCHPOINT_INVENTORY_TABLE}
+        WHERE venue_id = $1
+          AND touchpoint_type = $2
+      `,
+      [venueId, touchpointType],
+    );
+    const beforeRow = beforeResult.rows[0] || null;
+
     const sql = `
       WITH upserted AS (
         INSERT INTO ${PARTNER_TOUCHPOINT_INVENTORY_TABLE} (
@@ -70,9 +82,31 @@ export async function handler(event) {
       actorEmail,
     ]);
 
+    const row = result.rows[0];
+    const changedFields = beforeRow
+      ? diffFields(beforeRow, row, {
+          quantity: "quantity",
+          notes: "notes",
+        })
+      : ["quantity", ...(row.notes ? ["notes"] : [])];
+
+    await logAdminActivity({
+      action: beforeRow ? "update" : "create",
+      actorEmail: actor?.email,
+      entityType: "touchpoint",
+      entityId: `${row.venue_id}:${row.touchpoint_type}`,
+      entityName: row.touchpoint_type,
+      venueId: row.venue_id,
+      changedFields,
+      details: {
+        quantity: row.quantity,
+        venueName: row.venue_name,
+      },
+    });
+
     return json(200, {
       ok: true,
-      touchpoint: toTouchpointInventoryDto(result.rows[0]),
+      touchpoint: toTouchpointInventoryDto(row),
     });
   } catch (e) {
     return json(e?.statusCode || 500, {

@@ -1,4 +1,5 @@
 import { requireAdmin } from "./_lib/auth.mjs";
+import { diffFields, logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
 import {
   PARTNER_CONTACTS_TABLE,
@@ -19,6 +20,18 @@ function hasOwn(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
+const CONTACT_ACTIVITY_FIELDS = {
+  venue_id: "venue",
+  contact_name: "contact name",
+  role: "role",
+  email: "email",
+  whatsapp: "whatsapp",
+  phone: "phone",
+  notes: "notes",
+  is_primary: "primary contact",
+  active: "active",
+};
+
 export async function handler(event) {
   try {
     if (event.httpMethod !== "PUT" && event.httpMethod !== "PATCH") {
@@ -36,6 +49,20 @@ export async function handler(event) {
 
     const id = normalizeLowerText(body.id);
     if (!id) return json(400, { ok: false, error: "id is required" });
+
+    const beforeResult = await query(
+      `
+        SELECT *
+        FROM ${PARTNER_CONTACTS_TABLE}
+        WHERE id = $1
+          AND deleted_at IS NULL
+      `,
+      [id],
+    );
+    if (beforeResult.rowCount === 0) {
+      return json(404, { ok: false, error: "Contact not found" });
+    }
+    const beforeRow = beforeResult.rows[0];
 
     if (hasOwn(body, "contactName") && !normalizeOptionalText(body.contactName)) {
       return json(400, { ok: false, error: "contactName is required" });
@@ -85,7 +112,21 @@ export async function handler(event) {
       return json(404, { ok: false, error: "Contact not found" });
     }
 
-    return json(200, { ok: true, contact: toPartnerContactDto(result.rows[0]) });
+    const row = result.rows[0];
+    const changedFields = diffFields(beforeRow, row, CONTACT_ACTIVITY_FIELDS);
+
+    await logAdminActivity({
+      action: "update",
+      actorEmail: actor?.email,
+      entityType: "contact",
+      entityId: row.id,
+      entityName: row.contact_name,
+      venueId: row.venue_id,
+      contactId: row.id,
+      changedFields,
+    });
+
+    return json(200, { ok: true, contact: toPartnerContactDto(row) });
   } catch (e) {
     const msg = String(e?.message || e);
     if (msg.toLowerCase().includes("duplicate")) {
