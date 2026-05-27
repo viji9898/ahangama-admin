@@ -445,20 +445,6 @@ export default function AdminHome() {
       to: "/admin/qr",
       cta: "View analytics",
     },
-    {
-      title: "QR link builder",
-      description:
-        "Generate canonical QR destination links with the correct tracking payload.",
-      to: "/admin/qr-links",
-      cta: "Build QR links",
-    },
-    {
-      title: "IG link builder",
-      description:
-        "Create tracked Instagram links for posts, offers, and campaigns.",
-      to: "/admin/links",
-      cta: "Build IG links",
-    },
   ];
   const recentActivities = activities.slice(0, 6);
   const aiChangeCount = dailyAiSummary?.changes?.length ?? 0;
