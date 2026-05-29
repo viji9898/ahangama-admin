@@ -7,6 +7,7 @@ import AdminOperations from "./pages/AdminOperations";
 import LinkGenerator from "./pages/LinkGenerator";
 import QrLinkGenerator from "./pages/QrLinkGenerator";
 import QRDashboard from "./pages/QRDashboard.jsx";
+import CallLogs from "./pages/CallLogs";
 import CRM from "./pages/CRM";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="venues" element={<Admin />} />
           <Route path="crm" element={<CRM />} />
           <Route path="travel-agents" element={<TravelAgentsCRM />} />
+          <Route path="call-logs" element={<CallLogs />} />
           <Route path="qr" element={<QRDashboard />} />
         </Route>
 

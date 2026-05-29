@@ -172,6 +172,13 @@ export default function AdminHome() {
       cta: "Open travel agents",
     },
     {
+      title: "Call logs",
+      description:
+        "Review partner CRM and travel-agent calls together in one combined timeline.",
+      to: "/admin/call-logs",
+      cta: "Open call logs",
+    },
+    {
       title: "QR analytics",
       description:
         "Review scan performance and attribution trends from QR campaigns.",

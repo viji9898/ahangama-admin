@@ -6,6 +6,7 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  PhoneOutlined,
   QrcodeOutlined,
   ShopOutlined,
   TeamOutlined,
@@ -40,6 +41,11 @@ const navItems = [
     key: "/admin/travel-agents",
     label: "Travel Agents",
     icon: <TeamOutlined />,
+  },
+  {
+    key: "/admin/call-logs",
+    label: "Call Logs",
+    icon: <PhoneOutlined />,
   },
   { key: "/admin/qr", label: "QR Analytics", icon: <BarChartOutlined /> },
 ];
