@@ -142,6 +142,7 @@ export default function TravelAgentsCRM() {
   const [interactions, setInteractions] = useState<TravelAgentInteraction[]>([]);
   const [interactionScope, setInteractionScope] = useState<"contact" | "company">("contact");
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
+  const [companyEditModalOpen, setCompanyEditModalOpen] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<TravelAgentContact | null>(null);
   const [savingCompany, setSavingCompany] = useState(false);
@@ -274,12 +275,23 @@ export default function TravelAgentsCRM() {
         }),
       });
       message.success("Company updated");
+      setCompanyEditModalOpen(false);
       await loadCompanies(search);
     } catch (saveError) {
       message.error(String((saveError as Error)?.message || saveError));
     } finally {
       setSavingCompany(false);
     }
+  };
+
+  const openEditCompany = () => {
+    if (!selectedCompany) {
+      message.error("Select a company first");
+      return;
+    }
+
+    companyForm.setFieldsValue(companyToFormValues(selectedCompany));
+    setCompanyEditModalOpen(true);
   };
 
   const openCreateContact = () => {
@@ -461,45 +473,59 @@ export default function TravelAgentsCRM() {
           {selectedCompany ? (
             <Space direction="vertical" size={24} style={{ width: "100%" }}>
               <Card
-                title="Company details"
                 style={{ borderRadius: 20 }}
-                extra={
+                hoverable
+                onClick={openEditCompany}
+              >
+                <Space wrap size={8}>
+                  <Typography.Text strong style={{ fontSize: 18 }}>
+                    {selectedCompany.companyName}
+                  </Typography.Text>
                   <Tag color={selectedCompany.active ? "green" : "default"}>
                     {selectedCompany.active ? "Active" : "Inactive"}
                   </Tag>
-                }
+                </Space>
+              </Card>
+
+              <Card
+                style={{ borderRadius: 20 }}
               >
-                <Form form={companyForm} layout="vertical" onFinish={handleUpdateCompany}>
-                  <Row gutter={16}>
-                    <Col xs={24} md={12}>
-                      <Form.Item
-                        name="companyName"
-                        label="Company name"
-                        rules={[{ required: true, message: "Company name is required" }]}
-                      >
-                        <Input />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="active" label="Status">
-                        <Select
-                          options={[
-                            { label: "Active", value: true },
-                            { label: "Inactive", value: false },
-                          ]}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24}>
-                      <Form.Item name="notes" label="Notes">
-                        <Input.TextArea rows={3} placeholder="Internal notes about this company" />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                  <Button htmlType="submit" type="primary" loading={savingCompany}>
-                    Save company
-                  </Button>
-                </Form>
+                {selectedContact ? (
+                  <Space
+                    direction="vertical"
+                    size={16}
+                    style={{ width: "100%" }}
+                  >
+                    <Space wrap size={12} align="center">
+                      <Typography.Text strong style={{ fontSize: 18 }}>
+                        {selectedContact.fullName}
+                      </Typography.Text>
+                      <Button onClick={() => openEditContact(selectedContact)}>
+                        Edit person
+                      </Button>
+                      {makeWhatsAppUrl(selectedContact.whatsapp) ? (
+                        <Button
+                          href={makeWhatsAppUrl(selectedContact.whatsapp) || undefined}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          WhatsApp
+                        </Button>
+                      ) : null}
+                      {makeGmailComposeUrl(selectedContact.email) ? (
+                        <Button
+                          href={makeGmailComposeUrl(selectedContact.email) || undefined}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Email
+                        </Button>
+                      ) : null}
+                    </Space>
+                  </Space>
+                ) : (
+                  <Empty description="Select a person to review or edit their information" />
+                )}
               </Card>
 
               <Card
@@ -744,6 +770,45 @@ export default function TravelAgentsCRM() {
           <Form.Item name="notes" label="Notes">
             <Input.TextArea rows={3} />
           </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={companyEditModalOpen}
+        title={selectedCompany ? `Edit ${selectedCompany.companyName}` : "Edit company"}
+        onCancel={() => setCompanyEditModalOpen(false)}
+        onOk={() => companyForm.submit()}
+        okText="Save company"
+        confirmLoading={savingCompany}
+        destroyOnHidden
+      >
+        <Form form={companyForm} layout="vertical" onFinish={handleUpdateCompany}>
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="companyName"
+                label="Company name"
+                rules={[{ required: true, message: "Company name is required" }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="active" label="Status">
+                <Select
+                  options={[
+                    { label: "Active", value: true },
+                    { label: "Inactive", value: false },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24}>
+              <Form.Item name="notes" label="Notes">
+                <Input.TextArea rows={4} placeholder="Internal notes about this company" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
