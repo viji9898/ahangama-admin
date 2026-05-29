@@ -115,7 +115,9 @@ export async function handler(event) {
       [
         id,
         hasOwn(body, "companyId") ? nextCompanyId : null,
-        hasOwn(body, "firstName") ? normalizeOptionalText(body.firstName) : null,
+        hasOwn(body, "firstName")
+          ? normalizeOptionalText(body.firstName)
+          : null,
         hasOwn(body, "lastName") ? normalizeOptionalText(body.lastName) : null,
         hasOwn(body, "fullName")
           ? normalizeTravelAgentFullName(body.fullName)

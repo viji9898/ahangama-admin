@@ -33,7 +33,10 @@ export function normalizeTravelAgentInteractionType(value) {
   return normalized;
 }
 
-export function normalizeTravelAgentInteractionOutcome(value, fallback = "pending") {
+export function normalizeTravelAgentInteractionOutcome(
+  value,
+  fallback = "pending",
+) {
   const normalized = normalizeLowerText(value) || fallback;
   if (!VALID_INTERACTION_OUTCOMES.has(normalized)) {
     const err = new Error(
@@ -48,7 +51,11 @@ export function normalizeTravelAgentInteractionOutcome(value, fallback = "pendin
 export function makeTravelAgentCompanyId(companyName = "") {
   const safeCompanyName = slugify(companyName, "company");
   const hash = createHash("sha1")
-    .update(String(companyName || "").trim().toLowerCase())
+    .update(
+      String(companyName || "")
+        .trim()
+        .toLowerCase(),
+    )
     .digest("hex")
     .slice(0, 10);
   return `${safeCompanyName}-${hash}`;
@@ -58,13 +65,21 @@ export function makeTravelAgentContactId(companyId, fullName = "") {
   const safeCompanyId = slugify(companyId, "company");
   const safeFullName = slugify(fullName, "contact");
   const hash = createHash("sha1")
-    .update(`${safeCompanyId}:${String(fullName || "").trim().toLowerCase()}`)
+    .update(
+      `${safeCompanyId}:${String(fullName || "")
+        .trim()
+        .toLowerCase()}`,
+    )
     .digest("hex")
     .slice(0, 10);
   return `${safeCompanyId}-${safeFullName}-${hash}`;
 }
 
-export function makeTravelAgentInteractionId(companyId, contactId, interactionType) {
+export function makeTravelAgentInteractionId(
+  companyId,
+  contactId,
+  interactionType,
+) {
   const now = Date.now().toString(36);
   return `${slugify(companyId, "company")}-${slugify(contactId, "contact")}-${interactionType}-${now}`;
 }

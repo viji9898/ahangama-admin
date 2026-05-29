@@ -31,13 +31,20 @@ import type {
   TravelAgentInteraction,
 } from "../types/crm";
 
-const COMPANIES_LIST_ENDPOINT = "/.netlify/functions/api-travel-agent-companies-list";
-const COMPANIES_CREATE_ENDPOINT = "/.netlify/functions/api-travel-agent-companies-create";
-const COMPANIES_UPDATE_ENDPOINT = "/.netlify/functions/api-travel-agent-companies-update";
-const CONTACTS_CREATE_ENDPOINT = "/.netlify/functions/api-travel-agent-contacts-create";
-const CONTACTS_UPDATE_ENDPOINT = "/.netlify/functions/api-travel-agent-contacts-update";
-const INTERACTIONS_LIST_ENDPOINT = "/.netlify/functions/api-travel-agent-interactions-list";
-const INTERACTIONS_CREATE_ENDPOINT = "/.netlify/functions/api-travel-agent-interactions-create";
+const COMPANIES_LIST_ENDPOINT =
+  "/.netlify/functions/api-travel-agent-companies-list";
+const COMPANIES_CREATE_ENDPOINT =
+  "/.netlify/functions/api-travel-agent-companies-create";
+const COMPANIES_UPDATE_ENDPOINT =
+  "/.netlify/functions/api-travel-agent-companies-update";
+const CONTACTS_CREATE_ENDPOINT =
+  "/.netlify/functions/api-travel-agent-contacts-create";
+const CONTACTS_UPDATE_ENDPOINT =
+  "/.netlify/functions/api-travel-agent-contacts-update";
+const INTERACTIONS_LIST_ENDPOINT =
+  "/.netlify/functions/api-travel-agent-interactions-list";
+const INTERACTIONS_CREATE_ENDPOINT =
+  "/.netlify/functions/api-travel-agent-interactions-create";
 
 type TravelAgentCompanyRecord = TravelAgentCompany & {
   contacts: TravelAgentContact[];
@@ -110,7 +117,9 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return payload;
 }
 
-function companyToFormValues(company: TravelAgentCompanyRecord): CompanyFormValues {
+function companyToFormValues(
+  company: TravelAgentCompanyRecord,
+): CompanyFormValues {
   return {
     companyName: company.companyName,
     notes: company.notes || "",
@@ -139,12 +148,17 @@ export default function TravelAgentsCRM() {
   const [companies, setCompanies] = useState<TravelAgentCompanyRecord[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [selectedContactId, setSelectedContactId] = useState("");
-  const [interactions, setInteractions] = useState<TravelAgentInteraction[]>([]);
-  const [interactionScope, setInteractionScope] = useState<"contact" | "company">("contact");
+  const [interactions, setInteractions] = useState<TravelAgentInteraction[]>(
+    [],
+  );
+  const [interactionScope, setInteractionScope] = useState<
+    "contact" | "company"
+  >("contact");
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
   const [companyEditModalOpen, setCompanyEditModalOpen] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
-  const [editingContact, setEditingContact] = useState<TravelAgentContact | null>(null);
+  const [editingContact, setEditingContact] =
+    useState<TravelAgentContact | null>(null);
   const [savingCompany, setSavingCompany] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
   const [savingInteraction, setSavingInteraction] = useState(false);
@@ -160,8 +174,9 @@ export default function TravelAgentsCRM() {
 
   const selectedContact = useMemo(
     () =>
-      selectedCompany?.contacts.find((contact) => contact.id === selectedContactId) ||
-      null,
+      selectedCompany?.contacts.find(
+        (contact) => contact.id === selectedContactId,
+      ) || null,
     [selectedCompany, selectedContactId],
   );
 
@@ -169,9 +184,9 @@ export default function TravelAgentsCRM() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetchJson<{ companies: TravelAgentCompanyRecord[] }>(
-        `${COMPANIES_LIST_ENDPOINT}?q=${encodeURIComponent(query)}`,
-      );
+      const response = await fetchJson<{
+        companies: TravelAgentCompanyRecord[];
+      }>(`${COMPANIES_LIST_ENDPOINT}?q=${encodeURIComponent(query)}`);
       setCompanies(response.companies || []);
     } catch (loadError) {
       setError(String((loadError as Error)?.message || loadError));
@@ -196,9 +211,9 @@ export default function TravelAgentsCRM() {
     }
 
     try {
-      const response = await fetchJson<{ interactions: TravelAgentInteraction[] }>(
-        `${INTERACTIONS_LIST_ENDPOINT}?${params.toString()}`,
-      );
+      const response = await fetchJson<{
+        interactions: TravelAgentInteraction[];
+      }>(`${INTERACTIONS_LIST_ENDPOINT}?${params.toString()}`);
       setInteractions(response.interactions || []);
     } catch (loadError) {
       message.error(String((loadError as Error)?.message || loadError));
@@ -225,7 +240,9 @@ export default function TravelAgentsCRM() {
       return;
     }
 
-    const activeCompany = companies.find((company) => company.id === selectedCompanyId);
+    const activeCompany = companies.find(
+      (company) => company.id === selectedCompanyId,
+    );
     const nextCompany = activeCompany || companies[0];
     if (nextCompany.id !== selectedCompanyId) {
       setSelectedCompanyId(nextCompany.id);
@@ -241,7 +258,11 @@ export default function TravelAgentsCRM() {
   }, [companies, selectedCompanyId, selectedContactId, companyForm]);
 
   useEffect(() => {
-    void loadInteractions(selectedCompanyId, selectedContactId, interactionScope);
+    void loadInteractions(
+      selectedCompanyId,
+      selectedContactId,
+      interactionScope,
+    );
   }, [selectedCompanyId, selectedContactId, interactionScope]);
 
   const handleCreateCompany = async (values: CompanyFormValues) => {
@@ -381,7 +402,11 @@ export default function TravelAgentsCRM() {
         outcomeStatus: "pending",
       });
       message.success("Interaction logged");
-      await loadInteractions(selectedCompany.id, selectedContact.id, interactionScope);
+      await loadInteractions(
+        selectedCompany.id,
+        selectedContact.id,
+        interactionScope,
+      );
     } catch (saveError) {
       message.error(String((saveError as Error)?.message || saveError));
     } finally {
@@ -401,14 +426,23 @@ export default function TravelAgentsCRM() {
       </Space>
 
       {error ? (
-        <Alert type="error" showIcon message="Travel-agent CRM unavailable" description={error} />
+        <Alert
+          type="error"
+          showIcon
+          message="Travel-agent CRM unavailable"
+          description={error}
+        />
       ) : null}
 
       <Row gutter={[24, 24]} align="stretch">
         <Col xs={24} lg={8}>
           <Card
             title="Companies"
-            extra={<Button type="primary" onClick={() => setCompanyModalOpen(true)}>New company</Button>}
+            extra={
+              <Button type="primary" onClick={() => setCompanyModalOpen(true)}>
+                New company
+              </Button>
+            }
             style={{ borderRadius: 20, height: "100%" }}
           >
             <Space direction="vertical" size={16} style={{ width: "100%" }}>
@@ -419,13 +453,19 @@ export default function TravelAgentsCRM() {
                   onChange={(event) => setSearch(event.target.value)}
                   allowClear
                 />
-                <Button onClick={() => void loadCompanies(search)}>Search</Button>
+                <Button onClick={() => void loadCompanies(search)}>
+                  Search
+                </Button>
               </Space.Compact>
 
               <List
                 loading={loading}
                 dataSource={companies}
-                locale={{ emptyText: <Empty description="No travel-agent companies yet" /> }}
+                locale={{
+                  emptyText: (
+                    <Empty description="No travel-agent companies yet" />
+                  ),
+                }}
                 renderItem={(company) => {
                   const isSelected = company.id === selectedCompanyId;
                   return (
@@ -434,7 +474,9 @@ export default function TravelAgentsCRM() {
                         cursor: "pointer",
                         paddingInline: 12,
                         borderRadius: 16,
-                        background: isSelected ? "rgba(14, 116, 144, 0.08)" : undefined,
+                        background: isSelected
+                          ? "rgba(14, 116, 144, 0.08)"
+                          : undefined,
                       }}
                       onClick={() => {
                         setSelectedCompanyId(company.id);
@@ -444,7 +486,9 @@ export default function TravelAgentsCRM() {
                       <List.Item.Meta
                         title={
                           <Space wrap>
-                            <Typography.Text strong>{company.companyName}</Typography.Text>
+                            <Typography.Text strong>
+                              {company.companyName}
+                            </Typography.Text>
                             <Tag color={company.active ? "green" : "default"}>
                               {company.active ? "Active" : "Inactive"}
                             </Tag>
@@ -456,7 +500,9 @@ export default function TravelAgentsCRM() {
                               {company.contacts.length} people attached
                             </Typography.Text>
                             {company.notes ? (
-                              <Typography.Text type="secondary">{company.notes}</Typography.Text>
+                              <Typography.Text type="secondary">
+                                {company.notes}
+                              </Typography.Text>
                             ) : null}
                           </Space>
                         }
@@ -487,9 +533,7 @@ export default function TravelAgentsCRM() {
                 </Space>
               </Card>
 
-              <Card
-                style={{ borderRadius: 20 }}
-              >
+              <Card style={{ borderRadius: 20 }}>
                 {selectedContact ? (
                   <Space
                     direction="vertical"
@@ -505,7 +549,10 @@ export default function TravelAgentsCRM() {
                       </Button>
                       {makeWhatsAppUrl(selectedContact.whatsapp) ? (
                         <Button
-                          href={makeWhatsAppUrl(selectedContact.whatsapp) || undefined}
+                          href={
+                            makeWhatsAppUrl(selectedContact.whatsapp) ||
+                            undefined
+                          }
                           target="_blank"
                           rel="noreferrer"
                         >
@@ -514,7 +561,10 @@ export default function TravelAgentsCRM() {
                       ) : null}
                       {makeGmailComposeUrl(selectedContact.email) ? (
                         <Button
-                          href={makeGmailComposeUrl(selectedContact.email) || undefined}
+                          href={
+                            makeGmailComposeUrl(selectedContact.email) ||
+                            undefined
+                          }
                           target="_blank"
                           rel="noreferrer"
                         >
@@ -535,7 +585,9 @@ export default function TravelAgentsCRM() {
               >
                 <List
                   dataSource={selectedCompany.contacts}
-                  locale={{ emptyText: "No people attached to this company yet" }}
+                  locale={{
+                    emptyText: "No people attached to this company yet",
+                  }}
                   renderItem={(contact) => {
                     const whatsappUrl = makeWhatsAppUrl(contact.whatsapp);
                     const gmailUrl = makeGmailComposeUrl(contact.email);
@@ -544,19 +596,36 @@ export default function TravelAgentsCRM() {
                     return (
                       <List.Item
                         actions={[
-                          <Button key="select" type={isSelected ? "primary" : "default"} onClick={() => setSelectedContactId(contact.id)}>
+                          <Button
+                            key="select"
+                            type={isSelected ? "primary" : "default"}
+                            onClick={() => setSelectedContactId(contact.id)}
+                          >
                             {isSelected ? "Selected" : "Select"}
                           </Button>,
-                          <Button key="edit" onClick={() => openEditContact(contact)}>
+                          <Button
+                            key="edit"
+                            onClick={() => openEditContact(contact)}
+                          >
                             Edit
                           </Button>,
                           whatsappUrl ? (
-                            <Button key="whatsapp" href={whatsappUrl} target="_blank" rel="noreferrer">
+                            <Button
+                              key="whatsapp"
+                              href={whatsappUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
                               WhatsApp
                             </Button>
                           ) : null,
                           gmailUrl ? (
-                            <Button key="email" href={gmailUrl} target="_blank" rel="noreferrer">
+                            <Button
+                              key="email"
+                              href={gmailUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
                               Email
                             </Button>
                           ) : null,
@@ -564,14 +633,20 @@ export default function TravelAgentsCRM() {
                         style={{
                           paddingInline: 12,
                           borderRadius: 16,
-                          background: isSelected ? "rgba(15, 23, 42, 0.04)" : undefined,
+                          background: isSelected
+                            ? "rgba(15, 23, 42, 0.04)"
+                            : undefined,
                         }}
                       >
                         <List.Item.Meta
                           title={
                             <Space wrap>
-                              <Typography.Text strong>{contact.fullName}</Typography.Text>
-                              {contact.emailSent ? <Tag color="blue">Email sent</Tag> : null}
+                              <Typography.Text strong>
+                                {contact.fullName}
+                              </Typography.Text>
+                              {contact.emailSent ? (
+                                <Tag color="blue">Email sent</Tag>
+                              ) : null}
                               <Tag color={contact.active ? "green" : "default"}>
                                 {contact.active ? "Active" : "Inactive"}
                               </Tag>
@@ -580,7 +655,9 @@ export default function TravelAgentsCRM() {
                           description={
                             <Space direction="vertical" size={2}>
                               {contact.email ? (
-                                <Typography.Text type="secondary">{contact.email}</Typography.Text>
+                                <Typography.Text type="secondary">
+                                  {contact.email}
+                                </Typography.Text>
                               ) : null}
                               {contact.whatsapp ? (
                                 <Typography.Text type="secondary">
@@ -588,10 +665,14 @@ export default function TravelAgentsCRM() {
                                 </Typography.Text>
                               ) : null}
                               {contact.phone ? (
-                                <Typography.Text type="secondary">Phone: {contact.phone}</Typography.Text>
+                                <Typography.Text type="secondary">
+                                  Phone: {contact.phone}
+                                </Typography.Text>
                               ) : null}
                               {contact.notes ? (
-                                <Typography.Text type="secondary">{contact.notes}</Typography.Text>
+                                <Typography.Text type="secondary">
+                                  {contact.notes}
+                                </Typography.Text>
                               ) : null}
                             </Space>
                           }
@@ -619,9 +700,14 @@ export default function TravelAgentsCRM() {
                 }
               >
                 {selectedContact ? (
-                  <Space direction="vertical" size={20} style={{ width: "100%" }}>
+                  <Space
+                    direction="vertical"
+                    size={20}
+                    style={{ width: "100%" }}
+                  >
                     <Typography.Text type="secondary">
-                      New interactions will be logged against {selectedContact.fullName}.
+                      New interactions will be logged against{" "}
+                      {selectedContact.fullName}.
                     </Typography.Text>
 
                     <Form
@@ -638,7 +724,9 @@ export default function TravelAgentsCRM() {
                           <Form.Item
                             name="interactionType"
                             label="Type"
-                            rules={[{ required: true, message: "Type is required" }]}
+                            rules={[
+                              { required: true, message: "Type is required" },
+                            ]}
                           >
                             <Select options={INTERACTION_OPTIONS} />
                           </Form.Item>
@@ -647,7 +735,12 @@ export default function TravelAgentsCRM() {
                           <Form.Item
                             name="outcomeStatus"
                             label="Outcome"
-                            rules={[{ required: true, message: "Outcome is required" }]}
+                            rules={[
+                              {
+                                required: true,
+                                message: "Outcome is required",
+                              },
+                            ]}
                           >
                             <Select options={INTERACTION_OUTCOME_OPTIONS} />
                           </Form.Item>
@@ -656,14 +749,22 @@ export default function TravelAgentsCRM() {
                           <Form.Item
                             name="summary"
                             label="Summary"
-                            rules={[{ required: true, message: "Summary is required" }]}
+                            rules={[
+                              {
+                                required: true,
+                                message: "Summary is required",
+                              },
+                            ]}
                           >
                             <Input placeholder="Called to discuss availability and next steps" />
                           </Form.Item>
                         </Col>
                         <Col xs={24} md={12}>
                           <Form.Item name="feedback" label="Notes">
-                            <Input.TextArea rows={2} placeholder="Context from the call or follow-up" />
+                            <Input.TextArea
+                              rows={2}
+                              placeholder="Context from the call or follow-up"
+                            />
                           </Form.Item>
                         </Col>
                         <Col xs={24} md={6}>
@@ -672,12 +773,23 @@ export default function TravelAgentsCRM() {
                           </Form.Item>
                         </Col>
                         <Col xs={24} md={6}>
-                          <Form.Item name="nextFollowUpAt" label="Follow-up date">
-                            <DatePicker showTime style={{ width: "100%" }} format="YYYY-MM-DD HH:mm" />
+                          <Form.Item
+                            name="nextFollowUpAt"
+                            label="Follow-up date"
+                          >
+                            <DatePicker
+                              showTime
+                              style={{ width: "100%" }}
+                              format="YYYY-MM-DD HH:mm"
+                            />
                           </Form.Item>
                         </Col>
                       </Row>
-                      <Button htmlType="submit" type="primary" loading={savingInteraction}>
+                      <Button
+                        htmlType="submit"
+                        type="primary"
+                        loading={savingInteraction}
+                      >
                         Log interaction
                       </Button>
                     </Form>
@@ -693,16 +805,21 @@ export default function TravelAgentsCRM() {
                                 <Tag color="blue">{item.interactionType}</Tag>
                                 <Tag>
                                   {INTERACTION_OUTCOME_OPTIONS.find(
-                                    (option) => option.value === item.outcomeStatus,
+                                    (option) =>
+                                      option.value === item.outcomeStatus,
                                   )?.label || item.outcomeStatus}
                                 </Tag>
-                                <Typography.Text>{item.summary}</Typography.Text>
+                                <Typography.Text>
+                                  {item.summary}
+                                </Typography.Text>
                               </Space>
                             }
                             description={
                               <Space direction="vertical" size={2}>
                                 <Typography.Text type="secondary">
-                                  {dayjs(item.interactionAt).format("YYYY-MM-DD HH:mm")}
+                                  {dayjs(item.interactionAt).format(
+                                    "YYYY-MM-DD HH:mm",
+                                  )}
                                 </Typography.Text>
                                 <Typography.Text type="secondary">
                                   Contact: {item.contactName || "Unknown"}
@@ -714,11 +831,16 @@ export default function TravelAgentsCRM() {
                                 ) : null}
                                 {item.nextFollowUpAt ? (
                                   <Typography.Text type="secondary">
-                                    Follow-up: {dayjs(item.nextFollowUpAt).format("YYYY-MM-DD HH:mm")}
+                                    Follow-up:{" "}
+                                    {dayjs(item.nextFollowUpAt).format(
+                                      "YYYY-MM-DD HH:mm",
+                                    )}
                                   </Typography.Text>
                                 ) : null}
                                 {item.feedback ? (
-                                  <Typography.Text type="secondary">{item.feedback}</Typography.Text>
+                                  <Typography.Text type="secondary">
+                                    {item.feedback}
+                                  </Typography.Text>
                                 ) : null}
                               </Space>
                             }
@@ -751,7 +873,11 @@ export default function TravelAgentsCRM() {
         okText="Create company"
         confirmLoading={savingCompany}
       >
-        <Form form={companyCreateForm} layout="vertical" onFinish={handleCreateCompany}>
+        <Form
+          form={companyCreateForm}
+          layout="vertical"
+          onFinish={handleCreateCompany}
+        >
           <Form.Item
             name="companyName"
             label="Company name"
@@ -775,20 +901,30 @@ export default function TravelAgentsCRM() {
 
       <Modal
         open={companyEditModalOpen}
-        title={selectedCompany ? `Edit ${selectedCompany.companyName}` : "Edit company"}
+        title={
+          selectedCompany
+            ? `Edit ${selectedCompany.companyName}`
+            : "Edit company"
+        }
         onCancel={() => setCompanyEditModalOpen(false)}
         onOk={() => companyForm.submit()}
         okText="Save company"
         confirmLoading={savingCompany}
         destroyOnHidden
       >
-        <Form form={companyForm} layout="vertical" onFinish={handleUpdateCompany}>
+        <Form
+          form={companyForm}
+          layout="vertical"
+          onFinish={handleUpdateCompany}
+        >
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item
                 name="companyName"
                 label="Company name"
-                rules={[{ required: true, message: "Company name is required" }]}
+                rules={[
+                  { required: true, message: "Company name is required" },
+                ]}
               >
                 <Input />
               </Form.Item>
@@ -805,7 +941,10 @@ export default function TravelAgentsCRM() {
             </Col>
             <Col xs={24}>
               <Form.Item name="notes" label="Notes">
-                <Input.TextArea rows={4} placeholder="Internal notes about this company" />
+                <Input.TextArea
+                  rows={4}
+                  placeholder="Internal notes about this company"
+                />
               </Form.Item>
             </Col>
           </Row>

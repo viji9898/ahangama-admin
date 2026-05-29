@@ -40,14 +40,16 @@ export async function handler(event) {
 
     const fullName = normalizeTravelAgentFullName(body.fullName);
     const id =
-      normalizeLowerText(body.id) || makeTravelAgentContactId(companyId, fullName);
+      normalizeLowerText(body.id) ||
+      makeTravelAgentContactId(companyId, fullName);
     const firstName = normalizeOptionalText(body.firstName);
     const lastName = normalizeOptionalText(body.lastName);
     const email = normalizeLowerText(body.email);
     const whatsapp = normalizeOptionalText(body.whatsapp);
     const phone = normalizeOptionalText(body.phone);
     const notes = normalizeOptionalText(body.notes);
-    const emailSent = typeof body.emailSent === "boolean" ? body.emailSent : false;
+    const emailSent =
+      typeof body.emailSent === "boolean" ? body.emailSent : false;
     const active = typeof body.active === "boolean" ? body.active : true;
     const actorEmail = normalizeLowerText(actor?.email);
 

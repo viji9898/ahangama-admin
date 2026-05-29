@@ -4,7 +4,10 @@ import { readFile } from "node:fs/promises";
 import pg from "pg";
 import { logAdminActivity } from "../netlify/functions/_lib/adminActivity.mjs";
 import { getDatabaseConfig } from "../netlify/functions/_lib/db.mjs";
-import { normalizeLowerText, normalizeOptionalText } from "../netlify/functions/_lib/crm.mjs";
+import {
+  normalizeLowerText,
+  normalizeOptionalText,
+} from "../netlify/functions/_lib/crm.mjs";
 import {
   TRAVEL_AGENT_COMPANIES_TABLE,
   TRAVEL_AGENT_CONTACTS_TABLE,
@@ -69,7 +72,8 @@ async function main() {
   const filePath = resolve(getArgValue("--file") || DEFAULT_FILE);
   const apply = process.argv.includes("--apply");
   const actor =
-    normalizeLowerText(getArgValue("--actor")) || "import:travel-agent-contacts";
+    normalizeLowerText(getArgValue("--actor")) ||
+    "import:travel-agent-contacts";
 
   if (process.argv.includes("--help")) {
     printUsage();
@@ -139,12 +143,16 @@ async function main() {
 
   console.log("Preview:");
   companies.slice(0, 10).forEach((company) => {
-    const companyContacts = contacts.filter((contact) => contact.companyId === company.id);
+    const companyContacts = contacts.filter(
+      (contact) => contact.companyId === company.id,
+    );
     console.log(`  ${company.companyName}: ${companyContacts.length} people`);
   });
 
   if (!apply) {
-    console.log("Dry run complete. Re-run with --apply to write to the database.");
+    console.log(
+      "Dry run complete. Re-run with --apply to write to the database.",
+    );
     return;
   }
 
@@ -242,7 +250,9 @@ async function main() {
     });
 
     await client.query("COMMIT");
-    console.log(`Imported ${companies.length} companies and ${contacts.length} contacts.`);
+    console.log(
+      `Imported ${companies.length} companies and ${contacts.length} contacts.`,
+    );
   } catch (error) {
     try {
       await client.query("ROLLBACK");

@@ -39,7 +39,9 @@ export async function handler(event) {
 
     const companyId = normalizeLowerText(body.companyId);
     const contactId = normalizeLowerText(body.contactId);
-    const interactionType = normalizeTravelAgentInteractionType(body.interactionType);
+    const interactionType = normalizeTravelAgentInteractionType(
+      body.interactionType,
+    );
     const outcomeStatus = normalizeTravelAgentInteractionOutcome(
       body.outcomeStatus,
       "pending",

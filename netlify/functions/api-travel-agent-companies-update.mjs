@@ -42,7 +42,10 @@ export async function handler(event) {
     const id = normalizeLowerText(body.id);
     if (!id) return json(400, { ok: false, error: "id is required" });
 
-    if (hasOwn(body, "companyName") && !normalizeOptionalText(body.companyName)) {
+    if (
+      hasOwn(body, "companyName") &&
+      !normalizeOptionalText(body.companyName)
+    ) {
       return json(400, { ok: false, error: "companyName is required" });
     }
 

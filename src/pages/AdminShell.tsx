@@ -114,9 +114,13 @@ export default function AdminShell() {
               {!isSmallScreen ? (
                 <Button
                   type="text"
-                  icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                  icon={
+                    collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />
+                  }
                   onClick={() => setCollapsed((value) => !value)}
-                  aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+                  aria-label={
+                    collapsed ? "Expand navigation" : "Collapse navigation"
+                  }
                   style={{ color: "#fff" }}
                 />
               ) : null}
