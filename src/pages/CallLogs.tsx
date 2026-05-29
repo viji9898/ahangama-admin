@@ -89,7 +89,9 @@ function mapPartnerInteraction(item: PartnerInteraction): UnifiedCallLog {
   };
 }
 
-function mapTravelAgentInteraction(item: TravelAgentInteraction): UnifiedCallLog {
+function mapTravelAgentInteraction(
+  item: TravelAgentInteraction,
+): UnifiedCallLog {
   return {
     id: item.id,
     source: "travel_agent",
@@ -160,7 +162,9 @@ export default function CallLogs() {
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>("all");
-  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [dateRange, setDateRange] = useState<
+    [Dayjs | null, Dayjs | null] | null
+  >(null);
   const [calls, setCalls] = useState<UnifiedCallLog[]>([]);
 
   useEffect(() => {
@@ -187,7 +191,8 @@ export default function CallLogs() {
 
         const merged = [...partnerCalls, ...travelAgentCalls].sort(
           (left, right) =>
-            dayjs(right.interactionAt).valueOf() - dayjs(left.interactionAt).valueOf(),
+            dayjs(right.interactionAt).valueOf() -
+            dayjs(left.interactionAt).valueOf(),
         );
 
         setCalls(merged);
@@ -284,8 +289,8 @@ export default function CallLogs() {
           >
             Review call, WhatsApp, email, visit, and feedback history across
             both Partner CRM and Travel Agents in one timeline. Search by
-            company, venue, contact, or note, and narrow the feed by source
-            when needed.
+            company, venue, contact, or note, and narrow the feed by source when
+            needed.
           </Typography.Paragraph>
         </Space>
       </Card>
@@ -299,17 +304,49 @@ export default function CallLogs() {
             minWidth: 620,
           }}
         >
-          <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
-            <Statistic title="Showing" value={summary.total} valueStyle={{ fontSize: 24 }} />
+          <Card
+            size="small"
+            styles={{ body: { padding: 14 } }}
+            style={{ borderRadius: 16 }}
+          >
+            <Statistic
+              title="Showing"
+              value={summary.total}
+              valueStyle={{ fontSize: 24 }}
+            />
           </Card>
-          <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
-            <Statistic title="Successful" value={summary.successful} valueStyle={{ fontSize: 24 }} />
+          <Card
+            size="small"
+            styles={{ body: { padding: 14 } }}
+            style={{ borderRadius: 16 }}
+          >
+            <Statistic
+              title="Successful"
+              value={summary.successful}
+              valueStyle={{ fontSize: 24 }}
+            />
           </Card>
-          <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
-            <Statistic title="Pending" value={summary.pending} valueStyle={{ fontSize: 24 }} />
+          <Card
+            size="small"
+            styles={{ body: { padding: 14 } }}
+            style={{ borderRadius: 16 }}
+          >
+            <Statistic
+              title="Pending"
+              value={summary.pending}
+              valueStyle={{ fontSize: 24 }}
+            />
           </Card>
-          <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 16 }}>
-            <Statistic title="No response" value={summary.noResponse} valueStyle={{ fontSize: 24 }} />
+          <Card
+            size="small"
+            styles={{ body: { padding: 14 } }}
+            style={{ borderRadius: 16 }}
+          >
+            <Statistic
+              title="No response"
+              value={summary.noResponse}
+              valueStyle={{ fontSize: 24 }}
+            />
           </Card>
         </div>
       </div>
@@ -326,7 +363,7 @@ export default function CallLogs() {
           <Input.Search
             allowClear
             size="large"
-              placeholder="Search by contact, company, venue, summary, or notes"
+            placeholder="Search by contact, company, venue, summary, or notes"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -419,16 +456,22 @@ export default function CallLogs() {
                 <List.Item.Meta
                   title={
                     <Space wrap>
-                      <Tag color={item.source === "partner" ? "blue" : "purple"}>
+                      <Tag
+                        color={item.source === "partner" ? "blue" : "purple"}
+                      >
                         {item.sourceLabel}
                       </Tag>
-                      <Tag color={getInteractionTypeColor(item.interactionType)}>
+                      <Tag
+                        color={getInteractionTypeColor(item.interactionType)}
+                      >
                         {getInteractionTypeLabel(item.interactionType)}
                       </Tag>
                       <Tag color={getOutcomeColor(item.outcomeStatus)}>
                         {getOutcomeLabel(item.outcomeStatus)}
                       </Tag>
-                      <Typography.Text strong>{item.contactName}</Typography.Text>
+                      <Typography.Text strong>
+                        {item.contactName}
+                      </Typography.Text>
                       <Typography.Text>{item.summary}</Typography.Text>
                     </Space>
                   }
@@ -444,7 +487,9 @@ export default function CallLogs() {
                         </Typography.Text>
                         {item.createdBy ? (
                           <>
-                            <Typography.Text type="secondary">·</Typography.Text>
+                            <Typography.Text type="secondary">
+                              ·
+                            </Typography.Text>
                             <Typography.Text type="secondary">
                               Logged by: {item.createdBy}
                             </Typography.Text>
@@ -461,11 +506,16 @@ export default function CallLogs() {
                       ) : null}
                       {item.nextFollowUpAt ? (
                         <Typography.Text type="secondary">
-                          Follow-up: {dayjs(item.nextFollowUpAt).format("YYYY-MM-DD HH:mm")}
+                          Follow-up:{" "}
+                          {dayjs(item.nextFollowUpAt).format(
+                            "YYYY-MM-DD HH:mm",
+                          )}
                         </Typography.Text>
                       ) : null}
                       {item.feedback ? (
-                        <Typography.Text type="secondary">{item.feedback}</Typography.Text>
+                        <Typography.Text type="secondary">
+                          {item.feedback}
+                        </Typography.Text>
                       ) : null}
                     </Space>
                   }
