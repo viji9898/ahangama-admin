@@ -66,3 +66,52 @@ export interface PartnerInteraction {
   createdBy?: string | null;
   createdAt: string;
 }
+
+export interface TravelAgentCompany {
+  id: string;
+  companyName: string;
+  notes?: string | null;
+  active: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TravelAgentContact {
+  id: string;
+  companyId: string;
+  companyName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  fullName: string;
+  email?: string | null;
+  whatsapp?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  emailSent: boolean;
+  active: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TravelAgentInteraction {
+  id: string;
+  companyId: string;
+  companyName?: string | null;
+  contactId: string;
+  contactName?: string | null;
+  interactionType: InteractionType;
+  outcomeStatus: InteractionOutcome;
+  summary: string;
+  feedback?: string | null;
+  nextAction?: string | null;
+  nextFollowUpAt?: string | null;
+  interactionAt: string;
+  createdBy?: string | null;
+  createdAt: string;
+}

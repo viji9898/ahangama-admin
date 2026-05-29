@@ -35,7 +35,12 @@ const navItems = [
   },
   { key: "/admin/qr-links", label: "QR Links", icon: <QrcodeOutlined /> },
   { key: "/admin/venues", label: "Venues", icon: <ShopOutlined /> },
-  { key: "/admin/crm", label: "CRM", icon: <TeamOutlined /> },
+  { key: "/admin/crm", label: "Partner CRM", icon: <TeamOutlined /> },
+  {
+    key: "/admin/travel-agents",
+    label: "Travel Agents",
+    icon: <TeamOutlined />,
+  },
   { key: "/admin/qr", label: "QR Analytics", icon: <BarChartOutlined /> },
 ];
 

@@ -165,6 +165,13 @@ export default function AdminHome() {
       cta: "Open CRM",
     },
     {
+      title: "Travel-agent CRM",
+      description:
+        "Manage travel-agent companies, attached contacts, and call logs in one place.",
+      to: "/admin/travel-agents",
+      cta: "Open travel agents",
+    },
+    {
       title: "QR analytics",
       description:
         "Review scan performance and attribution trends from QR campaigns.",
