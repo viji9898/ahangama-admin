@@ -144,12 +144,26 @@ function makeTouchpointDraft(items: PartnerTouchpointInventory[]) {
   return initialDraft;
 }
 
+function normalizeDestinationSlug(value: unknown) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function formatDestinationLabel(slug: string) {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default function CRM() {
   const [loading, setLoading] = useState(true);
   const [savingContact, setSavingContact] = useState(false);
   const [contacts, setContacts] = useState<PartnerContact[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [search, setSearch] = useState("");
+  const [selectedDestinationSlug, setSelectedDestinationSlug] =
+    useState<string>("all");
   const [selectedVenueId, setSelectedVenueId] = useState<string>("all");
   const [selectedContactId, setSelectedContactId] = useState<string>("");
   const [draft, setDraft] = useState<DraftContact | null>(null);
@@ -177,6 +191,47 @@ export default function CRM() {
     () => contacts.find((item) => item.id === selectedContactId) || null,
     [contacts, selectedContactId],
   );
+
+  const venueById = useMemo(() => {
+    const map = new Map<string, Venue>();
+    venues.forEach((venue) => {
+      const venueId = String(venue.id || "").toLowerCase();
+      if (venueId) {
+        map.set(venueId, venue);
+      }
+    });
+    return map;
+  }, [venues]);
+
+  const destinationOptions = useMemo(() => {
+    const values = Array.from(
+      new Set(
+        venues
+          .map((venue) => normalizeDestinationSlug(venue.destinationSlug))
+          .filter(Boolean),
+      ),
+    ).sort((left, right) => left.localeCompare(right));
+
+    return [
+      { label: "All destinations", value: "all" },
+      ...values.map((value) => ({
+        label: formatDestinationLabel(value),
+        value,
+      })),
+    ];
+  }, [venues]);
+
+  const filteredVenueOptions = useMemo(() => {
+    if (selectedDestinationSlug === "all") {
+      return venues;
+    }
+
+    return venues.filter(
+      (venue) =>
+        normalizeDestinationSlug(venue.destinationSlug) ===
+        selectedDestinationSlug,
+    );
+  }, [selectedDestinationSlug, venues]);
 
   useEffect(() => {
     if (
@@ -210,6 +265,15 @@ export default function CRM() {
   const filteredContacts = useMemo(() => {
     const q = search.trim().toLowerCase();
     return contacts.filter((contact) => {
+      if (selectedDestinationSlug !== "all") {
+        const destination = normalizeDestinationSlug(
+          venueById.get(contact.venueId)?.destinationSlug,
+        );
+        if (destination !== selectedDestinationSlug) {
+          return false;
+        }
+      }
+
       if (selectedVenueId !== "all" && contact.venueId !== selectedVenueId) {
         return false;
       }
@@ -232,7 +296,7 @@ export default function CRM() {
 
       return haystack.includes(q);
     });
-  }, [contacts, search, selectedVenueId]);
+  }, [contacts, search, selectedDestinationSlug, selectedVenueId, venueById]);
 
   const activeVenueId = useMemo(() => {
     if (selectedVenueId !== "all") return selectedVenueId;
@@ -311,6 +375,25 @@ export default function CRM() {
     );
     setSelectedContactId(firstForVenue?.id || "");
   }, [contacts, selectedContact, selectedVenueId]);
+
+  useEffect(() => {
+    if (selectedVenueId === "all") return;
+    if (filteredVenueOptions.some((venue) => venue.id === selectedVenueId)) {
+      return;
+    }
+
+    setSelectedVenueId("all");
+  }, [filteredVenueOptions, selectedVenueId]);
+
+  useEffect(() => {
+    const createVenueId = String(createForm.getFieldValue("venueId") || "");
+    if (!createVenueId) return;
+    if (filteredVenueOptions.some((venue) => venue.id === createVenueId)) {
+      return;
+    }
+
+    createForm.setFieldValue("venueId", undefined);
+  }, [createForm, filteredVenueOptions]);
 
   useEffect(() => {
     if (!activeVenueId) {
@@ -580,14 +663,22 @@ export default function CRM() {
       />
 
       <Card title="Venue Filters">
-        <Space size={[8, 8]} wrap>
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          <Select
+            style={{ maxWidth: 260 }}
+            value={selectedDestinationSlug}
+            options={destinationOptions}
+            onChange={setSelectedDestinationSlug}
+          />
+
+          <Space size={[8, 8]} wrap>
           <Tag.CheckableTag
             checked={selectedVenueId === "all"}
             onChange={() => setSelectedVenueId("all")}
           >
-            All Venues ({contacts.length})
+            All Venues ({filteredContacts.length})
           </Tag.CheckableTag>
-          {venues.map((venue) => {
+          {filteredVenueOptions.map((venue) => {
             const venueId = String(venue.id || "").toLowerCase();
             if (!venueId || !venueCounts.get(venueId)) return null;
             return (
@@ -600,6 +691,7 @@ export default function CRM() {
               </Tag.CheckableTag>
             );
           })}
+          </Space>
         </Space>
       </Card>
 
@@ -620,7 +712,7 @@ export default function CRM() {
                 <Select
                   showSearch
                   optionFilterProp="label"
-                  options={(venues || []).map((venue) => ({
+                  options={filteredVenueOptions.map((venue) => ({
                     label: `${venue.name || venue.id} (${venue.id})`,
                     value: String(venue.id || "").toLowerCase(),
                   }))}

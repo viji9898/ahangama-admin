@@ -342,6 +342,18 @@ function mergeVenueUpdate(venue: Venue) {
   return next;
 }
 
+function normalizeDestinationSlug(value: unknown) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function formatDestinationLabel(slug: string) {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export function VenueAdminPage() {
   const screens = Grid.useBreakpoint();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -366,6 +378,7 @@ export function VenueAdminPage() {
   const [aiInterpretation, setAiInterpretation] =
     useState<VenueSearchInterpretation | null>(null);
   const [filterKey, setFilterKey] = useState<VenueFilterKey>("all");
+  const [destinationFilter, setDestinationFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(
     undefined,
   );
@@ -502,11 +515,36 @@ export function VenueAdminPage() {
     );
   }, [venues]);
 
+  const destinationOptions = useMemo(() => {
+    const values = Array.from(
+      new Set(
+        venues
+          .map((venue) => normalizeDestinationSlug(venue.destinationSlug))
+          .filter(Boolean),
+      ),
+    ).sort((left, right) => left.localeCompare(right));
+
+    return [
+      { label: "All destinations", value: "all" },
+      ...values.map((value) => ({
+        label: formatDestinationLabel(value),
+        value,
+      })),
+    ];
+  }, [venues]);
+
   const filteredVenues = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     return venues
       .filter((venue) => {
+        if (
+          destinationFilter !== "all" &&
+          normalizeDestinationSlug(venue.destinationSlug) !== destinationFilter
+        ) {
+          return false;
+        }
+
         if (filterKey === "live" && venue.live !== true) return false;
         if (filterKey === "coming-soon" && venue.live !== false) return false;
         if (filterKey === "staff-pick" && venue.staffPick !== true)
@@ -559,7 +597,14 @@ export function VenueAdminPage() {
 
         return String(a.name || "").localeCompare(String(b.name || ""));
       });
-  }, [aiInterpretation, categoryFilter, filterKey, search, venues]);
+  }, [
+    aiInterpretation,
+    categoryFilter,
+    destinationFilter,
+    filterKey,
+    search,
+    venues,
+  ]);
 
   const draftVenueWithPendingMedia = useMemo(
     () =>
@@ -1141,6 +1186,7 @@ export function VenueAdminPage() {
             search={search}
             aiQuery={aiQuery}
             filterKey={filterKey}
+            destinationFilter={destinationFilter}
             categoryFilter={categoryFilter}
             counts={{
               total: counts.total,
@@ -1148,6 +1194,7 @@ export function VenueAdminPage() {
               comingSoon: counts.comingSoon,
               results: filteredVenues.length,
             }}
+            destinationOptions={destinationOptions}
             categoryOptions={categoryOptions}
             loading={loading}
             error={error}
@@ -1156,6 +1203,7 @@ export function VenueAdminPage() {
             onAiSearch={handleAssistantSearch}
             onClearAiSearch={clearAssistantSearch}
             onFilterChange={setFilterKey}
+            onDestinationChange={setDestinationFilter}
             onCategoryChange={setCategoryFilter}
             aiSearching={aiSearching}
             aiSearchActive={Boolean(aiInterpretation)}

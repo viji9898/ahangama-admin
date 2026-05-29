@@ -21,13 +21,16 @@ type Props = {
   search: string;
   aiQuery: string;
   filterKey: VenueFilterKey;
+  destinationFilter: string;
   categoryFilter?: string;
   onSearchChange: (value: string) => void;
   onAiQueryChange: (value: string) => void;
   onAiSearch: () => void;
   onClearAiSearch: () => void;
   onFilterChange: (value: VenueFilterKey) => void;
+  onDestinationChange: (value: string) => void;
   onCategoryChange: (value?: string) => void;
+  destinationOptions: Array<{ label: string; value: string }>;
   categoryOptions: Array<{ label: string; value: string }>;
   aiSearching: boolean;
   aiSearchActive: boolean;
@@ -45,13 +48,16 @@ export function VenueSearchAndFilters({
   search,
   aiQuery,
   filterKey,
+  destinationFilter,
   categoryFilter,
   onSearchChange,
   onAiQueryChange,
   onAiSearch,
   onClearAiSearch,
   onFilterChange,
+  onDestinationChange,
   onCategoryChange,
+  destinationOptions,
   categoryOptions,
   aiSearching,
   aiSearchActive,
@@ -133,6 +139,13 @@ export function VenueSearchAndFilters({
           { label: "Coming Soon", value: "coming-soon" },
           { label: "Staff Picks", value: "staff-pick" },
         ]}
+      />
+
+      <Select
+        size="large"
+        value={destinationFilter}
+        options={destinationOptions}
+        onChange={onDestinationChange}
       />
 
       <Select

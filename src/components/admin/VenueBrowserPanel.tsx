@@ -10,6 +10,7 @@ type Props = {
   search: string;
   aiQuery: string;
   filterKey: VenueFilterKey;
+  destinationFilter: string;
   categoryFilter?: string;
   counts: {
     total: number;
@@ -17,6 +18,7 @@ type Props = {
     comingSoon: number;
     results: number;
   };
+  destinationOptions: Array<{ label: string; value: string }>;
   categoryOptions: Array<{ label: string; value: string }>;
   loading: boolean;
   error?: string;
@@ -25,6 +27,7 @@ type Props = {
   onAiSearch: () => void;
   onClearAiSearch: () => void;
   onFilterChange: (value: VenueFilterKey) => void;
+  onDestinationChange: (value: string) => void;
   onCategoryChange: (value?: string) => void;
   aiSearching: boolean;
   aiSearchActive: boolean;
@@ -43,8 +46,10 @@ export function VenueBrowserPanel({
   search,
   aiQuery,
   filterKey,
+  destinationFilter,
   categoryFilter,
   counts,
+  destinationOptions,
   categoryOptions,
   loading,
   error,
@@ -53,6 +58,7 @@ export function VenueBrowserPanel({
   onAiSearch,
   onClearAiSearch,
   onFilterChange,
+  onDestinationChange,
   onCategoryChange,
   aiSearching,
   aiSearchActive,
@@ -93,13 +99,16 @@ export function VenueBrowserPanel({
           search={search}
           aiQuery={aiQuery}
           filterKey={filterKey}
+          destinationFilter={destinationFilter}
           categoryFilter={categoryFilter}
           onSearchChange={onSearchChange}
           onAiQueryChange={onAiQueryChange}
           onAiSearch={onAiSearch}
           onClearAiSearch={onClearAiSearch}
           onFilterChange={onFilterChange}
+          onDestinationChange={onDestinationChange}
           onCategoryChange={onCategoryChange}
+          destinationOptions={destinationOptions}
           categoryOptions={categoryOptions}
           aiSearching={aiSearching}
           aiSearchActive={aiSearchActive}
