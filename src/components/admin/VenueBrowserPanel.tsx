@@ -97,23 +97,7 @@ export function VenueBrowserPanel({
 
         <VenueSearchAndFilters
           search={search}
-          aiQuery={aiQuery}
-          filterKey={filterKey}
-          destinationFilter={destinationFilter}
-          categoryFilter={categoryFilter}
           onSearchChange={onSearchChange}
-          onAiQueryChange={onAiQueryChange}
-          onAiSearch={onAiSearch}
-          onClearAiSearch={onClearAiSearch}
-          onFilterChange={onFilterChange}
-          onDestinationChange={onDestinationChange}
-          onCategoryChange={onCategoryChange}
-          destinationOptions={destinationOptions}
-          categoryOptions={categoryOptions}
-          aiSearching={aiSearching}
-          aiSearchActive={aiSearchActive}
-          aiSearchError={aiSearchError}
-          aiInterpretation={aiInterpretation}
           counts={counts}
         />
 

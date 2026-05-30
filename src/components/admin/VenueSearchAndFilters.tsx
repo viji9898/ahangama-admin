@@ -1,41 +1,12 @@
 import {
-  Alert,
-  Button,
-  Card,
   Input,
-  Segmented,
-  Select,
   Space,
-  Statistic,
-  Tag,
   Typography,
 } from "antd";
-import type { VenueFilterKey } from "./venueAdminUtils";
-
-type VenueSearchInterpretation = {
-  summary: string;
-  chips: string[];
-};
 
 type Props = {
   search: string;
-  aiQuery: string;
-  filterKey: VenueFilterKey;
-  destinationFilter: string;
-  categoryFilter?: string;
   onSearchChange: (value: string) => void;
-  onAiQueryChange: (value: string) => void;
-  onAiSearch: () => void;
-  onClearAiSearch: () => void;
-  onFilterChange: (value: VenueFilterKey) => void;
-  onDestinationChange: (value: string) => void;
-  onCategoryChange: (value?: string) => void;
-  destinationOptions: Array<{ label: string; value: string }>;
-  categoryOptions: Array<{ label: string; value: string }>;
-  aiSearching: boolean;
-  aiSearchActive: boolean;
-  aiSearchError?: string;
-  aiInterpretation?: VenueSearchInterpretation;
   counts: {
     total: number;
     live: number;
@@ -46,23 +17,7 @@ type Props = {
 
 export function VenueSearchAndFilters({
   search,
-  aiQuery,
-  filterKey,
-  destinationFilter,
-  categoryFilter,
   onSearchChange,
-  onAiQueryChange,
-  onAiSearch,
-  onClearAiSearch,
-  onFilterChange,
-  onDestinationChange,
-  onCategoryChange,
-  destinationOptions,
-  categoryOptions,
-  aiSearching,
-  aiSearchActive,
-  aiSearchError,
-  aiInterpretation,
   counts,
 }: Props) {
   return (
@@ -75,142 +30,43 @@ export function VenueSearchAndFilters({
         onChange={(event) => onSearchChange(event.target.value)}
       />
 
-      <Card
-        size="small"
-        styles={{ body: { padding: 14 } }}
-        style={{ borderRadius: 16, background: "rgba(248,250,252,0.75)" }}
-      >
-        <Space direction="vertical" size={12} style={{ width: "100%" }}>
-          <div>
-            <Typography.Text strong>Search Assistant</Typography.Text>
-            <Typography.Paragraph
-              type="secondary"
-              style={{ margin: "4px 0 0" }}
-            >
-              Ask for structured filters like venues with weak copy and no tags,
-              or pass venues that mention brunch but have no offer configured.
-            </Typography.Paragraph>
-          </div>
-
-          <Input.Search
-            allowClear
-            enterButton="Run"
-            placeholder="Try: pass venues that mention brunch but have no offer configured"
-            value={aiQuery}
-            onChange={(event) => onAiQueryChange(event.target.value)}
-            onSearch={() => onAiSearch()}
-            loading={aiSearching}
-          />
-
-          {aiSearchError ? (
-            <Alert type="error" showIcon message={aiSearchError} />
-          ) : null}
-
-          {aiInterpretation?.summary ? (
-            <Space direction="vertical" size={10} style={{ width: "100%" }}>
-              <Typography.Text>{aiInterpretation.summary}</Typography.Text>
-              {aiInterpretation.chips.length ? (
-                <Space size={[8, 8]} wrap>
-                  {aiInterpretation.chips.map((chip) => (
-                    <Tag key={chip} color="gold">
-                      {chip}
-                    </Tag>
-                  ))}
-                </Space>
-              ) : null}
-            </Space>
-          ) : null}
-
-          {aiSearchActive ? (
-            <div>
-              <Button onClick={onClearAiSearch}>Clear Assistant Search</Button>
-            </div>
-          ) : null}
-        </Space>
-      </Card>
-
-      <Segmented
-        block
-        value={filterKey}
-        onChange={(value) => onFilterChange(value as VenueFilterKey)}
-        options={[
-          { label: "All", value: "all" },
-          { label: "Live", value: "live" },
-          { label: "Coming Soon", value: "coming-soon" },
-          { label: "Staff Picks", value: "staff-pick" },
-        ]}
-      />
-
-      <Select
-        size="large"
-        value={destinationFilter}
-        options={destinationOptions}
-        onChange={onDestinationChange}
-      />
-
-      <Select
-        allowClear
-        size="large"
-        placeholder="Filter by category"
-        value={categoryFilter}
-        options={categoryOptions}
-        onChange={(value) => onCategoryChange(value)}
-      />
-
       <div style={{ overflowX: "auto" }}>
-        <div
-          style={{
-            display: "grid",
-            gap: 10,
-            gridTemplateColumns: "repeat(4, minmax(92px, 1fr))",
-            minWidth: 430,
-          }}
-        >
-          <Card
-            size="small"
-            styles={{ body: { padding: 10 } }}
-            style={{ borderRadius: 16 }}
-          >
-            <Statistic
-              title="Results"
-              value={counts.results}
-              valueStyle={{ fontSize: 22 }}
-            />
-          </Card>
-          <Card
-            size="small"
-            styles={{ body: { padding: 10 } }}
-            style={{ borderRadius: 16 }}
-          >
-            <Statistic
-              title="Total"
-              value={counts.total}
-              valueStyle={{ fontSize: 22 }}
-            />
-          </Card>
-          <Card
-            size="small"
-            styles={{ body: { padding: 10 } }}
-            style={{ borderRadius: 16 }}
-          >
-            <Statistic
-              title="Live"
-              value={counts.live}
-              valueStyle={{ fontSize: 22 }}
-            />
-          </Card>
-          <Card
-            size="small"
-            styles={{ body: { padding: 10 } }}
-            style={{ borderRadius: 16 }}
-          >
-            <Statistic
-              title="Coming Soon"
-              value={counts.comingSoon}
-              valueStyle={{ fontSize: 22 }}
-            />
-          </Card>
-        </div>
+        <Space size={[10, 10]} wrap style={{ minWidth: 430 }}>
+          {[
+            { label: "Results", value: counts.results },
+            { label: "Total", value: counts.total },
+            { label: "Live", value: counts.live },
+            { label: "Coming Soon", value: counts.comingSoon },
+          ].map((item) => (
+            <div
+              key={item.label}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 14px",
+                borderRadius: 999,
+                border: "1px solid rgba(15, 23, 42, 0.08)",
+                background: "rgba(255, 255, 255, 0.82)",
+                boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
+              }}
+            >
+              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                {item.label}
+              </Typography.Text>
+              <Typography.Text
+                style={{
+                  fontSize: 18,
+                  lineHeight: 1,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                }}
+              >
+                {item.value}
+              </Typography.Text>
+            </div>
+          ))}
+        </Space>
       </div>
     </Space>
   );
