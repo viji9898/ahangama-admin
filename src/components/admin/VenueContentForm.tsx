@@ -1,6 +1,7 @@
-import { Alert, Button, Form, Input, Space, Typography } from "antd";
+import { Alert, Button, Form, Input, Select, Space, Typography } from "antd";
+import { useState } from "react";
 import type { Venue } from "../../types/venue";
-import { listToText, textToList } from "./venueAdminUtils";
+import { normalizeStringArray } from "./venueAdminUtils";
 
 type Props = {
   venue: Venue;
@@ -9,12 +10,62 @@ type Props = {
   generatingContent: boolean;
 };
 
+type TagFieldProps = {
+  label: string;
+  value: string[];
+  placeholder: string;
+  onChange: (nextValue: string[]) => void;
+};
+
+function TagField({ label, value, placeholder, onChange }: TagFieldProps) {
+  const [searchValue, setSearchValue] = useState("");
+
+  const commitPendingValue = () => {
+    const pendingValues = normalizeStringArray(
+      searchValue
+        .split(/[\n,]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    );
+
+    if (!pendingValues.length) return;
+
+    onChange(normalizeStringArray([...value, ...pendingValues]));
+    setSearchValue("");
+  };
+
+  return (
+    <Form.Item label={label}>
+      <Select
+        mode="tags"
+        open={false}
+        value={value}
+        searchValue={searchValue}
+        onSearch={setSearchValue}
+        onBlur={commitPendingValue}
+        onChange={(nextValue) => onChange(normalizeStringArray(nextValue))}
+        onInputKeyDown={(event) => {
+          if (event.key === "Tab") {
+            commitPendingValue();
+          }
+        }}
+        tokenSeparators={[","]}
+        placeholder={placeholder}
+        style={{ width: "100%" }}
+      />
+    </Form.Item>
+  );
+}
+
 export function VenueContentForm({
   venue,
   onPatch,
   onGenerateContent,
   generatingContent,
 }: Props) {
+  const bestForValues = normalizeStringArray(venue.bestFor);
+  const tagValues = normalizeStringArray(venue.tags);
+
   return (
     <Form layout="vertical" style={{ paddingTop: 8 }}>
       <Alert
@@ -59,27 +110,19 @@ export function VenueContentForm({
         />
       </Form.Item>
 
-      <Form.Item label="Best for (one per line)">
-        <Input.TextArea
-          rows={4}
-          value={listToText(venue.bestFor)}
-          onChange={(event) =>
-            onPatch({ bestFor: textToList(event.target.value) })
-          }
-          placeholder={"Post-surf lunch\nRemote work\nGolden hour"}
-        />
-      </Form.Item>
+      <TagField
+        label="Best for"
+        value={bestForValues}
+        placeholder="Add phrases like Post-surf lunch, Remote work, Golden hour"
+        onChange={(value) => onPatch({ bestFor: value })}
+      />
 
-      <Form.Item label="Tags (one per line)">
-        <Input.TextArea
-          rows={4}
-          value={listToText(venue.tags)}
-          onChange={(event) =>
-            onPatch({ tags: textToList(event.target.value) })
-          }
-          placeholder={"Cafe\nBrunch\nAhangama"}
-        />
-      </Form.Item>
+      <TagField
+        label="Tags"
+        value={tagValues}
+        placeholder="Add tags like Cafe, Brunch, Ahangama"
+        onChange={(value) => onPatch({ tags: value })}
+      />
     </Form>
   );
 }

@@ -25,7 +25,6 @@ import { VenueMediaUploadField } from "./VenueMediaUploadField";
 import {
   VENUE_CATEGORY_OPTIONS,
   VENUE_STATUS_OPTIONS,
-  type VenueFilterKey,
   getVenueCategories,
   getVenueInstagramValue,
   getVenueOffersArray,
@@ -61,164 +60,6 @@ type CreateVenueFormValues = {
 };
 
 type VenueMediaPatch = Partial<Pick<Venue, "logo" | "image" | "ogImage">>;
-
-type VenueSearchFilters = {
-  live: boolean | null;
-  isPassVenue: boolean | null;
-  staffPick: boolean | null;
-  missingTags: boolean;
-  missingExcerpt: boolean;
-  missingDescription: boolean;
-  missingOffers: boolean;
-  missingImage: boolean;
-  missingInstagram: boolean;
-  weakCopy: boolean;
-  textMention: string;
-  category: string;
-};
-
-type VenueSearchInterpretation = {
-  summary: string;
-  chips: string[];
-  filters: VenueSearchFilters;
-};
-
-const EMPTY_VENUE_SEARCH_FILTERS: VenueSearchFilters = {
-  live: null,
-  isPassVenue: null,
-  staffPick: null,
-  missingTags: false,
-  missingExcerpt: false,
-  missingDescription: false,
-  missingOffers: false,
-  missingImage: false,
-  missingInstagram: false,
-  weakCopy: false,
-  textMention: "",
-  category: "",
-};
-
-function getVenueSearchableText(venue: Venue) {
-  return [
-    venue.name,
-    venue.slug,
-    venue.id,
-    venue.area,
-    venue.excerpt,
-    venue.description,
-    venue.cardPerk,
-    venue.howToClaim,
-    venue.restrictions,
-    venue.price,
-    venue.hours,
-    ...getVenueCategories(venue),
-    ...(venue.tags || []),
-    ...(venue.bestFor || []),
-    ...getVenueOffersArray(venue.offers),
-  ]
-    .filter(Boolean)
-    .map((value) => String(value).toLowerCase())
-    .join(" ");
-}
-
-function hasWeakCopy(venue: Venue) {
-  const excerpt = normalizeText(venue.excerpt);
-  const description = normalizeText(venue.description);
-  const bestFor = normalizeStringArray(venue.bestFor);
-  const tags = normalizeStringArray(venue.tags);
-
-  if (!excerpt || excerpt.length < 45) return true;
-  if (!description || description.length < 140) return true;
-  if (!bestFor.length) return true;
-  if (!tags.length) return true;
-
-  const lowerDescription = description.toLowerCase();
-  const genericPhrases = [
-    "great place",
-    "nice place",
-    "perfect for everyone",
-    "something for everyone",
-    "must visit",
-  ];
-  return genericPhrases.some((phrase) => lowerDescription.includes(phrase));
-}
-
-function matchesAssistantFilters(venue: Venue, filters: VenueSearchFilters) {
-  if (filters.live !== null && Boolean(venue.live ?? false) !== filters.live) {
-    return false;
-  }
-  if (
-    filters.isPassVenue !== null &&
-    Boolean(venue.isPassVenue ?? false) !== filters.isPassVenue
-  ) {
-    return false;
-  }
-  if (
-    filters.staffPick !== null &&
-    Boolean(venue.staffPick ?? false) !== filters.staffPick
-  ) {
-    return false;
-  }
-  if (filters.missingTags && normalizeStringArray(venue.tags).length > 0) {
-    return false;
-  }
-  if (filters.missingExcerpt && normalizeText(venue.excerpt)) {
-    return false;
-  }
-  if (filters.missingDescription && normalizeText(venue.description)) {
-    return false;
-  }
-  if (filters.missingOffers && getVenueOffersArray(venue.offers).length > 0) {
-    return false;
-  }
-  if (
-    filters.missingImage &&
-    (normalizeText(venue.image) ||
-      normalizeText(venue.ogImage) ||
-      normalizeText(venue.logo))
-  ) {
-    return false;
-  }
-  if (
-    filters.missingInstagram &&
-    normalizeText(getVenueInstagramValue(venue))
-  ) {
-    return false;
-  }
-  if (filters.weakCopy && !hasWeakCopy(venue)) {
-    return false;
-  }
-  if (filters.category) {
-    const categories = getVenueCategories(venue).map((item) =>
-      item.toLowerCase(),
-    );
-    if (!categories.includes(filters.category)) {
-      return false;
-    }
-  }
-  if (filters.textMention) {
-    const searchable = getVenueSearchableText(venue);
-    if (!searchable.includes(filters.textMention.toLowerCase())) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function discountDbToPercent(value: unknown): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) return null;
-  return numericValue <= 1 ? numericValue * 100 : numericValue;
-}
-
-function discountPercentToDb(value: unknown): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) return null;
-  return numericValue / 100;
-}
 
 function parseCoordinates(value: string) {
   const rawValue = String(value || "").trim();
@@ -342,16 +183,18 @@ function mergeVenueUpdate(venue: Venue) {
   return next;
 }
 
-function normalizeDestinationSlug(value: unknown) {
-  return String(value || "").trim().toLowerCase();
+function discountDbToPercent(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  return numericValue <= 1 ? numericValue * 100 : numericValue;
 }
 
-function formatDestinationLabel(slug: string) {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+function discountPercentToDb(value: number | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return null;
+  return numericValue / 100;
 }
 
 export function VenueAdminPage() {
@@ -372,16 +215,6 @@ export function VenueAdminPage() {
   const lastTrackedVenueIdRef = useRef<string>("");
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [aiQuery, setAiQuery] = useState("");
-  const [aiSearching, setAiSearching] = useState(false);
-  const [aiSearchError, setAiSearchError] = useState("");
-  const [aiInterpretation, setAiInterpretation] =
-    useState<VenueSearchInterpretation | null>(null);
-  const [filterKey, setFilterKey] = useState<VenueFilterKey>("all");
-  const [destinationFilter, setDestinationFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string | undefined>(
-    undefined,
-  );
   const [reloadToken, setReloadToken] = useState(0);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
@@ -515,55 +348,11 @@ export function VenueAdminPage() {
     );
   }, [venues]);
 
-  const destinationOptions = useMemo(() => {
-    const values = Array.from(
-      new Set(
-        venues
-          .map((venue) => normalizeDestinationSlug(venue.destinationSlug))
-          .filter(Boolean),
-      ),
-    ).sort((left, right) => left.localeCompare(right));
-
-    return [
-      { label: "All destinations", value: "all" },
-      ...values.map((value) => ({
-        label: formatDestinationLabel(value),
-        value,
-      })),
-    ];
-  }, [venues]);
-
   const filteredVenues = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     return venues
       .filter((venue) => {
-        if (
-          destinationFilter !== "all" &&
-          normalizeDestinationSlug(venue.destinationSlug) !== destinationFilter
-        ) {
-          return false;
-        }
-
-        if (filterKey === "live" && venue.live !== true) return false;
-        if (filterKey === "coming-soon" && venue.live !== false) return false;
-        if (filterKey === "staff-pick" && venue.staffPick !== true)
-          return false;
-
-        if (categoryFilter) {
-          const categories = getVenueCategories(venue).map((item) =>
-            item.toLowerCase(),
-          );
-          if (!categories.includes(categoryFilter.toLowerCase())) return false;
-        }
-
-        if (
-          aiInterpretation &&
-          !matchesAssistantFilters(venue, aiInterpretation.filters)
-        ) {
-          return false;
-        }
-
         if (!query) return true;
 
         const searchable = [
@@ -597,14 +386,7 @@ export function VenueAdminPage() {
 
         return String(a.name || "").localeCompare(String(b.name || ""));
       });
-  }, [
-    aiInterpretation,
-    categoryFilter,
-    destinationFilter,
-    filterKey,
-    search,
-    venues,
-  ]);
+  }, [search, venues]);
 
   const draftVenueWithPendingMedia = useMemo(
     () =>
@@ -748,63 +530,6 @@ export function VenueAdminPage() {
     } finally {
       setGeneratingContent(false);
     }
-  };
-
-  const handleAssistantSearch = async () => {
-    const nextQuery = normalizeText(aiQuery);
-    if (!nextQuery) {
-      message.error("Enter a search request.");
-      return;
-    }
-
-    setAiSearching(true);
-    setAiSearchError("");
-    try {
-      const response = await fetch(AI_ASSIST_ENDPOINT, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          task: "venue-search",
-          query: nextQuery,
-        }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || data?.ok !== true) {
-        throw new Error(data?.error || `Failed (${response.status})`);
-      }
-
-      const nextInterpretation: VenueSearchInterpretation = {
-        summary: normalizeText(data?.interpretation?.summary),
-        chips: normalizeStringArray(data?.interpretation?.chips),
-        filters: {
-          ...EMPTY_VENUE_SEARCH_FILTERS,
-          ...data?.interpretation?.filters,
-          textMention: normalizeText(
-            data?.interpretation?.filters?.textMention,
-          ),
-          category: normalizeText(
-            data?.interpretation?.filters?.category,
-          ).toLowerCase(),
-        },
-      };
-
-      setAiInterpretation(nextInterpretation);
-      message.success("Assistant search applied.");
-    } catch (assistantError) {
-      const nextError = String(
-        (assistantError as Error)?.message || assistantError,
-      );
-      setAiSearchError(nextError);
-      message.error(nextError);
-    } finally {
-      setAiSearching(false);
-    }
-  };
-
-  const clearAssistantSearch = () => {
-    setAiInterpretation(null);
-    setAiSearchError("");
   };
 
   const handleCancelDraft = () => {
@@ -1025,8 +750,6 @@ export function VenueAdminPage() {
       closeCreateDrawer();
       selectVenue(created.id);
       setSearch("");
-      setCategoryFilter(undefined);
-      setFilterKey("all");
       message.success("Venue created.");
     } catch (createError) {
       message.error(String((createError as Error)?.message || createError));
@@ -1184,38 +907,15 @@ export function VenueAdminPage() {
             venues={filteredVenues}
             selectedVenueId={selectedVenueId}
             search={search}
-            aiQuery={aiQuery}
-            filterKey={filterKey}
-            destinationFilter={destinationFilter}
-            categoryFilter={categoryFilter}
             counts={{
               total: counts.total,
               live: counts.live,
               comingSoon: counts.comingSoon,
               results: filteredVenues.length,
             }}
-            destinationOptions={destinationOptions}
-            categoryOptions={categoryOptions}
             loading={loading}
             error={error}
             onSearchChange={setSearch}
-            onAiQueryChange={setAiQuery}
-            onAiSearch={handleAssistantSearch}
-            onClearAiSearch={clearAssistantSearch}
-            onFilterChange={setFilterKey}
-            onDestinationChange={setDestinationFilter}
-            onCategoryChange={setCategoryFilter}
-            aiSearching={aiSearching}
-            aiSearchActive={Boolean(aiInterpretation)}
-            aiSearchError={aiSearchError}
-            aiInterpretation={
-              aiInterpretation
-                ? {
-                    summary: aiInterpretation.summary,
-                    chips: aiInterpretation.chips,
-                  }
-                : undefined
-            }
             onSelectVenue={selectVenue}
             onCreateVenue={() => openCreateDrawer()}
           />

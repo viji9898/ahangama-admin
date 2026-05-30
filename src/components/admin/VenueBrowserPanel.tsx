@@ -2,40 +2,20 @@ import { Alert, Button, Card, Space, Typography } from "antd";
 import type { Venue } from "../../types/venue";
 import { VenueCardList } from "./VenueCardList";
 import { VenueSearchAndFilters } from "./VenueSearchAndFilters";
-import type { VenueFilterKey } from "./venueAdminUtils";
 
 type Props = {
   venues: Venue[];
   selectedVenueId?: string;
   search: string;
-  aiQuery: string;
-  filterKey: VenueFilterKey;
-  destinationFilter: string;
-  categoryFilter?: string;
   counts: {
     total: number;
     live: number;
     comingSoon: number;
     results: number;
   };
-  destinationOptions: Array<{ label: string; value: string }>;
-  categoryOptions: Array<{ label: string; value: string }>;
   loading: boolean;
   error?: string;
   onSearchChange: (value: string) => void;
-  onAiQueryChange: (value: string) => void;
-  onAiSearch: () => void;
-  onClearAiSearch: () => void;
-  onFilterChange: (value: VenueFilterKey) => void;
-  onDestinationChange: (value: string) => void;
-  onCategoryChange: (value?: string) => void;
-  aiSearching: boolean;
-  aiSearchActive: boolean;
-  aiSearchError?: string;
-  aiInterpretation?: {
-    summary: string;
-    chips: string[];
-  };
   onSelectVenue: (venueId?: string) => void;
   onCreateVenue: () => void;
 };
@@ -44,26 +24,10 @@ export function VenueBrowserPanel({
   venues,
   selectedVenueId,
   search,
-  aiQuery,
-  filterKey,
-  destinationFilter,
-  categoryFilter,
   counts,
-  destinationOptions,
-  categoryOptions,
   loading,
   error,
   onSearchChange,
-  onAiQueryChange,
-  onAiSearch,
-  onClearAiSearch,
-  onFilterChange,
-  onDestinationChange,
-  onCategoryChange,
-  aiSearching,
-  aiSearchActive,
-  aiSearchError,
-  aiInterpretation,
   onSelectVenue,
   onCreateVenue,
 }: Props) {

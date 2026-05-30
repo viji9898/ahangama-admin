@@ -72,6 +72,8 @@ export function VenueEditorPanel({
               onPatch={onPatch}
               onGenerateContent={onGenerateContent}
               generatingContent={generatingContent}
+              onSave={onSave}
+              saving={saving}
             />
             <StickySaveBar
               dirty={dirty}
