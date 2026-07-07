@@ -102,7 +102,9 @@ export async function handler(event) {
     );
     const source = normalizeOptionalText(body.source);
     const lastVerifiedAt = normalizeOptionalText(body.lastVerifiedAt);
-    const intelligenceScore = normalizeIntelligenceScore(body.intelligenceScore);
+    const intelligenceScore = normalizeIntelligenceScore(
+      body.intelligenceScore,
+    );
     const editorPriority = normalizeEventEnum(
       body.editorPriority,
       EVENT_EDITOR_PRIORITIES,
@@ -218,6 +220,9 @@ export async function handler(event) {
 
     return json(200, { ok: true, event: toEventDto(row) });
   } catch (e) {
-    return json(e?.statusCode || 500, { ok: false, error: String(e?.message || e) });
+    return json(e?.statusCode || 500, {
+      ok: false,
+      error: String(e?.message || e),
+    });
   }
 }

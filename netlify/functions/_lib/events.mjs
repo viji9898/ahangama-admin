@@ -143,7 +143,9 @@ export function normalizeOptionalEventNumber(value, fieldName) {
 export function normalizeIntelligenceScore(value) {
   const numeric = Number(value ?? 0);
   if (!Number.isInteger(numeric) || numeric < 0 || numeric > 100) {
-    const err = new Error("intelligenceScore must be an integer between 0 and 100");
+    const err = new Error(
+      "intelligenceScore must be an integer between 0 and 100",
+    );
     err.statusCode = 400;
     throw err;
   }

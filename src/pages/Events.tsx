@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClockCircleOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
+import {
+  ClockCircleOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import {
   Alert,
   Button,
@@ -228,7 +232,9 @@ function getVenueGoogleUrl(venue?: Venue | null) {
 }
 
 function formatReadonlyNumber(value?: number | null) {
-  return typeof value === "number" && Number.isFinite(value) ? String(value) : "";
+  return typeof value === "number" && Number.isFinite(value)
+    ? String(value)
+    : "";
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -403,7 +409,9 @@ export default function Events() {
     () =>
       venues.map((venue) => ({
         value: String(venue.id || venue.slug || venue.name),
-        label: venue.area ? `${venue.name} - ${venue.area}` : String(venue.name),
+        label: venue.area
+          ? `${venue.name} - ${venue.area}`
+          : String(venue.name),
       })),
     [venues],
   );
@@ -411,15 +419,17 @@ export default function Events() {
   const selectedVenue = useMemo(
     () =>
       venues.find(
-        (venue) => String(venue.id || venue.slug || venue.name) === selectedVenueId,
+        (venue) =>
+          String(venue.id || venue.slug || venue.name) === selectedVenueId,
       ) || null,
     [selectedVenueId, venues],
   );
 
   const subcategoryOptions = useMemo(
     () =>
-      (EVENT_CATEGORY_OPTIONS.find((item) => item.value === selectedCategory)
-        ?.subcategories || []
+      (
+        EVENT_CATEGORY_OPTIONS.find((item) => item.value === selectedCategory)
+          ?.subcategories || []
       ).map((subcategory) => ({ label: subcategory, value: subcategory })),
     [selectedCategory],
   );
@@ -444,7 +454,9 @@ export default function Events() {
         <Space direction="vertical" size={2}>
           <Typography.Text strong>{record.title}</Typography.Text>
           <Space size={6} wrap>
-            <Typography.Text type="secondary">{record.venueName}</Typography.Text>
+            <Typography.Text type="secondary">
+              {record.venueName}
+            </Typography.Text>
             <Tag>{record.subcategory || record.category}</Tag>
           </Space>
         </Space>
@@ -485,9 +497,13 @@ export default function Events() {
       render: (_value, record) => (
         <Space size={[4, 4]} wrap>
           {record.featuredThisWeek ? <Tag color="blue">This week</Tag> : null}
-          {record.editorialPick ? <Tag color="purple">Editor's pick</Tag> : null}
+          {record.editorialPick ? (
+            <Tag color="purple">Editor's pick</Tag>
+          ) : null}
           {record.featured ? <Tag color="gold">Featured</Tag> : null}
-          {record.imageUrls?.length ? <Tag>{record.imageUrls.length} images</Tag> : null}
+          {record.imageUrls?.length ? (
+            <Tag>{record.imageUrls.length} images</Tag>
+          ) : null}
           <Tag>{record.editorPriority}</Tag>
           <Tag>{record.audience}</Tag>
         </Space>
@@ -546,7 +562,9 @@ export default function Events() {
         });
         if (!uploadResponse.ok) {
           const text = await uploadResponse.text().catch(() => "");
-          throw new Error(text || `S3 upload failed (${uploadResponse.status})`);
+          throw new Error(
+            text || `S3 upload failed (${uploadResponse.status})`,
+          );
         }
 
         uploadedUrls.push(upload.publicUrl);
@@ -730,11 +748,15 @@ export default function Events() {
                     rules={[{ required: true, message: "Select a category" }]}
                   >
                     <Select
-                      options={EVENT_CATEGORY_OPTIONS.map(({ label, value }) => ({
-                        label,
-                        value,
-                      }))}
-                      onChange={() => form.setFieldValue("subcategory", undefined)}
+                      options={EVENT_CATEGORY_OPTIONS.map(
+                        ({ label, value }) => ({
+                          label,
+                          value,
+                        }),
+                      )}
+                      onChange={() =>
+                        form.setFieldValue("subcategory", undefined)
+                      }
                     />
                   </Form.Item>
                 </Col>
@@ -772,22 +794,34 @@ export default function Events() {
                 <Row gutter={12}>
                   <Col xs={24} sm={12}>
                     <Form.Item label="Instagram account">
-                      <Input disabled value={getVenueInstagramAccount(selectedVenue)} />
+                      <Input
+                        disabled
+                        value={getVenueInstagramAccount(selectedVenue)}
+                      />
                     </Form.Item>
                   </Col>
                   <Col xs={24} sm={12}>
                     <Form.Item label="Google URL">
-                      <Input disabled value={getVenueGoogleUrl(selectedVenue)} />
+                      <Input
+                        disabled
+                        value={getVenueGoogleUrl(selectedVenue)}
+                      />
                     </Form.Item>
                   </Col>
                   <Col xs={24} sm={12}>
                     <Form.Item label="Latitude">
-                      <Input disabled value={formatReadonlyNumber(selectedVenue.lat)} />
+                      <Input
+                        disabled
+                        value={formatReadonlyNumber(selectedVenue.lat)}
+                      />
                     </Form.Item>
                   </Col>
                   <Col xs={24} sm={12}>
                     <Form.Item label="Longitude">
-                      <Input disabled value={formatReadonlyNumber(selectedVenue.lng)} />
+                      <Input
+                        disabled
+                        value={formatReadonlyNumber(selectedVenue.lng)}
+                      />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -800,12 +834,18 @@ export default function Events() {
                     name="startDate"
                     rules={[{ required: true, message: "Select a start date" }]}
                   >
-                    <DatePicker placeholder="Required" style={{ width: "100%" }} />
+                    <DatePicker
+                      placeholder="Required"
+                      style={{ width: "100%" }}
+                    />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12}>
                   <Form.Item label="End date" name="endDate">
-                    <DatePicker placeholder="Optional" style={{ width: "100%" }} />
+                    <DatePicker
+                      placeholder="Optional"
+                      style={{ width: "100%" }}
+                    />
                   </Form.Item>
                 </Col>
               </Row>
@@ -827,10 +867,7 @@ export default function Events() {
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12}>
-                  <Form.Item
-                    label="End time"
-                    name="endTime"
-                  >
+                  <Form.Item label="End time" name="endTime">
                     <TimePicker
                       use12Hours
                       format="h:mm A"
@@ -883,7 +920,9 @@ export default function Events() {
                 </Col>
               </Row>
 
-              <Typography.Title level={5}>Booking and promotion</Typography.Title>
+              <Typography.Title level={5}>
+                Booking and promotion
+              </Typography.Title>
               <Row gutter={12}>
                 <Col xs={24} sm={12}>
                   <Form.Item label="Price type" name="priceType">
@@ -897,7 +936,10 @@ export default function Events() {
                 </Col>
                 <Col xs={24} sm={12}>
                   <Form.Item label="Price" name="price">
-                    <Input disabled={priceType === "free"} placeholder="Rs 5,000" />
+                    <Input
+                      disabled={priceType === "free"}
+                      placeholder="Rs 5,000"
+                    />
                   </Form.Item>
                 </Col>
               </Row>
@@ -1004,7 +1046,11 @@ export default function Events() {
 
               <Row gutter={12}>
                 <Col xs={24} sm={8}>
-                  <Form.Item label="Featured" name="featured" valuePropName="checked">
+                  <Form.Item
+                    label="Featured"
+                    name="featured"
+                    valuePropName="checked"
+                  >
                     <Switch />
                   </Form.Item>
                 </Col>
@@ -1035,7 +1081,10 @@ export default function Events() {
               <Typography.Title level={5}>Intelligence email</Typography.Title>
               <Row gutter={12}>
                 <Col xs={24} sm={12}>
-                  <Form.Item label="Intelligence score" name="intelligenceScore">
+                  <Form.Item
+                    label="Intelligence score"
+                    name="intelligenceScore"
+                  >
                     <InputNumber min={0} max={100} style={{ width: "100%" }} />
                   </Form.Item>
                 </Col>

@@ -64,7 +64,8 @@ const publicUrlForKey = (key) => {
   if (PUBLIC_BASE_URL) {
     const base = PUBLIC_BASE_URL.replace(/\/$/, "");
     const publicKey =
-      key.startsWith("app-ahangama-demo/") && base.endsWith("/app-ahangama-demo")
+      key.startsWith("app-ahangama-demo/") &&
+      base.endsWith("/app-ahangama-demo")
         ? key.replace(/^app-ahangama-demo\//, "")
         : key;
     return `${base}/${publicKey}`;
