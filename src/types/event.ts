@@ -25,6 +25,10 @@ export interface EventRecord {
   subcategory?: string | null;
   venueId?: string | null;
   venueName: string;
+  venueInstagram?: string | null;
+  venueGoogleUrl?: string | null;
+  venueLat?: number | null;
+  venueLng?: number | null;
   startDate: string;
   endDate?: string | null;
   startTime: string;
@@ -37,6 +41,7 @@ export interface EventRecord {
   bookingUrl?: string | null;
   whatsappNumber?: string | null;
   imageUrl?: string | null;
+  imageUrls: string[];
   tags: string[];
   featured: boolean;
   editorialPick: boolean;

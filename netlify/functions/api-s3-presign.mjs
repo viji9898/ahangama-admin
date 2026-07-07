@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { requireAdmin } from "./_lib/auth.mjs";
 import { S3Client } from "@aws-sdk/client-s3";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
@@ -37,6 +38,8 @@ const maxBytesForKind = (kind) => {
     case "image":
     case "ogImage":
       return 100 * 1024;
+    case "eventImage":
+      return 500 * 1024;
     default:
       return null;
   }
@@ -50,13 +53,21 @@ const keyFor = (venueId, kind) => {
   if (kind === "logo") return `venues/${safeId}/logo.jpg`;
   if (kind === "image") return `venues/${safeId}/image.jpg`;
   if (kind === "ogImage") return `venues/${safeId}/og.jpg`;
+  if (kind === "eventImage") {
+    return `app-ahangama-demo/events/${safeId}/${randomUUID()}.jpg`;
+  }
   return null;
 };
 
 const publicUrlForKey = (key) => {
   if (!key) return "";
   if (PUBLIC_BASE_URL) {
-    return `${PUBLIC_BASE_URL.replace(/\/$/, "")}/${key}`;
+    const base = PUBLIC_BASE_URL.replace(/\/$/, "");
+    const publicKey =
+      key.startsWith("app-ahangama-demo/") && base.endsWith("/app-ahangama-demo")
+        ? key.replace(/^app-ahangama-demo\//, "")
+        : key;
+    return `${base}/${publicKey}`;
   }
 
   // Virtual-hosted–style. Note: for us-east-1 the endpoint also commonly works without region.

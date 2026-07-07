@@ -27,6 +27,17 @@ export function makeEventId() {
   return randomUUID();
 }
 
+export function normalizeEventId(value) {
+  const normalized = normalizeLowerText(value);
+  if (!normalized) return makeEventId();
+  if (!/^[a-z0-9][a-z0-9_-]{2,80}$/.test(normalized)) {
+    const err = new Error("event id is invalid");
+    err.statusCode = 400;
+    throw err;
+  }
+  return normalized;
+}
+
 export function normalizeEventDate(value) {
   const normalized = normalizeOptionalText(value);
   if (!normalized || !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
@@ -101,6 +112,34 @@ export function normalizeEventTags(value) {
   );
 }
 
+export function normalizeEventImageUrls(value, fallbackUrl = null) {
+  const values = Array.isArray(value)
+    ? value
+    : String(value || "")
+        .split(",")
+        .map((item) => item.trim());
+
+  const normalized = Array.from(
+    new Set(values.map((item) => normalizeOptionalText(item)).filter(Boolean)),
+  );
+
+  const fallback = normalizeOptionalText(fallbackUrl);
+  if (fallback && !normalized.includes(fallback)) normalized.unshift(fallback);
+
+  return normalized;
+}
+
+export function normalizeOptionalEventNumber(value, fieldName) {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    const err = new Error(`${fieldName} must be a number`);
+    err.statusCode = 400;
+    throw err;
+  }
+  return numeric;
+}
+
 export function normalizeIntelligenceScore(value) {
   const numeric = Number(value ?? 0);
   if (!Number.isInteger(numeric) || numeric < 0 || numeric > 100) {
@@ -124,6 +163,10 @@ export function toEventDto(row) {
     subcategory: row.subcategory,
     venueId: row.venue_id,
     venueName: row.venue_name,
+    venueInstagram: row.venue_instagram,
+    venueGoogleUrl: row.venue_google_url,
+    venueLat: row.venue_lat,
+    venueLng: row.venue_lng,
     startDate: row.start_date,
     endDate: row.end_date,
     startTime: row.start_time,
@@ -136,6 +179,7 @@ export function toEventDto(row) {
     bookingUrl: row.booking_url,
     whatsappNumber: row.whatsapp_number,
     imageUrl: row.image_url,
+    imageUrls: row.image_urls ?? (row.image_url ? [row.image_url] : []),
     tags: row.tags ?? [],
     featured: row.featured,
     editorialPick: row.editorial_pick,

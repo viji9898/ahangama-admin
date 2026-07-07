@@ -11,7 +11,9 @@ import {
   EVENT_SEASONS,
   EVENT_STATUSES,
   EVENTS_TABLE,
-  makeEventId,
+  normalizeEventId,
+  normalizeEventImageUrls,
+  normalizeOptionalEventNumber,
   normalizeEventDate,
   normalizeEventBoolean,
   normalizeEventEnum,
@@ -48,6 +50,7 @@ export async function handler(event) {
       return badRequest("Invalid JSON body");
     }
 
+    const id = normalizeEventId(body.id);
     const startDate = normalizeEventDate(body.startDate || body.eventDate);
     const endDate = normalizeOptionalEventDate(body.endDate);
     const title = normalizeRequiredEventText(body.title, "title");
@@ -61,6 +64,10 @@ export async function handler(event) {
     const subcategory = normalizeOptionalText(body.subcategory);
     const venueId = normalizeLowerText(body.venueId);
     const venueName = normalizeRequiredEventText(body.venueName, "venueName");
+    const venueInstagram = normalizeOptionalText(body.venueInstagram);
+    const venueGoogleUrl = normalizeOptionalText(body.venueGoogleUrl);
+    const venueLat = normalizeOptionalEventNumber(body.venueLat, "venueLat");
+    const venueLng = normalizeOptionalEventNumber(body.venueLng, "venueLng");
     const startTime = normalizeEventTime(body.startTime, "startTime");
     const endTime = normalizeEventTime(body.endTime, "endTime", false);
     const recurring = normalizeEventBoolean(body.recurring);
@@ -83,6 +90,7 @@ export async function handler(event) {
     const bookingUrl = normalizeOptionalText(body.bookingUrl);
     const whatsappNumber = normalizeOptionalText(body.whatsappNumber);
     const imageUrl = normalizeOptionalText(body.imageUrl);
+    const imageUrls = normalizeEventImageUrls(body.imageUrls, imageUrl);
     const tags = normalizeEventTags(body.tags);
     const featured = normalizeEventBoolean(body.featured);
     const editorialPick = normalizeEventBoolean(body.editorialPick);
@@ -130,29 +138,33 @@ export async function handler(event) {
       `
         INSERT INTO ${EVENTS_TABLE} (
           id, title, description, category, subcategory, venue_id, venue_name,
-          start_date, end_date, start_time, end_time, recurring, recurring_type,
-          day_of_week, price_type, price, booking_url, whatsapp_number,
-          image_url, tags, featured, editorial_pick, status, source,
-          last_verified_at, intelligence_score, editor_priority, editor_notes,
-          audience, season, featured_this_week, notes, created_by, updated_by,
-          deleted_at
+          venue_instagram, venue_google_url, venue_lat, venue_lng, start_date,
+          end_date, start_time, end_time, recurring, recurring_type, day_of_week,
+          price_type, price, booking_url, whatsapp_number, image_url, image_urls,
+          tags, featured, editorial_pick, status, source, last_verified_at,
+          intelligence_score, editor_priority, editor_notes, audience, season,
+          featured_this_week, notes, created_by, updated_by, deleted_at
         )
         VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
           $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
           $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-          $31, $32, $33, $34, NULL
+          $31, $32, $33, $34, $35, $36, $37, $38, $39, NULL
         )
         RETURNING *
       `,
       [
-        makeEventId(),
+        id,
         title,
         description,
         category,
         subcategory,
         venueId,
         venueName,
+        venueInstagram,
+        venueGoogleUrl,
+        venueLat,
+        venueLng,
         startDate,
         endDate,
         startTime,
@@ -164,7 +176,8 @@ export async function handler(event) {
         price,
         bookingUrl,
         whatsappNumber,
-        imageUrl,
+        imageUrl || imageUrls[0] || null,
+        imageUrls,
         tags,
         featured,
         editorialPick,

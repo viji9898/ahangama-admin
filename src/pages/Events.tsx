@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ClockCircleOutlined } from "@ant-design/icons";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ClockCircleOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import {
   Alert,
   Button,
@@ -37,7 +37,9 @@ import type { Venue } from "../types/venue";
 
 const EVENTS_LIST_ENDPOINT = "/.netlify/functions/api-events-list";
 const EVENTS_CREATE_ENDPOINT = "/.netlify/functions/api-events-create";
+const S3_PRESIGN_ENDPOINT = "/.netlify/functions/api-s3-presign";
 const VENUES_LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
+const EVENT_IMAGE_MAX_BYTES = 500 * 1024;
 
 type EventFormValues = {
   startDate: Dayjs;
@@ -56,7 +58,7 @@ type EventFormValues = {
   price?: string;
   bookingUrl?: string;
   whatsappNumber?: string;
-  imageUrl?: string;
+  imageUrls?: string[];
   tags?: string[];
   featured?: boolean;
   editorialPick?: boolean;
@@ -209,6 +211,26 @@ const STATUS_OPTIONS: { label: string; value: EventStatus }[] = [
   { label: "Published", value: "published" },
 ];
 
+function makeClientEventId() {
+  return globalThis.crypto?.randomUUID?.() || `event-${Date.now()}`;
+}
+
+function getVenueInstagramAccount(venue?: Venue | null) {
+  return venue?.instagram || venue?.instagramUrl || "";
+}
+
+function getVenueGoogleUrl(venue?: Venue | null) {
+  if (venue?.mapUrl) return venue.mapUrl;
+  if (venue?.googlePlaceId) {
+    return `https://www.google.com/maps/place/?q=place_id:${venue.googlePlaceId}`;
+  }
+  return "";
+}
+
+function formatReadonlyNumber(value?: number | null) {
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : "";
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     credentials: "include",
@@ -292,17 +314,21 @@ function EventListingPreview({
 
 export default function Events() {
   const [form] = Form.useForm<EventFormValues>();
+  const eventImageInputRef = useRef<HTMLInputElement | null>(null);
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [venuesLoading, setVenuesLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [eventDraftId, setEventDraftId] = useState(makeClientEventId);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("published");
   const previewValues = Form.useWatch([], form) || {};
   const selectedCategory = Form.useWatch("category", form);
   const selectedVenueId = Form.useWatch("venueId", form);
+  const eventImageUrls = Form.useWatch("imageUrls", form) || [];
   const recurring = Form.useWatch("recurring", form);
   const priceType = Form.useWatch("priceType", form);
 
@@ -461,12 +487,90 @@ export default function Events() {
           {record.featuredThisWeek ? <Tag color="blue">This week</Tag> : null}
           {record.editorialPick ? <Tag color="purple">Editor's pick</Tag> : null}
           {record.featured ? <Tag color="gold">Featured</Tag> : null}
+          {record.imageUrls?.length ? <Tag>{record.imageUrls.length} images</Tag> : null}
           <Tag>{record.editorPriority}</Tag>
           <Tag>{record.audience}</Tag>
         </Space>
       ),
     },
   ];
+
+  const presignEventImage = async () => {
+    const response = await fetchJson<{
+      upload: {
+        url: string;
+        fields: Record<string, string>;
+        publicUrl: string;
+        maxBytes: number;
+      };
+    }>(S3_PRESIGN_ENDPOINT, {
+      method: "POST",
+      body: JSON.stringify({ id: eventDraftId, kind: "eventImage" }),
+    });
+
+    return response.upload;
+  };
+
+  const handleEventImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!files.length) return;
+
+    const existingUrls = form.getFieldValue("imageUrls") || [];
+    const uploadedUrls: string[] = [];
+    setUploadingImages(true);
+
+    try {
+      for (const file of files) {
+        if (file.type !== "image/jpeg") {
+          throw new Error("Only JPG event images are allowed.");
+        }
+        if (file.size > EVENT_IMAGE_MAX_BYTES) {
+          throw new Error(
+            `Event images must be ≤ ${Math.round(EVENT_IMAGE_MAX_BYTES / 1024)}KB.`,
+          );
+        }
+
+        const upload = await presignEventImage();
+        const formData = new FormData();
+        Object.entries(upload.fields).forEach(([key, value]) => {
+          formData.append(key, value);
+        });
+        formData.append("file", file);
+
+        const uploadResponse = await fetch(upload.url, {
+          method: "POST",
+          body: formData,
+        });
+        if (!uploadResponse.ok) {
+          const text = await uploadResponse.text().catch(() => "");
+          throw new Error(text || `S3 upload failed (${uploadResponse.status})`);
+        }
+
+        uploadedUrls.push(upload.publicUrl);
+      }
+
+      form.setFieldValue("imageUrls", [...existingUrls, ...uploadedUrls]);
+      message.success(
+        uploadedUrls.length === 1
+          ? "Event image uploaded."
+          : `${uploadedUrls.length} event images uploaded.`,
+      );
+    } catch (uploadError) {
+      message.error(String((uploadError as Error)?.message || uploadError));
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const removeEventImage = (url: string) => {
+    form.setFieldValue(
+      "imageUrls",
+      eventImageUrls.filter((item) => item !== url),
+    );
+  };
 
   const handleCreateEvent = async (values: EventFormValues) => {
     setSaving(true);
@@ -478,6 +582,7 @@ export default function Events() {
       await fetchJson(EVENTS_CREATE_ENDPOINT, {
         method: "POST",
         body: JSON.stringify({
+          id: eventDraftId,
           startDate: values.startDate.format("YYYY-MM-DD"),
           endDate: values.endDate ? values.endDate.format("YYYY-MM-DD") : null,
           title: values.title,
@@ -486,6 +591,10 @@ export default function Events() {
           subcategory: values.subcategory,
           venueId: values.venueId,
           venueName: venue?.name || values.venueId,
+          venueInstagram: getVenueInstagramAccount(venue),
+          venueGoogleUrl: getVenueGoogleUrl(venue),
+          venueLat: venue?.lat ?? null,
+          venueLng: venue?.lng ?? null,
           startTime: values.startTime.format("HH:mm:ss"),
           endTime: values.endTime ? values.endTime.format("HH:mm:ss") : null,
           recurring: values.recurring ?? false,
@@ -495,7 +604,8 @@ export default function Events() {
           price: values.price,
           bookingUrl: values.bookingUrl,
           whatsappNumber: values.whatsappNumber,
-          imageUrl: values.imageUrl,
+          imageUrl: values.imageUrls?.[0] || null,
+          imageUrls: values.imageUrls || [],
           tags: values.tags || [],
           featured: values.featured ?? false,
           editorialPick: values.editorialPick ?? false,
@@ -515,6 +625,8 @@ export default function Events() {
       });
 
       message.success("Event added");
+      const nextEventId = makeClientEventId();
+      setEventDraftId(nextEventId);
       form.resetFields();
       form.setFieldsValue({
         category: "wellness",
@@ -524,6 +636,7 @@ export default function Events() {
         audience: "both",
         season: "shoulder",
         intelligenceScore: 0,
+        imageUrls: [],
       });
       await loadEvents();
     } catch (saveError) {
@@ -655,6 +768,31 @@ export default function Events() {
                 />
               </Form.Item>
 
+              {selectedVenue ? (
+                <Row gutter={12}>
+                  <Col xs={24} sm={12}>
+                    <Form.Item label="Instagram account">
+                      <Input disabled value={getVenueInstagramAccount(selectedVenue)} />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item label="Google URL">
+                      <Input disabled value={getVenueGoogleUrl(selectedVenue)} />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item label="Latitude">
+                      <Input disabled value={formatReadonlyNumber(selectedVenue.lat)} />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item label="Longitude">
+                      <Input disabled value={formatReadonlyNumber(selectedVenue.lng)} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              ) : null}
+
               <Row gutter={12}>
                 <Col xs={24} sm={12}>
                   <Form.Item
@@ -772,8 +910,74 @@ export default function Events() {
                 <Input placeholder="+94..." />
               </Form.Item>
 
-              <Form.Item label="Image URL" name="imageUrl">
-                <Input placeholder="https://..." />
+              <Form.Item name="imageUrls" hidden>
+                <Select mode="multiple" />
+              </Form.Item>
+
+              <Form.Item label="Event images">
+                <input
+                  ref={eventImageInputRef}
+                  type="file"
+                  accept="image/jpeg"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={handleEventImageChange}
+                />
+                <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                  <Button
+                    icon={<UploadOutlined />}
+                    loading={uploadingImages}
+                    disabled={uploadingImages}
+                    onClick={() => eventImageInputRef.current?.click()}
+                  >
+                    Upload images
+                  </Button>
+                  {eventImageUrls.length ? (
+                    <Row gutter={[8, 8]}>
+                      {eventImageUrls.map((url) => (
+                        <Col span={8} key={url}>
+                          <div
+                            style={{
+                              position: "relative",
+                              aspectRatio: "1 / 1",
+                              borderRadius: 8,
+                              overflow: "hidden",
+                              border: "1px solid rgba(15, 23, 42, 0.08)",
+                              background: "#f8fafc",
+                            }}
+                          >
+                            <img
+                              src={url}
+                              alt="Event"
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                display: "block",
+                              }}
+                            />
+                            <Button
+                              size="small"
+                              danger
+                              type="primary"
+                              icon={<DeleteOutlined />}
+                              aria-label="Remove event image"
+                              onClick={() => removeEventImage(url)}
+                              style={{
+                                position: "absolute",
+                                top: 6,
+                                right: 6,
+                              }}
+                            />
+                          </div>
+                        </Col>
+                      ))}
+                    </Row>
+                  ) : null}
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    JPG, up to {Math.round(EVENT_IMAGE_MAX_BYTES / 1024)}KB each
+                  </Typography.Text>
+                </Space>
               </Form.Item>
 
               <Form.Item label="Tags" name="tags">
