@@ -79,6 +79,11 @@ type EventFormValues = {
 };
 
 type StatusFilter = EventStatus | "all";
+type EventsMode = "add" | "list";
+
+type EventsProps = {
+  mode: EventsMode;
+};
 
 const EVENT_CATEGORY_OPTIONS: {
   label: string;
@@ -318,7 +323,7 @@ function EventListingPreview({
   );
 }
 
-export default function Events() {
+export default function Events({ mode }: EventsProps) {
   const [form] = Form.useForm<EventFormValues>();
   const eventImageInputRef = useRef<HTMLInputElement | null>(null);
   const [events, setEvents] = useState<EventRecord[]>([]);
@@ -380,16 +385,18 @@ export default function Events() {
   };
 
   useEffect(() => {
+    if (mode !== "add") return;
     void loadVenues();
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
+    if (mode !== "list") return;
     const handle = window.setTimeout(() => {
       void loadEvents();
     }, 250);
 
     return () => window.clearTimeout(handle);
-  }, [search, statusFilter]);
+  }, [mode, search, statusFilter]);
 
   const summary = useMemo(() => {
     const today = dayjs().startOf("day");
@@ -656,7 +663,7 @@ export default function Events() {
         intelligenceScore: 0,
         imageUrls: [],
       });
-      await loadEvents();
+      if (mode === "list") await loadEvents();
     } catch (saveError) {
       message.error(String((saveError as Error)?.message || saveError));
     } finally {
@@ -677,22 +684,24 @@ export default function Events() {
         <Space direction="vertical" size={8}>
           <Typography.Text type="secondary">Calendar</Typography.Text>
           <Typography.Title level={2} style={{ margin: 0 }}>
-            Events
+            {mode === "add" ? "Add events" : "List all events"}
           </Typography.Title>
           <Typography.Paragraph
             type="secondary"
             style={{ margin: 0, maxWidth: 760 }}
           >
-            Add class-style events with the date, organiser or venue, and the
-            start and end time shown in the event card format.
+            {mode === "add"
+              ? "Create class-style events with venue details, images, timing, and editorial metadata."
+              : "Review, search, and filter all events currently saved in the calendar."}
           </Typography.Paragraph>
         </Space>
       </Card>
 
-      <Row gutter={[16, 16]}>
-        <Col xs={24} xl={8}>
+      {mode === "add" ? (
+        <Row gutter={[16, 16]}>
+          <Col xs={24} xl={12}>
           <Card
-            title="Add event"
+            title="Add events"
             styles={{ body: { padding: 20 } }}
             style={{
               borderRadius: 20,
@@ -1148,9 +1157,13 @@ export default function Events() {
               </Button>
             </Form>
           </Card>
-        </Col>
+          </Col>
+        </Row>
+      ) : null}
 
-        <Col xs={24} xl={16}>
+      {mode === "list" ? (
+        <Row gutter={[16, 16]}>
+          <Col xs={24}>
           <Space direction="vertical" size={16} style={{ width: "100%" }}>
             <Row gutter={[12, 12]}>
               <Col xs={24} sm={8}>
@@ -1180,6 +1193,7 @@ export default function Events() {
             </Row>
 
             <Card
+              title="List all events"
               styles={{ body: { padding: 20 } }}
               style={{
                 borderRadius: 20,
@@ -1243,8 +1257,9 @@ export default function Events() {
               )}
             </Card>
           </Space>
-        </Col>
-      </Row>
+          </Col>
+        </Row>
+      ) : null}
     </div>
   );
 }

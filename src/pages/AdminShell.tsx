@@ -48,9 +48,31 @@ const navItems = [
     label: "Call Logs",
     icon: <PhoneOutlined />,
   },
-  { key: "/admin/events", label: "Events", icon: <CalendarOutlined /> },
+  {
+    key: "/admin/events",
+    label: "Events",
+    icon: <CalendarOutlined />,
+    children: [
+      { key: "/admin/events/add", label: "Add events" },
+      { key: "/admin/events/list", label: "List all events" },
+    ],
+  },
   { key: "/admin/qr", label: "QR Analytics", icon: <BarChartOutlined /> },
 ];
+
+const getSelectedKey = (pathname: string) => {
+  if (pathname.startsWith("/admin/events")) {
+    return pathname === "/admin/events" ? "/admin/events/list" : pathname;
+  }
+
+  return (
+    navItems.find((item) =>
+      item.key === "/admin"
+        ? pathname === item.key
+        : pathname.startsWith(item.key),
+    )?.key || "/admin"
+  );
+};
 
 export default function AdminShell() {
   const location = useLocation();
@@ -63,12 +85,7 @@ export default function AdminShell() {
   const displayName = (user?.name || user?.email || "").toString();
   const isSmallScreen = !screens.md;
   const navCollapsed = !isSmallScreen && collapsed;
-  const selectedKey =
-    navItems.find((item) =>
-      item.key === "/admin"
-        ? location.pathname === item.key
-        : location.pathname.startsWith(item.key),
-    )?.key || "/admin";
+  const selectedKey = getSelectedKey(location.pathname);
 
   const logout = async () => {
     setLoggingOut(true);
@@ -140,6 +157,7 @@ export default function AdminShell() {
             mode={isSmallScreen ? "horizontal" : "inline"}
             inlineCollapsed={isSmallScreen ? undefined : collapsed}
             selectedKeys={[selectedKey]}
+            defaultOpenKeys={["/admin/events"]}
             items={navItems}
             onClick={({ key }) => navigate(key)}
             style={{

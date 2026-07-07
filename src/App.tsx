@@ -37,7 +37,9 @@ export default function App() {
           <Route path="crm" element={<CRM />} />
           <Route path="travel-agents" element={<TravelAgentsCRM />} />
           <Route path="call-logs" element={<CallLogs />} />
-          <Route path="events" element={<Events />} />
+          <Route path="events" element={<Navigate to="/admin/events/list" replace />} />
+          <Route path="events/add" element={<Events mode="add" />} />
+          <Route path="events/list" element={<Events mode="list" />} />
           <Route path="qr" element={<QRDashboard />} />
         </Route>
 
