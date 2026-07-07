@@ -179,6 +179,13 @@ export default function AdminHome() {
       cta: "Open call logs",
     },
     {
+      title: "Events",
+      description:
+        "Add and review dated events with organiser details and start/end times.",
+      to: "/admin/events",
+      cta: "Open events",
+    },
+    {
       title: "QR analytics",
       description:
         "Review scan performance and attribution trends from QR campaigns.",

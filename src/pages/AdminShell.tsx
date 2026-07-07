@@ -1,5 +1,6 @@
 import {
   BarChartOutlined,
+  CalendarOutlined,
   ClockCircleOutlined,
   HomeOutlined,
   LinkOutlined,
@@ -47,6 +48,7 @@ const navItems = [
     label: "Call Logs",
     icon: <PhoneOutlined />,
   },
+  { key: "/admin/events", label: "Events", icon: <CalendarOutlined /> },
   { key: "/admin/qr", label: "QR Analytics", icon: <BarChartOutlined /> },
 ];
 
