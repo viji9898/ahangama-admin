@@ -699,39 +699,52 @@ export default function Events({ mode }: EventsProps) {
 
       {mode === "add" ? (
         <Row gutter={[16, 16]}>
-          <Col xs={24} xl={12}>
-          <Card
-            title="Add events"
-            styles={{ body: { padding: 20 } }}
-            style={{
-              borderRadius: 20,
-              border: "1px solid rgba(15, 23, 42, 0.06)",
-              boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
-            }}
-          >
-            <Form<EventFormValues>
-              form={form}
-              layout="vertical"
-              initialValues={{
-                category: "wellness",
-                priceType: "free",
-                status: "draft",
-                editorPriority: "medium",
-                audience: "both",
-                season: "shoulder",
-                intelligenceScore: 0,
+          <Col xs={24} xl={9}>
+            <Card
+              title="Event preview"
+              styles={{ body: { padding: 20 } }}
+              style={{
+                borderRadius: 20,
+                border: "1px solid rgba(15, 23, 42, 0.06)",
+                boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+                position: "sticky",
+                top: 24,
               }}
-              onFinish={handleCreateEvent}
             >
-              <Form.Item style={{ marginBottom: 24 }}>
-                <EventListingPreview
-                  eventDate={previewValues.startDate}
-                  title={previewValues.title}
-                  venueName={selectedVenue?.name}
-                  startTime={previewValues.startTime}
-                  endTime={previewValues.endTime}
-                />
-              </Form.Item>
+              <EventListingPreview
+                eventDate={previewValues.startDate}
+                title={previewValues.title}
+                venueName={selectedVenue?.name}
+                startTime={previewValues.startTime}
+                endTime={previewValues.endTime}
+              />
+            </Card>
+          </Col>
+
+          <Col xs={24} xl={15}>
+            <Card
+              title="Add events"
+              styles={{ body: { padding: 20 } }}
+              style={{
+                borderRadius: 20,
+                border: "1px solid rgba(15, 23, 42, 0.06)",
+                boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)",
+              }}
+            >
+              <Form<EventFormValues>
+                form={form}
+                layout="vertical"
+                initialValues={{
+                  category: "wellness",
+                  priceType: "free",
+                  status: "draft",
+                  editorPriority: "medium",
+                  audience: "both",
+                  season: "shoulder",
+                  intelligenceScore: 0,
+                }}
+                onFinish={handleCreateEvent}
+              >
 
               <Typography.Title level={5}>Listing details</Typography.Title>
               <Form.Item
