@@ -11,7 +11,7 @@ const json = (statusCode, body) => ({
 
 const BUCKET = (process.env.S3_BUCKET || "").trim();
 const REGION =
-  (process.env.S3_REGION || process.env.AWS_REGION || "").trim() || "us-east-1";
+  (process.env.S3_REGION || process.env.AWS_REGION || "").trim() || "eu-west-2";
 const PUBLIC_BASE_URL = (process.env.S3_PUBLIC_BASE_URL || "").trim();
 
 // Netlify reserves AWS_* env vars in the UI. Prefer S3_* variables.
@@ -54,7 +54,7 @@ const keyFor = (venueId, kind) => {
   if (kind === "image") return `venues/${safeId}/image.jpg`;
   if (kind === "ogImage") return `venues/${safeId}/og.jpg`;
   if (kind === "eventImage") {
-    return `app-ahangama-demo/events/${safeId}/${randomUUID()}.jpg`;
+    return `events/${safeId}/${randomUUID()}.jpg`;
   }
   return null;
 };
