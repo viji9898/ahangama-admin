@@ -1,4 +1,5 @@
 import { query } from "./db.mjs";
+import { getFreePassPromoStats } from "./freePassPromoStats.mjs";
 import { getQrDashboardSummary } from "./ga4QrAnalytics.mjs";
 
 const LONDON_TIME_ZONE = "Europe/London";
@@ -272,6 +273,57 @@ function formatFunnelTableHtml(rows = []) {
   `.trim();
 }
 
+function formatPromoRowText(row) {
+  return `${row.venueLabel || "Unknown"} | ${row.utmContent || "unknown"} | ${formatInteger(row.freePassPageViews)} | ${formatInteger(row.freePassSessions)} | ${formatInteger(row.freePassUsers)} | ${row.targetPath || "-"}`;
+}
+
+function formatPromoTableText(rows = []) {
+  const header = "Venue | UTM content | Promo page views | Sessions | Users | Page";
+
+  if (!rows.length) {
+    return [header, "None"];
+  }
+
+  return [header, ...rows.map(formatPromoRowText)];
+}
+
+function formatPromoTableHtml(rows = []) {
+  if (!rows.length) {
+    return "<p>None</p>";
+  }
+
+  return `
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <thead>
+        <tr>
+          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0;">Venue</th>
+          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0;">UTM content</th>
+          <th style="text-align: right; padding: 8px; border-bottom: 1px solid #e2e8f0;">Promo page views</th>
+          <th style="text-align: right; padding: 8px; border-bottom: 1px solid #e2e8f0;">Sessions</th>
+          <th style="text-align: right; padding: 8px; border-bottom: 1px solid #e2e8f0;">Users</th>
+          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0;">Page</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${escapeHtml(row.venueLabel || "Unknown")}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${escapeHtml(row.utmContent || "unknown")}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right;">${escapeHtml(formatInteger(row.freePassPageViews))}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right;">${escapeHtml(formatInteger(row.freePassSessions))}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right;">${escapeHtml(formatInteger(row.freePassUsers))}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; word-break: break-all;">${escapeHtml(row.targetPath || "-")}</td>
+              </tr>
+            `,
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `.trim();
+}
+
 function normalizeText(value) {
   if (value === null || value === undefined) return "";
   return String(value).trim();
@@ -528,6 +580,7 @@ async function generateAiDailySummary(report) {
                   venueStats: report.venueStats,
                   topPerformers: report.performers.slice(0, 3),
                   topWatchouts: report.watchouts.slice(0, 3),
+                  freePassPromoStats: report.freePassPromoStats,
                   venueReview: report.venueReview,
                 },
                 null,
@@ -602,6 +655,10 @@ export async function getDailyTeamEmailReport({
     startDate: reportDate,
     endDate: reportDate,
   });
+  const freePassPromoStats = await getFreePassPromoStats({
+    startDate: reportDate,
+    endDate: reportDate,
+  });
   const venueStats = await getVenueStats(reportDate);
   const venueReview = await getVenueReviewSnapshot(reportDate);
   const totals = summarizeTotals(qrSummary.rows, qrSummary.stats);
@@ -658,6 +715,7 @@ export async function getDailyTeamEmailReport({
     thoughts,
     rootTraffic,
     passTraffic,
+    freePassPromoStats,
     funnelRows,
     venueReview,
     aiSummary,
@@ -700,6 +758,13 @@ export function buildDailyTeamEmailMessage(report) {
       `- ${venue.name || venue.slug || venue.id}: missing ${venue.missingFields.join(", ")}`,
   );
   const funnelLines = formatFunnelTableText(report.funnelRows || []);
+  const promoRows = report.freePassPromoStats?.rows || [];
+  const promoTotals = report.freePassPromoStats?.totals || {
+    freePassPageViews: 0,
+    freePassSessions: 0,
+    freePassUsers: 0,
+  };
+  const promoLines = formatPromoTableText(promoRows);
   const text = [
     `Team,`,
     ``,
@@ -711,6 +776,12 @@ export function buildDailyTeamEmailMessage(report) {
     `Traffic flow`,
     `- ahangama.com: ${formatInteger(report.rootTraffic.sessions)} sessions, ${formatInteger(report.rootTraffic.users)} users, ${formatInteger(report.rootTraffic.pageViews)} page views`,
     `- pass.ahangama.com: ${formatInteger(report.passTraffic.sessions)} sessions, ${formatInteger(report.passTraffic.users)} users, ${formatInteger(report.passTraffic.pageViews)} page views`,
+    ``,
+    `Free pass promo page views`,
+    `- Total promo page views: ${formatInteger(promoTotals.freePassPageViews)}`,
+    `- Promo sessions: ${formatInteger(promoTotals.freePassSessions)}`,
+    `- Promo users: ${formatInteger(promoTotals.freePassUsers)}`,
+    ...promoLines,
     ``,
     `QR Funnel`,
     ...funnelLines,
@@ -751,6 +822,13 @@ export function buildDailyTeamEmailMessage(report) {
         <li>ahangama.com: ${escapeHtml(formatInteger(report.rootTraffic.sessions))} sessions, ${escapeHtml(formatInteger(report.rootTraffic.users))} users, ${escapeHtml(formatInteger(report.rootTraffic.pageViews))} page views</li>
         <li>pass.ahangama.com: ${escapeHtml(formatInteger(report.passTraffic.sessions))} sessions, ${escapeHtml(formatInteger(report.passTraffic.users))} users, ${escapeHtml(formatInteger(report.passTraffic.pageViews))} page views</li>
       </ul>
+      <h3>Free pass promo page views</h3>
+      <ul>
+        <li>Total promo page views: ${escapeHtml(formatInteger(promoTotals.freePassPageViews))}</li>
+        <li>Promo sessions: ${escapeHtml(formatInteger(promoTotals.freePassSessions))}</li>
+        <li>Promo users: ${escapeHtml(formatInteger(promoTotals.freePassUsers))}</li>
+      </ul>
+      ${formatPromoTableHtml(promoRows)}
       <h3>QR Funnel</h3>
       ${formatFunnelTableHtml(report.funnelRows || [])}
       <h3>Top 10 performers</h3>
@@ -832,6 +910,7 @@ async function recordDailyTeamEmailSend({
         venueStats: report.venueStats,
         topPerformer: report.performers[0] || null,
         topWatchout: report.watchouts[0] || null,
+        freePassPromoStats: report.freePassPromoStats || null,
         aiSummary: report.aiSummary || null,
       }),
     ],
@@ -985,6 +1064,7 @@ export function getDailyTeamEmailPreview(report) {
     venueStats: report.venueStats,
     totals: report.totals,
     funnelRows: report.funnelRows,
+    freePassPromoStats: report.freePassPromoStats,
     performers: report.performers,
     watchouts: report.watchouts,
     thoughts: report.thoughts,

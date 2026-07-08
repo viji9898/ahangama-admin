@@ -43,6 +43,22 @@ type DailyTeamEmailResponse = {
         missingFields?: string[];
       }>;
     };
+    freePassPromoStats?: {
+      totals?: {
+        freePassPageViews?: number;
+        freePassSessions?: number;
+        freePassUsers?: number;
+      };
+      rows?: Array<{
+        key?: string;
+        venueLabel?: string;
+        utmContent?: string;
+        targetPath?: string;
+        freePassPageViews?: number;
+        freePassSessions?: number;
+        freePassUsers?: number;
+      }>;
+    };
   };
   sendResult?: {
     skipped?: boolean;
@@ -146,11 +162,14 @@ export default function AdminOperations() {
     dailyEmailData?.sendResult?.recipientEmails?.length;
   const dailyAiSummary = dailyEmailData?.preview?.aiSummary;
   const dailyVenueReview = dailyEmailData?.preview?.venueReview;
+  const dailyPromoStats = dailyEmailData?.preview?.freePassPromoStats;
   const aiChangeCount = dailyAiSummary?.changes?.length ?? 0;
   const aiIssueCount = dailyAiSummary?.issues?.length ?? 0;
   const aiReviewTargetCount = dailyAiSummary?.reviewTargets?.length ?? 0;
   const updatedVenueCount = dailyVenueReview?.updatedVenues?.length ?? 0;
   const incompleteVenueCount = dailyVenueReview?.incompleteVenues?.length ?? 0;
+  const promoPageViewCount =
+    dailyPromoStats?.totals?.freePassPageViews ?? 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -235,7 +254,26 @@ export default function AdminOperations() {
                     {incompleteVenueCount} incomplete venues
                   </Tag>
                 ) : null}
+                <Tag color={promoPageViewCount ? "purple" : undefined}>
+                  {promoPageViewCount} promo page views
+                </Tag>
               </Space>
+
+              {dailyPromoStats?.rows?.length ? (
+                <Space direction="vertical" size={4} style={{ width: "100%" }}>
+                  <Typography.Text strong>
+                    Free pass promo page views
+                  </Typography.Text>
+                  {dailyPromoStats.rows.map((row) => (
+                    <Typography.Text
+                      key={row.key || row.utmContent || row.targetPath}
+                      type="secondary"
+                    >
+                      {row.venueLabel || row.utmContent}: {row.freePassPageViews ?? 0} views
+                    </Typography.Text>
+                  ))}
+                </Space>
+              ) : null}
 
               {dailyEmailData?.preview?.aiSummaryError ? (
                 <Alert
