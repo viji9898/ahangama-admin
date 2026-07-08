@@ -57,6 +57,7 @@ const navItems = [
       { key: "/admin/events/list", label: "List all events" },
     ],
   },
+  { key: "/ga", label: "Analytics", icon: <BarChartOutlined /> },
   { key: "/admin/qr", label: "QR Analytics", icon: <BarChartOutlined /> },
 ];
 

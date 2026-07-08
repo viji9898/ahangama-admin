@@ -10,6 +10,7 @@ import QRDashboard from "./pages/QRDashboard.jsx";
 import CallLogs from "./pages/CallLogs";
 import CRM from "./pages/CRM";
 import Events from "./pages/Events";
+import GAAnalytics from "./pages/GAAnalytics";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import { RequireAuth } from "./auth/RequireAuth";
 import AdminShell from "./pages/AdminShell";
@@ -41,6 +42,17 @@ export default function App() {
           <Route path="events/add" element={<Events mode="add" />} />
           <Route path="events/list" element={<Events mode="list" />} />
           <Route path="qr" element={<QRDashboard />} />
+        </Route>
+
+        <Route
+          path="/ga"
+          element={
+            <RequireAuth>
+              <AdminShell />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<GAAnalytics />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

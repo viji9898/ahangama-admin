@@ -366,7 +366,7 @@ async function getAccessToken() {
   return token;
 }
 
-async function runGaReport(body) {
+export async function runGaReport(body) {
   const propertyId = String(process.env.GA4_PROPERTY_ID || "").trim();
 
   if (!propertyId) {
