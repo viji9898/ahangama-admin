@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import dayjs, { type Dayjs } from "dayjs";
 import {
   Alert,
+  Button,
   Card,
   Col,
   DatePicker,
@@ -35,6 +36,8 @@ type FreePassScanRow = {
   surface: string;
   creative: string;
   utmContent: string;
+  targetPath: string;
+  targetUrl: string;
   pageViews: number;
   sessions: number;
   users: number;
@@ -65,18 +68,10 @@ function formatInteger(value: number) {
   }).format(Number(value || 0));
 }
 
-function formatLandingPages(values: LandingPageRow[] = []) {
-  if (!values.length) return "-";
-
-  return values
-    .slice(0, 3)
-    .map((item) => `${item.landingPage || "(not set)"} (${formatInteger(item.pageViews)})`)
-    .join(", ");
-}
-
 export default function GAFreePassScans() {
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>(DEFAULT_RANGE);
   const [rows, setRows] = useState<FreePassScanRow[]>([]);
+  const [promoOnly, setPromoOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -122,9 +117,17 @@ export default function GAFreePassScans() {
     return () => controller.abort();
   }, [dateRange]);
 
+  const filteredRows = useMemo(
+    () =>
+      promoOnly
+        ? rows.filter((row) => row.freePassPageViews > 0)
+        : rows,
+    [promoOnly, rows],
+  );
+
   const totals = useMemo(
     () =>
-      rows.reduce(
+      filteredRows.reduce(
         (accumulator, row) => ({
           pageViews: accumulator.pageViews + row.pageViews,
           sessions: accumulator.sessions + row.sessions,
@@ -140,7 +143,7 @@ export default function GAFreePassScans() {
           freePassSessions: 0,
         },
       ),
-    [rows],
+    [filteredRows],
   );
 
   const columns: ColumnsType<FreePassScanRow> = [
@@ -160,12 +163,19 @@ export default function GAFreePassScans() {
       sorter: (left, right) => left.venueLabel.localeCompare(right.venueLabel),
     },
     {
-      title: "Top free-pass pages",
-      key: "landingPages",
+      title: "Target promo page",
+      dataIndex: "targetPath",
+      key: "targetPath",
       render: (_value, record) => (
-        <Typography.Text type="secondary">
-          {formatLandingPages(record.freePassLandingPages)}
-        </Typography.Text>
+        <Space direction="vertical" size={2}>
+          <Typography.Text>{record.targetPath}</Typography.Text>
+          <Typography.Text
+            type="secondary"
+            style={{ fontSize: 12, wordBreak: "break-all" }}
+          >
+            {record.targetUrl}
+          </Typography.Text>
+        </Space>
       ),
     },
     {
@@ -275,18 +285,26 @@ export default function GAFreePassScans() {
               type="secondary"
               style={{ margin: 0, maxWidth: 760 }}
             >
-              QR traffic where the UTM source is qr, medium is offline, and the UTM content includes the PS free-pass surface. The main views column keeps the full UTM-attributed count, while the free-pass page views column shows direct promo=free_pass landing rows when GA4 has them.
+              Stats for the five selected free-pass QR promo URLs. The main views column keeps the full UTM-attributed count, while the free-pass page views column shows exact promo page-path views for each URL.
             </Typography.Paragraph>
           </Space>
 
-          <RangePicker
-            value={dateRange}
-            allowClear={false}
-            onChange={(value) => {
-              if (!value?.[0] || !value?.[1]) return;
-              setDateRange([value[0], value[1]]);
-            }}
-          />
+          <Space wrap>
+            <Button
+              type={promoOnly ? "primary" : "default"}
+              onClick={() => setPromoOnly((value) => !value)}
+            >
+              {promoOnly ? "Show all" : "Promo only"}
+            </Button>
+            <RangePicker
+              value={dateRange}
+              allowClear={false}
+              onChange={(value) => {
+                if (!value?.[0] || !value?.[1]) return;
+                setDateRange([value[0], value[1]]);
+              }}
+            />
+          </Space>
         </Space>
       </Card>
 
@@ -311,7 +329,7 @@ export default function GAFreePassScans() {
           </Col>
           <Col xs={24} md={12} xl={6}>
             <Card>
-              <Statistic title="Venues" value={rows.length} formatter={(value) => formatInteger(Number(value))} />
+              <Statistic title="Venues" value={filteredRows.length} formatter={(value) => formatInteger(Number(value))} />
             </Card>
           </Col>
         </Row>
@@ -324,7 +342,7 @@ export default function GAFreePassScans() {
           <Table<FreePassScanRow>
             rowKey="key"
             columns={columns}
-            dataSource={rows}
+            dataSource={filteredRows}
             expandable={{ expandedRowRender }}
             pagination={{ pageSize: 20, showSizeChanger: true }}
             locale={{ emptyText: <Empty description="No free pass scans" /> }}

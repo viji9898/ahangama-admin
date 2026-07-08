@@ -3,6 +3,63 @@ import { runGaReport } from "./_lib/ga4QrAnalytics.mjs";
 
 const DEFAULT_START_DATE = "30daysAgo";
 const DEFAULT_END_DATE = "today";
+const TARGET_LINKS = [
+  {
+    key: "lighthouse__ps",
+    venue: "lighthouse",
+    venueLabel: "Lighthouse",
+    surface: "ps",
+    utmContent: "lighthouse__ps",
+    targetPath: "/lighthouse/?promo=free_pass",
+    pathAliases: ["/lighthouse/?promo=free_pass", "/lighthouse?promo=free_pass"],
+    targetUrl:
+      "https://ahangama.com/lighthouse/?utm_source=qr&utm_medium=offline&utm_campaign=qr_promo_2026&utm_content=lighthouse__ps&utm_term=h&promo=free_pass",
+  },
+  {
+    key: "kaffi__ps",
+    venue: "kaffi",
+    venueLabel: "Kaffi",
+    surface: "ps",
+    utmContent: "kaffi__ps",
+    targetPath: "/kaffi/?promo=free_pass",
+    pathAliases: ["/kaffi/?promo=free_pass", "/kaffi?promo=free_pass"],
+    targetUrl:
+      "https://ahangama.com/kaffi/?utm_source=qr&utm_medium=offline&utm_campaign=qr_promo_2026&utm_content=kaffi__ps&utm_term=h&promo=free_pass",
+  },
+  {
+    key: "gusta__ps",
+    venue: "gusta",
+    venueLabel: "Gusta",
+    surface: "ps",
+    utmContent: "gusta__ps",
+    targetPath: "/gusta/?promo=free_pass",
+    pathAliases: ["/gusta/?promo=free_pass", "/gusta?promo=free_pass"],
+    targetUrl:
+      "https://ahangama.com/gusta/?utm_source=qr&utm_medium=offline&utm_campaign=qr_promo_2026&utm_content=gusta__ps&utm_term=h&promo=free_pass",
+  },
+  {
+    key: "tahini__ps",
+    venue: "tahini",
+    venueLabel: "Tahini",
+    surface: "ps",
+    utmContent: "tahini__ps",
+    targetPath: "/tahini/?promo=free_pass",
+    pathAliases: ["/tahini/?promo=free_pass", "/tahini?promo=free_pass"],
+    targetUrl:
+      "https://ahangama.com/tahini/?utm_source=qr&utm_medium=offline&utm_campaign=qr_promo_2026&utm_content=tahini__ps&utm_term=h&promo=free_pass",
+  },
+  {
+    key: "living-room__ps",
+    venue: "living-room",
+    venueLabel: "Living Room",
+    surface: "ps",
+    utmContent: "living-room__ps",
+    targetPath: "/living-room/?promo=free_pass",
+    pathAliases: ["/living-room/?promo=free_pass", "/living-room?promo=free_pass"],
+    targetUrl:
+      "https://ahangama.com/living-room/?utm_source=qr&utm_medium=offline&utm_campaign=qr_promo_2026&utm_content=living-room__ps&utm_term=h&promo=free_pass",
+  },
+];
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -53,14 +110,17 @@ function formatLabel(value = "") {
 
 function createRow(utmContent) {
   const parsed = parseUtmContent(utmContent);
+  const target = TARGET_LINKS.find((item) => item.utmContent === utmContent);
 
   return {
-    key: utmContent || "unknown",
-    venue: parsed.venue,
-    venueLabel: formatLabel(parsed.venue),
-    surface: parsed.surface,
+    key: target?.key || utmContent || "unknown",
+    venue: target?.venue || parsed.venue,
+    venueLabel: target?.venueLabel || formatLabel(parsed.venue),
+    surface: target?.surface || parsed.surface,
     creative: parsed.creative,
-    utmContent: utmContent || "(not set)",
+    utmContent: target?.utmContent || utmContent || "(not set)",
+    targetPath: target?.targetPath || "",
+    targetUrl: target?.targetUrl || "",
     pageViews: 0,
     sessions: 0,
     users: 0,
@@ -111,13 +171,34 @@ function utmContentExpression(utmContents) {
   };
 }
 
-async function runSessionLandingReport({ startDate, endDate, expressions }) {
+function pathExpression(paths) {
+  return {
+    orGroup: {
+      expressions: paths.map((path) => ({
+        filter: {
+          fieldName: "pagePathPlusQueryString",
+          stringFilter: {
+            matchType: "EXACT",
+            value: path,
+          },
+        },
+      })),
+    },
+  };
+}
+
+async function runSessionLandingReport({
+  startDate,
+  endDate,
+  expressions,
+  pageDimension = "landingPagePlusQueryString",
+}) {
   return runGaReport({
     dateRanges: [{ startDate, endDate }],
     dimensions: [
       { name: "sessionManualAdContent" },
       { name: "sessionManualTerm" },
-      { name: "landingPagePlusQueryString" },
+      { name: pageDimension },
     ],
     metrics: [
       { name: "screenPageViews" },
@@ -154,6 +235,16 @@ function addReportRows(groupedRows, report, mode) {
     const existing = groupedRows.get(key) || createRow(utmContent);
 
     if (mode === "freePass") {
+      const targetPaths = new Set(
+        (TARGET_LINKS.find((target) => target.utmContent === utmContent)
+          ?.pathAliases || [])
+          .map((path) => path.toLowerCase()),
+      );
+
+      if (!targetPaths.has(String(landingPage).toLowerCase())) {
+        continue;
+      }
+
       existing.freePassPageViews += pageViews;
       existing.freePassSessions += sessions;
       existing.freePassUsers += users;
@@ -182,21 +273,17 @@ function addReportRows(groupedRows, report, mode) {
 }
 
 async function getFreePassRows({ startDate, endDate }) {
-  const groupedRows = new Map();
+  const groupedRows = new Map(
+    TARGET_LINKS.map((target) => [target.utmContent, createRow(target.utmContent)]),
+  );
+  const targetUtmContents = TARGET_LINKS.map((target) => target.utmContent);
+  const targetPaths = TARGET_LINKS.flatMap((target) => target.pathAliases);
   const attributedReport = await runSessionLandingReport({
     startDate,
     endDate,
     expressions: [
       ...baseQrExpressions(),
-      {
-        filter: {
-          fieldName: "sessionManualAdContent",
-          stringFilter: {
-            matchType: "CONTAINS",
-            value: "__ps",
-          },
-        },
-      },
+      utmContentExpression(targetUtmContents),
     ],
   });
 
@@ -205,22 +292,17 @@ async function getFreePassRows({ startDate, endDate }) {
   const freePassReport = await runSessionLandingReport({
     startDate,
     endDate,
+    pageDimension: "pagePathPlusQueryString",
     expressions: [
       ...baseQrExpressions(),
-      {
-        filter: {
-          fieldName: "landingPagePlusQueryString",
-          stringFilter: {
-            matchType: "CONTAINS",
-            value: "promo=free_pass",
-          },
-        },
-      },
+      utmContentExpression(targetUtmContents),
+      pathExpression(targetPaths),
     ],
   });
   addReportRows(groupedRows, freePassReport, "freePass");
 
-  return [...groupedRows.values()]
+  return TARGET_LINKS.map((target) => groupedRows.get(target.utmContent))
+    .filter(Boolean)
     .map((row) => ({
       ...row,
       freePassLandingPages: row.freePassLandingPages.sort(
