@@ -11,6 +11,7 @@ import CallLogs from "./pages/CallLogs";
 import CRM from "./pages/CRM";
 import Events from "./pages/Events";
 import GAAnalytics from "./pages/GAAnalytics";
+import GAFreePassScans from "./pages/GAFreePassScans";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import { RequireAuth } from "./auth/RequireAuth";
 import AdminShell from "./pages/AdminShell";
@@ -53,6 +54,7 @@ export default function App() {
           }
         >
           <Route index element={<GAAnalytics />} />
+          <Route path="free-pass-scans" element={<GAFreePassScans />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

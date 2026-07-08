@@ -57,11 +57,23 @@ const navItems = [
       { key: "/admin/events/list", label: "List all events" },
     ],
   },
-  { key: "/ga", label: "Analytics", icon: <BarChartOutlined /> },
+  {
+    key: "/ga-menu",
+    label: "Analytics",
+    icon: <BarChartOutlined />,
+    children: [
+      { key: "/ga", label: "Overview" },
+      { key: "/ga/free-pass-scans", label: "All Free Pass Scans" },
+    ],
+  },
   { key: "/admin/qr", label: "QR Analytics", icon: <BarChartOutlined /> },
 ];
 
 const getSelectedKey = (pathname: string) => {
+  if (pathname.startsWith("/ga")) {
+    return pathname === "/ga" ? "/ga" : pathname;
+  }
+
   if (pathname.startsWith("/admin/events")) {
     return pathname === "/admin/events" ? "/admin/events/list" : pathname;
   }
@@ -158,7 +170,7 @@ export default function AdminShell() {
             mode={isSmallScreen ? "horizontal" : "inline"}
             inlineCollapsed={isSmallScreen ? undefined : collapsed}
             selectedKeys={[selectedKey]}
-            defaultOpenKeys={["/admin/events"]}
+            defaultOpenKeys={["/admin/events", "/ga-menu"]}
             items={navItems}
             onClick={({ key }) => navigate(key)}
             style={{
