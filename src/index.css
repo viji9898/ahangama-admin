@@ -283,19 +283,18 @@ body {
   width: 100%;
   max-width: 430px;
   margin: 0 auto;
-  padding: 30px 20px 38px;
-  border-top: 1px solid #dedbd6;
+  padding: 0 18px;
   background: #ffffff;
   color: #241f1d;
   box-sizing: border-box;
 }
 
 .mobile-event__date {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 22px;
+  display: grid;
+  justify-items: start;
+  gap: 0;
+  margin-bottom: 34px;
+  text-align: left;
 }
 
 .mobile-event__weekday,
@@ -311,23 +310,45 @@ body {
 }
 
 .mobile-event__month {
-  margin-top: 10px;
+  margin-top: 20px;
 }
 
 .mobile-event__day {
+  margin-top: 28px;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 88px;
   font-weight: 400;
-  line-height: 0.78;
+  line-height: 0.68;
   letter-spacing: 0;
   color: #211d1b;
+}
+
+.mobile-event__card {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #241f1d;
+}
+
+.mobile-event__card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.02) 0%,
+    rgba(0, 0, 0, 0.08) 34%,
+    rgba(0, 0, 0, 0.58) 72%,
+    rgba(0, 0, 0, 0.76) 100%
+  );
 }
 
 .mobile-event__imageWrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1.08;
-  overflow: hidden;
+  aspect-ratio: 1 / 0.72;
   background: #eee9df;
 }
 
@@ -339,40 +360,46 @@ body {
 }
 
 .mobile-event__content {
-  padding-top: 28px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 0 28px 28px;
+  color: #ffffff;
 }
 
 .mobile-event__content h2 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(44px, 13vw, 58px);
+  font-size: clamp(30px, 8.5vw, 38px);
   font-weight: 400;
-  line-height: 0.92;
+  line-height: 1;
   letter-spacing: 0;
-  text-transform: uppercase;
-  color: #241f1d;
+  text-transform: none;
+  color: #ffffff;
   overflow-wrap: anywhere;
 }
 
 .mobile-event__venue {
-  margin: 14px 0 0;
+  margin: 8px 0 0;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 24px;
+  font-size: 19px;
   font-weight: 400;
-  line-height: 1.24;
-  color: #615852;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .mobile-event__meta {
-  margin-top: 28px;
+  margin-top: 18px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 11px;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 400;
-  color: #8a725e;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .mobile-event__meta span {
@@ -380,33 +407,34 @@ body {
 }
 
 .mobile-event__meta .anticon {
-  color: #8a725e;
-  font-size: 20px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 18px;
 }
 
 .mobile-event__description {
-  margin: 26px 0 0;
+  margin: 18px 0 0;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 21px;
+  font-size: 17px;
   font-weight: 400;
   line-height: 1.38;
-  color: #5b534d;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .mobile-event__actions {
-  margin-top: 30px;
+  margin-top: 20px;
   display: flex;
   align-items: center;
   gap: 28px;
 }
 
 .mobile-event__actions a {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
+  color: #ffffff;
 }
 
 .mobile-event__actions .anticon {
-  font-size: 28px;
+  font-size: 26px;
 }
 
 @media (max-width: 360px) {

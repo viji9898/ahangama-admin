@@ -396,38 +396,38 @@ function EventListingPreview({
         <Typography.Text className="event-preview-label">Mobile</Typography.Text>
         <section className="mobile-event">
           <div className="mobile-event__date">
-            <div>
-              <span className="mobile-event__weekday">{weekday}</span>
-              <span className="mobile-event__month">{month}</span>
-            </div>
+            <span className="mobile-event__weekday">{weekday}</span>
             <div className="mobile-event__day">{dayNumber}</div>
+            <span className="mobile-event__month">{month}</span>
           </div>
 
-          <div className="mobile-event__imageWrap">
-            <img src={previewImage} alt={`${titleLabel} at ${venueLabel}`} />
-            <div className="mobile-event__dots" aria-hidden="true">
-              <span className="is-active" />
-              <span />
-              <span />
-            </div>
-          </div>
-
-          <div className="mobile-event__content">
-            <h2>{titleLabel}</h2>
-            <p className="mobile-event__venue">{venueLabel}</p>
-
-            <div className="mobile-event__meta">
-              <span>
-                <ClockCircleOutlined />
-                {timeLabel}
-              </span>
-              <span className="mobile-event__dot">·</span>
-              <span>{categoryLabel}</span>
+          <div className="mobile-event__card">
+            <div className="mobile-event__imageWrap">
+              <img src={previewImage} alt={`${titleLabel} at ${venueLabel}`} />
+              <div className="mobile-event__dots" aria-hidden="true">
+                <span className="is-active" />
+                <span />
+                <span />
+              </div>
             </div>
 
-            <p className="mobile-event__description">{descriptionLabel}</p>
+            <div className="mobile-event__content">
+              <h2>{titleLabel}</h2>
+              <p className="mobile-event__venue">{venueLabel}</p>
 
-            <div className="mobile-event__actions">{actions}</div>
+              <div className="mobile-event__meta">
+                <span>
+                  <ClockCircleOutlined />
+                  {timeLabel}
+                </span>
+                <span className="mobile-event__dot">·</span>
+                <span>{categoryLabel}</span>
+              </div>
+
+              <p className="mobile-event__description">{descriptionLabel}</p>
+
+              <div className="mobile-event__actions">{actions}</div>
+            </div>
           </div>
         </section>
       </div>
