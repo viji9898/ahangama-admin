@@ -1,12 +1,12 @@
 import pg from "pg";
 const { Pool } = pg;
 
-let pool;
+const pools = new Map();
 
-function getDatabaseConnectionString() {
-  const rawValue = String(process.env.DATABASE_URL || "").trim();
+function getDatabaseConnectionString(envVarName = "DATABASE_URL") {
+  const rawValue = String(process.env[envVarName] || "").trim();
   if (!rawValue) {
-    throw new Error("Missing env var: DATABASE_URL");
+    throw new Error(`Missing env var: ${envVarName}`);
   }
 
   const url = new URL(rawValue);
@@ -26,14 +26,25 @@ export function getDatabaseConfig() {
   };
 }
 
-function getPool() {
-  if (!pool) {
-    pool = new Pool(getDatabaseConfig());
+export function getDatabaseConfigForEnv(envVarName) {
+  return {
+    connectionString: getDatabaseConnectionString(envVarName),
+  };
+}
+
+function getPool(envVarName = "DATABASE_URL") {
+  if (!pools.has(envVarName)) {
+    pools.set(envVarName, new Pool(getDatabaseConfigForEnv(envVarName)));
   }
-  return pool;
+  return pools.get(envVarName);
 }
 
 export async function query(text, params = []) {
   const p = getPool();
+  return p.query(text, params);
+}
+
+export async function queryFromEnv(envVarName, text, params = []) {
+  const p = getPool(envVarName);
   return p.query(text, params);
 }

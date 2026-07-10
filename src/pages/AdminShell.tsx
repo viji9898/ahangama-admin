@@ -11,6 +11,7 @@ import {
   QrcodeOutlined,
   ShopOutlined,
   TeamOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import { Button, Grid, Layout, Menu, Space, Typography, message } from "antd";
 import "antd/dist/reset.css";
@@ -42,6 +43,12 @@ const navItems = [
     key: "/admin/travel-agents",
     label: "Travel Agents",
     icon: <TeamOutlined />,
+  },
+  {
+    key: "/admin/pass-users",
+    label: "Pass Users Details",
+    icon: <UserOutlined />,
+    children: [{ key: "/admin/pass-users/hospo", label: "Hospo" }],
   },
   {
     key: "/admin/call-logs",
@@ -76,6 +83,12 @@ const getSelectedKey = (pathname: string) => {
 
   if (pathname.startsWith("/admin/events")) {
     return pathname === "/admin/events" ? "/admin/events/list" : pathname;
+  }
+
+  if (pathname.startsWith("/admin/pass-users")) {
+    return pathname === "/admin/pass-users"
+      ? "/admin/pass-users/hospo"
+      : pathname;
   }
 
   return (
@@ -170,7 +183,7 @@ export default function AdminShell() {
             mode={isSmallScreen ? "horizontal" : "inline"}
             inlineCollapsed={isSmallScreen ? undefined : collapsed}
             selectedKeys={[selectedKey]}
-            defaultOpenKeys={["/admin/events", "/ga-menu"]}
+            defaultOpenKeys={["/admin/events", "/admin/pass-users", "/ga-menu"]}
             items={navItems}
             onClick={({ key }) => navigate(key)}
             style={{

@@ -12,6 +12,7 @@ import CRM from "./pages/CRM";
 import Events from "./pages/Events";
 import GAAnalytics from "./pages/GAAnalytics";
 import GAFreePassScans from "./pages/GAFreePassScans";
+import HospoPassProfiles from "./pages/HospoPassProfiles";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import { RequireAuth } from "./auth/RequireAuth";
 import AdminShell from "./pages/AdminShell";
@@ -38,6 +39,8 @@ export default function App() {
           <Route path="venues" element={<Admin />} />
           <Route path="crm" element={<CRM />} />
           <Route path="travel-agents" element={<TravelAgentsCRM />} />
+          <Route path="pass-users" element={<Navigate to="/admin/pass-users/hospo" replace />} />
+          <Route path="pass-users/hospo" element={<HospoPassProfiles />} />
           <Route path="call-logs" element={<CallLogs />} />
           <Route path="events" element={<Navigate to="/admin/events/list" replace />} />
           <Route path="events/add" element={<Events mode="add" />} />
