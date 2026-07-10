@@ -1,4 +1,4 @@
-import { query } from "./db.mjs";
+import { query, queryFromEnv } from "./db.mjs";
 import { getFreePassPromoStats } from "./freePassPromoStats.mjs";
 import { getQrDashboardSummary } from "./ga4QrAnalytics.mjs";
 
@@ -6,6 +6,8 @@ const LONDON_TIME_ZONE = "Europe/London";
 const REPORT_NAME = "daily-team-email";
 const VENUES_TABLE = "venues260414";
 const EMAIL_LOG_TABLE = "daily_team_email_sends";
+const HOSPO_PASS_PROFILES_TABLE = "hospo_pass_profiles";
+const HOSPO_DATABASE_ENV = "NETLIFY_DATABASE_URL";
 const DEFAULT_FROM_EMAIL = "hello@ahangama.com";
 const DEFAULT_TO_EMAILS = ["team@ahangama.com"];
 const DEFAULT_DESTINATION_SLUG = "ahangama";
@@ -324,6 +326,64 @@ function formatPromoTableHtml(rows = []) {
   `.trim();
 }
 
+function normalizeHospoPassIssue(row) {
+  return {
+    id: normalizeText(row.id),
+    fullName: normalizeText(row.full_name),
+    email: normalizeText(row.email),
+    whatsapp: normalizeText(row.whatsapp || row.phone),
+    businessName: normalizeText(row.business_name),
+    submittedAt: normalizeText(row.submitted_at),
+  };
+}
+
+function formatHospoIssueText(row) {
+  return `${row.fullName || "Unknown"} | ${row.email || "-"} | ${row.whatsapp || "-"} | ${row.businessName || "-"}`;
+}
+
+function formatHospoIssuesTableText(rows = []) {
+  const header = "Name | Email | WhatsApp | Business name";
+
+  if (!rows.length) {
+    return [];
+  }
+
+  return [header, ...rows.map(formatHospoIssueText)];
+}
+
+function formatHospoIssuesTableHtml(rows = []) {
+  if (!rows.length) {
+    return "";
+  }
+
+  return `
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <thead>
+        <tr>
+          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0;">Name</th>
+          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0;">Email</th>
+          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0;">WhatsApp</th>
+          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0;">Business name</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${escapeHtml(row.fullName || "Unknown")}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${escapeHtml(row.email || "-")}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${escapeHtml(row.whatsapp || "-")}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${escapeHtml(row.businessName || "-")}</td>
+              </tr>
+            `,
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `.trim();
+}
+
 function normalizeText(value) {
   if (value === null || value === undefined) return "";
   return String(value).trim();
@@ -438,6 +498,30 @@ async function getVenueStats(reportDate) {
     totalLiveVenues: Number(row.total_live_venues || 0),
     venuesAddedThisWeek: Number(row.venues_added_this_week || 0),
   };
+}
+
+async function getHospoPassIssues(reportDate) {
+  const reportDateExclusive = shiftIsoDate(reportDate, 1);
+  const result = await queryFromEnv(
+    HOSPO_DATABASE_ENV,
+    `
+      SELECT
+        id,
+        full_name,
+        email,
+        phone,
+        business_name,
+        submitted_at
+      FROM ${HOSPO_PASS_PROFILES_TABLE}
+      WHERE submitted_at >= $1::date
+        AND submitted_at < $2::date
+      ORDER BY submitted_at ASC NULLS LAST, created_at ASC NULLS LAST
+      LIMIT 100
+    `,
+    [reportDate, reportDateExclusive],
+  );
+
+  return (result.rows || []).map(normalizeHospoPassIssue);
 }
 
 function computeMissingFields(row) {
@@ -659,6 +743,7 @@ export async function getDailyTeamEmailReport({
     startDate: reportDate,
     endDate: reportDate,
   });
+  const hospoPassIssues = await getHospoPassIssues(reportDate);
   const venueStats = await getVenueStats(reportDate);
   const venueReview = await getVenueReviewSnapshot(reportDate);
   const totals = summarizeTotals(qrSummary.rows, qrSummary.stats);
@@ -715,6 +800,7 @@ export async function getDailyTeamEmailReport({
     thoughts,
     rootTraffic,
     passTraffic,
+    hospoPassIssues,
     freePassPromoStats,
     funnelRows,
     venueReview,
@@ -765,6 +851,23 @@ export function buildDailyTeamEmailMessage(report) {
     freePassUsers: 0,
   };
   const promoLines = formatPromoTableText(promoRows);
+  const hospoPassIssues = report.hospoPassIssues || [];
+  const hospoIssueLines = formatHospoIssuesTableText(hospoPassIssues);
+  const hospoIssueTextSection = hospoIssueLines.length
+    ? [
+        ``,
+        `New Hospo pass issues`,
+        `- Total new Hospo pass issues: ${formatInteger(hospoPassIssues.length)}`,
+        ...hospoIssueLines,
+      ]
+    : [];
+  const hospoIssueHtmlSection = hospoPassIssues.length
+    ? `
+      <h3>New Hospo pass issues</h3>
+      <p>Total new Hospo pass issues: ${escapeHtml(formatInteger(hospoPassIssues.length))}</p>
+      ${formatHospoIssuesTableHtml(hospoPassIssues)}
+    `
+    : "";
   const text = [
     `Team,`,
     ``,
@@ -782,6 +885,7 @@ export function buildDailyTeamEmailMessage(report) {
     `- Promo sessions: ${formatInteger(promoTotals.freePassSessions)}`,
     `- Promo users: ${formatInteger(promoTotals.freePassUsers)}`,
     ...promoLines,
+    ...hospoIssueTextSection,
     ``,
     `QR Funnel`,
     ...funnelLines,
@@ -829,6 +933,7 @@ export function buildDailyTeamEmailMessage(report) {
         <li>Promo users: ${escapeHtml(formatInteger(promoTotals.freePassUsers))}</li>
       </ul>
       ${formatPromoTableHtml(promoRows)}
+      ${hospoIssueHtmlSection}
       <h3>QR Funnel</h3>
       ${formatFunnelTableHtml(report.funnelRows || [])}
       <h3>Top 10 performers</h3>
@@ -911,6 +1016,7 @@ async function recordDailyTeamEmailSend({
         topPerformer: report.performers[0] || null,
         topWatchout: report.watchouts[0] || null,
         freePassPromoStats: report.freePassPromoStats || null,
+        hospoPassIssues: report.hospoPassIssues || [],
         aiSummary: report.aiSummary || null,
       }),
     ],
@@ -1065,6 +1171,7 @@ export function getDailyTeamEmailPreview(report) {
     totals: report.totals,
     funnelRows: report.funnelRows,
     freePassPromoStats: report.freePassPromoStats,
+    hospoPassIssues: report.hospoPassIssues,
     performers: report.performers,
     watchouts: report.watchouts,
     thoughts: report.thoughts,
