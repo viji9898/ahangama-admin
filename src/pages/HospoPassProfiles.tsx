@@ -1,9 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Card, Empty, Input, Space, Table, Tag, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  Card,
+  Descriptions,
+  Empty,
+  Input,
+  Modal,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 const HOSPO_PROFILES_ENDPOINT =
   "/.netlify/functions/api-hospo-pass-profiles-list";
+
+const SUMMARY_COLUMNS = [
+  "full_name",
+  "email",
+  "phone",
+  "audience_type",
+  "business_name",
+  "business_category",
+  "source_hotel_slug",
+  "submitted_at",
+];
 
 type HospoProfileRow = Record<string, unknown> & {
   __rowKey: string;
@@ -36,6 +59,9 @@ function formatCellValue(value: unknown) {
 export default function HospoPassProfiles() {
   const [rows, setRows] = useState<HospoProfileRow[]>([]);
   const [columnNames, setColumnNames] = useState<string[]>([]);
+  const [selectedProfile, setSelectedProfile] = useState<HospoProfileRow | null>(
+    null,
+  );
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -98,21 +124,39 @@ export default function HospoPassProfiles() {
     );
   }, [columnNames, rows, search]);
 
-  const columns = useMemo<ColumnsType<HospoProfileRow>>(
-    () =>
-      columnNames.map((column) => ({
+  const tableColumns = useMemo<ColumnsType<HospoProfileRow>>(
+    () => {
+      const visibleColumns = SUMMARY_COLUMNS.filter((column) =>
+        columnNames.includes(column),
+      );
+
+      return [
+        ...visibleColumns.map((column) => ({
         title: titleizeColumn(column),
         dataIndex: column,
         key: column,
         ellipsis: true,
-        sorter: (left, right) =>
+        sorter: (left: HospoProfileRow, right: HospoProfileRow) =>
           String(left[column] ?? "").localeCompare(String(right[column] ?? "")),
         render: (value: unknown) => (
           <Typography.Text style={{ maxWidth: 320 }} ellipsis={{ tooltip: String(value ?? "") }}>
             {formatCellValue(value)}
           </Typography.Text>
         ),
-      })),
+        })),
+        {
+          title: "Details",
+          key: "details",
+          fixed: "right",
+          width: 120,
+          render: (_value: unknown, record: HospoProfileRow) => (
+            <Button type="link" onClick={() => setSelectedProfile(record)}>
+              View details
+            </Button>
+          ),
+        },
+      ];
+    },
     [columnNames],
   );
 
@@ -166,10 +210,10 @@ export default function HospoPassProfiles() {
       <Card title={`Hospo profiles (${filteredRows.length})`} styles={{ body: { padding: 0 } }}>
         <Table<HospoProfileRow>
           rowKey="__rowKey"
-          columns={columns}
+          columns={tableColumns}
           dataSource={filteredRows}
           loading={loading}
-          scroll={{ x: Math.max(columnNames.length * 180, 760) }}
+          scroll={{ x: 1120 }}
           pagination={{ pageSize: 20, showSizeChanger: true }}
           locale={{
             emptyText: (
@@ -181,6 +225,26 @@ export default function HospoPassProfiles() {
           }}
         />
       </Card>
+
+      <Modal
+        title="Hospo profile details"
+        open={Boolean(selectedProfile)}
+        onCancel={() => setSelectedProfile(null)}
+        footer={null}
+        width={860}
+      >
+        {selectedProfile ? (
+          <Descriptions bordered column={1} size="small">
+            {columnNames.map((column) => (
+              <Descriptions.Item key={column} label={titleizeColumn(column)}>
+                <Typography.Text style={{ wordBreak: "break-word" }}>
+                  {formatCellValue(selectedProfile[column])}
+                </Typography.Text>
+              </Descriptions.Item>
+            ))}
+          </Descriptions>
+        ) : null}
+      </Modal>
     </div>
   );
 }
