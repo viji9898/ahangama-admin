@@ -280,7 +280,8 @@ function formatPromoRowText(row) {
 }
 
 function formatPromoTableText(rows = []) {
-  const header = "Venue | UTM content | Promo page views | Sessions | Users | Page";
+  const header =
+    "Venue | UTM content | Promo page views | Sessions | Users | Page";
 
   if (!rows.length) {
     return [header, "None"];

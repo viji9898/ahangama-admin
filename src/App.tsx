@@ -39,10 +39,16 @@ export default function App() {
           <Route path="venues" element={<Admin />} />
           <Route path="crm" element={<CRM />} />
           <Route path="travel-agents" element={<TravelAgentsCRM />} />
-          <Route path="pass-users" element={<Navigate to="/admin/pass-users/hospo" replace />} />
+          <Route
+            path="pass-users"
+            element={<Navigate to="/admin/pass-users/hospo" replace />}
+          />
           <Route path="pass-users/hospo" element={<HospoPassProfiles />} />
           <Route path="call-logs" element={<CallLogs />} />
-          <Route path="events" element={<Navigate to="/admin/events/list" replace />} />
+          <Route
+            path="events"
+            element={<Navigate to="/admin/events/list" replace />}
+          />
           <Route path="events/add" element={<Events mode="add" />} />
           <Route path="events/list" element={<Events mode="list" />} />
           <Route path="qr" element={<QRDashboard />} />
