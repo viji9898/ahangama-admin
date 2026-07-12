@@ -744,7 +744,6 @@ export async function getDailyTeamEmailReport({
     startDate: reportDate,
     endDate: reportDate,
   });
-  const hospoPassIssues = await getHospoPassIssues(reportDate);
   const venueStats = await getVenueStats(reportDate);
   const venueReview = await getVenueReviewSnapshot(reportDate);
   const totals = summarizeTotals(qrSummary.rows, qrSummary.stats);
@@ -771,6 +770,18 @@ export async function getDailyTeamEmailReport({
     passTraffic,
     venueStats,
   });
+
+  let hospoPassIssues = [];
+  let hospoPassIssuesError = null;
+  try {
+    hospoPassIssues = await getHospoPassIssues(reportDate);
+  } catch (error) {
+    hospoPassIssuesError = String(error?.message || error);
+    console.error("[daily-team-email] hospo pass issues failed", {
+      reportDate,
+      error: hospoPassIssuesError,
+    });
+  }
 
   let aiSummary = null;
   let aiSummaryError = null;
@@ -802,6 +813,7 @@ export async function getDailyTeamEmailReport({
     rootTraffic,
     passTraffic,
     hospoPassIssues,
+    hospoPassIssuesError,
     freePassPromoStats,
     funnelRows,
     venueReview,
@@ -1018,6 +1030,7 @@ async function recordDailyTeamEmailSend({
         topWatchout: report.watchouts[0] || null,
         freePassPromoStats: report.freePassPromoStats || null,
         hospoPassIssues: report.hospoPassIssues || [],
+        hospoPassIssuesError: report.hospoPassIssuesError || null,
         aiSummary: report.aiSummary || null,
       }),
     ],
@@ -1173,6 +1186,7 @@ export function getDailyTeamEmailPreview(report) {
     funnelRows: report.funnelRows,
     freePassPromoStats: report.freePassPromoStats,
     hospoPassIssues: report.hospoPassIssues,
+    hospoPassIssuesError: report.hospoPassIssuesError,
     performers: report.performers,
     watchouts: report.watchouts,
     thoughts: report.thoughts,
