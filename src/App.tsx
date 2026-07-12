@@ -8,6 +8,7 @@ import LinkGenerator from "./pages/LinkGenerator";
 import QrLinkGenerator from "./pages/QrLinkGenerator";
 import QRDashboard from "./pages/QRDashboard.jsx";
 import CallLogs from "./pages/CallLogs";
+import CirclePassUsers from "./pages/CirclePassUsers";
 import CRM from "./pages/CRM";
 import Events from "./pages/Events";
 import GAAnalytics from "./pages/GAAnalytics";
@@ -44,6 +45,7 @@ export default function App() {
             element={<Navigate to="/admin/pass-users/hospo" replace />}
           />
           <Route path="pass-users/hospo" element={<HospoPassProfiles />} />
+          <Route path="pass-users/circle" element={<CirclePassUsers />} />
           <Route path="call-logs" element={<CallLogs />} />
           <Route
             path="events"
