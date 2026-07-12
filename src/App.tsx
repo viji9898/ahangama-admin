@@ -13,6 +13,7 @@ import CRM from "./pages/CRM";
 import Events from "./pages/Events";
 import GAAnalytics from "./pages/GAAnalytics";
 import GAFreePassScans from "./pages/GAFreePassScans";
+import GuestPassUsers from "./pages/GuestPassUsers";
 import HospoPassProfiles from "./pages/HospoPassProfiles";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -46,6 +47,7 @@ export default function App() {
           />
           <Route path="pass-users/hospo" element={<HospoPassProfiles />} />
           <Route path="pass-users/circle" element={<CirclePassUsers />} />
+          <Route path="pass-users/guest-pass" element={<GuestPassUsers />} />
           <Route path="call-logs" element={<CallLogs />} />
           <Route
             path="events"

@@ -51,6 +51,7 @@ const navItems = [
     children: [
       { key: "/admin/pass-users/hospo", label: "Hospo" },
       { key: "/admin/pass-users/circle", label: "Circle" },
+      { key: "/admin/pass-users/guest-pass", label: "Guest Pass" },
     ],
   },
   {
