@@ -338,15 +338,33 @@ export function VenueEditorTabs({
                 />
               </Col>
             </Row>
-            <Typography.Paragraph
-              style={{ margin: 0, fontSize: 12 }}
-              type="secondary"
-            >
-              {previewText(
-                venue.circlePerk || venue.cardPerk || venue.howToClaim || venue.restrictions,
-                "No pass perk or claim guidance added yet.",
-              )}
-            </Typography.Paragraph>
+            {venue.circlePerk ? (
+              <div>
+                <Typography.Text
+                  strong
+                  type="secondary"
+                  style={{ display: "block", fontSize: 12, marginBottom: 2 }}
+                >
+                  Circle Offer
+                </Typography.Text>
+                <Typography.Paragraph
+                  style={{ margin: 0, fontSize: 12 }}
+                  type="secondary"
+                >
+                  {previewText(venue.circlePerk, "No circle offer added yet.")}
+                </Typography.Paragraph>
+              </div>
+            ) : (
+              <Typography.Paragraph
+                style={{ margin: 0, fontSize: 12 }}
+                type="secondary"
+              >
+                {previewText(
+                  venue.cardPerk || venue.howToClaim || venue.restrictions,
+                  "No pass perk or claim guidance added yet.",
+                )}
+              </Typography.Paragraph>
+            )}
           </Space>
         ),
         content: <VenueOffersForm venue={venue} onPatch={onPatch} />,
