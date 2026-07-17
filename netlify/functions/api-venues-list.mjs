@@ -60,7 +60,7 @@ export async function handler(event) {
       SELECT
         id, destination_slug, category, name, slug, status,
         live,
-        editorial_tags, is_pass_venue, staff_pick, is_featured, priority_score, pass_priority,
+        editorial_tags, is_pass_venue, circle, circle_perk, staff_pick, is_featured, priority_score, pass_priority,
         stars, reviews, discount,
         excerpt, description,
         best_for, tags,

@@ -51,6 +51,7 @@ function buildSectionSnapshot(
         status: normalizeText(venue.status) || "draft",
         live: Boolean(venue.live ?? false),
         isPassVenue: Boolean(venue.isPassVenue ?? false),
+        circle: Boolean(venue.circle ?? false),
         staffPick: Boolean(venue.staffPick ?? false),
         isFeatured: Boolean(venue.isFeatured ?? false),
         priorityScore:
@@ -83,6 +84,8 @@ function buildSectionSnapshot(
         discount: venue.discount ?? null,
         price: normalizeText(venue.price),
         hours: normalizeText(venue.hours),
+        circle: Boolean(venue.circle ?? false),
+        circlePerk: normalizeText(venue.circlePerk),
         cardPerk: normalizeText(venue.cardPerk),
         offers: getVenueOffersArray(venue.offers),
         howToClaim: normalizeText(venue.howToClaim),
@@ -160,6 +163,7 @@ export function VenueEditorTabs({
     const booleans = [
       venue.live ? "Live" : null,
       venue.isPassVenue ? "Pass" : null,
+      venue.circle ? "Circle" : null,
       venue.staffPick ? "Staff pick" : null,
       venue.isFeatured ? "Featured" : null,
     ].filter(Boolean) as string[];
@@ -339,7 +343,7 @@ export function VenueEditorTabs({
               type="secondary"
             >
               {previewText(
-                venue.cardPerk || venue.howToClaim || venue.restrictions,
+                venue.circlePerk || venue.cardPerk || venue.howToClaim || venue.restrictions,
                 "No pass perk or claim guidance added yet.",
               )}
             </Typography.Paragraph>

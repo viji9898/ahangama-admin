@@ -58,6 +58,8 @@ export function toVenueDto(row) {
     live: row.live,
     editorialTags: row.editorial_tags ?? [],
     isPassVenue: row.is_pass_venue,
+    circle: row.circle,
+    circlePerk: row.circle_perk,
     staffPick: row.staff_pick,
     isFeatured: row.is_featured,
     priorityScore: row.priority_score,

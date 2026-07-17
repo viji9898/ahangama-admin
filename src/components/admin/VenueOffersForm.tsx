@@ -1,4 +1,4 @@
-import { Form, Input, InputNumber, Row, Col } from "antd";
+import { Form, Input, InputNumber, Row, Col, Space, Switch, Typography } from "antd";
 import { useEffect, useState } from "react";
 import type { Venue } from "../../types/venue";
 import { getVenueOffersArray, listToText, textToList } from "./venueAdminUtils";
@@ -131,6 +131,25 @@ export function VenueOffersForm({ venue, onPatch }: Props) {
           onKeyDown={stopTextareaKeyPropagation}
           placeholder="Describe the member perk clearly."
         />
+      </Form.Item>
+
+      <Form.Item label="Owner circle">
+        <Space direction="vertical" size={8} style={{ width: "100%" }}>
+          <Space>
+            <Typography.Text strong>Circle venue</Typography.Text>
+            <Switch
+              checked={venue.circle ?? false}
+              onChange={(checked) => onPatch({ circle: checked })}
+            />
+          </Space>
+          <Input.TextArea
+            rows={3}
+            value={venue.circlePerk || ""}
+            onChange={(event) => onPatch({ circlePerk: event.target.value })}
+            onKeyDown={stopTextareaKeyPropagation}
+            placeholder="Describe the discount or perk offered to other owners."
+          />
+        </Space>
       </Form.Item>
 
       <Form.Item label="Offers (one per line)">

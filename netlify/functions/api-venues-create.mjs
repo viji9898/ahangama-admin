@@ -54,6 +54,7 @@ export async function handler(event) {
     const editorialTags = normalizeStringArray(body.editorialTags);
     const isPassVenue =
       typeof body.isPassVenue === "boolean" ? body.isPassVenue : false;
+    const circle = typeof body.circle === "boolean" ? body.circle : false;
     const staffPick =
       typeof body.staffPick === "boolean" ? body.staffPick : false;
     const isFeatured =
@@ -105,7 +106,7 @@ export async function handler(event) {
         lat, lng, map_url, google_place_id,
         whatsapp, email, instagram,
         logo, image, og_image,
-        live, is_pass_venue, staff_pick, is_featured, priority_score, pass_priority,
+        live, is_pass_venue, circle, circle_perk, staff_pick, is_featured, priority_score, pass_priority,
         created_by, updated_by, source, notes_internal, deleted_at
       )
       VALUES (
@@ -116,8 +117,8 @@ export async function handler(event) {
         $22,$23,$24,$25,
         $26,$27,$28,
         $29,$30,$31,
-        $32,$33,$34,$35,$36,$37,
-        $38,$39,$40,$41,NULL
+        $32,$33,$34,$35,$36,$37,$38,$39,
+        $40,$41,$42,$43,NULL
       )
       RETURNING *;
     `;
@@ -156,6 +157,8 @@ export async function handler(event) {
       body.ogImage ?? null,
       live,
       isPassVenue,
+      circle,
+      body.circlePerk ?? null,
       staffPick,
       isFeatured,
       priorityScore,

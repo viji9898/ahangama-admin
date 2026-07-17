@@ -15,6 +15,8 @@ export interface Venue {
   // Curation & filtering
   editorialTags?: string[];
   isPassVenue?: boolean;
+  circle?: boolean;
+  circlePerk?: string;
   staffPick?: boolean;
   isFeatured?: boolean;
   priorityScore?: number;

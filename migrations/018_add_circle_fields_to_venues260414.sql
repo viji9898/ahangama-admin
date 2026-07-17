@@ -1,0 +1,20 @@
+-- Migration: Add owner circle fields to venues260414
+
+ALTER TABLE venues260414
+  ADD COLUMN IF NOT EXISTS circle BOOLEAN;
+
+UPDATE venues260414
+SET circle = FALSE
+WHERE circle IS NULL;
+
+ALTER TABLE venues260414
+  ALTER COLUMN circle SET DEFAULT FALSE;
+
+ALTER TABLE venues260414
+  ALTER COLUMN circle SET NOT NULL;
+
+ALTER TABLE venues260414
+  ADD COLUMN IF NOT EXISTS circle_perk TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_venues260414_circle
+  ON venues260414 (circle);

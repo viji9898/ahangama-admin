@@ -122,6 +122,8 @@ function buildEditableSnapshot(venue?: Venue) {
     live: Boolean(venue?.live ?? false),
     area: normalizeText(venue?.area),
     isPassVenue: Boolean(venue?.isPassVenue ?? false),
+    circle: Boolean(venue?.circle ?? false),
+    circlePerk: normalizeText(venue?.circlePerk),
     staffPick: Boolean(venue?.staffPick ?? false),
     isFeatured: Boolean(venue?.isFeatured ?? false),
     priorityScore: toNullableNumber(venue?.priorityScore) ?? 0,
