@@ -64,9 +64,14 @@ export async function handler(event) {
         OR lower(venue_name) LIKE $${idx}
         OR lower(coalesce(description, '')) LIKE $${idx}
         OR lower(coalesce(subcategory, '')) LIKE $${idx}
+        OR lower(coalesce(display_time, '')) LIKE $${idx}
+        OR lower(coalesce(offer_text, '')) LIKE $${idx}
         OR lower(coalesce(editor_notes, '')) LIKE $${idx}
         OR lower(coalesce(source, '')) LIKE $${idx}
+        OR lower(coalesce(source_key, '')) LIKE $${idx}
         OR EXISTS (SELECT 1 FROM unnest(tags) tag WHERE lower(tag) LIKE $${idx})
+        OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(details) detail WHERE lower(detail) LIKE $${idx})
+        OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(venue_links) link WHERE lower(link) LIKE $${idx})
       )`);
       params.push(`%${q}%`);
       idx += 1;

@@ -129,6 +129,44 @@ export function normalizeEventImageUrls(value, fallbackUrl = null) {
   return normalized;
 }
 
+export function normalizeEventTextArray(value) {
+  const values = Array.isArray(value)
+    ? value
+    : String(value || "")
+        .split("\n")
+        .map((item) => item.trim());
+
+  return Array.from(
+    new Set(values.map((item) => normalizeOptionalText(item)).filter(Boolean)),
+  );
+}
+
+export function normalizeOptionalEventObject(value, allowedKeys = null) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    const err = new Error("JSON object field is invalid");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const entries = Object.entries(value)
+    .filter(([key]) => !allowedKeys || allowedKeys.includes(key))
+    .map(([key, item]) => [key, normalizeOptionalText(item)])
+    .filter(([, item]) => Boolean(item));
+
+  return entries.length ? Object.fromEntries(entries) : null;
+}
+
+export function normalizeEventObject(value, fallback = {}) {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    const err = new Error("rawEvent must be a JSON object");
+    err.statusCode = 400;
+    throw err;
+  }
+  return value;
+}
+
 export function normalizeOptionalEventNumber(value, fieldName) {
   if (value === null || value === undefined || value === "") return null;
   const numeric = Number(value);
@@ -152,11 +190,40 @@ export function normalizeIntelligenceScore(value) {
   return numeric;
 }
 
+export function normalizeEventOrder(value) {
+  const numeric = Number(value ?? 0);
+  if (!Number.isInteger(numeric)) {
+    const err = new Error("eventOrder must be an integer");
+    err.statusCode = 400;
+    throw err;
+  }
+  return numeric;
+}
+
 export function normalizeEventSearch(value) {
   return normalizeLowerText(value) || "";
 }
 
+function formatDateInColombo(value) {
+  if (!value) return null;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.valueOf())) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Colombo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type)?.value || "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 export function toEventDto(row) {
+  const startDate = row.day_key || formatDateInColombo(row.start_date);
   return {
     id: row.id,
     title: row.title,
@@ -169,10 +236,17 @@ export function toEventDto(row) {
     venueGoogleUrl: row.venue_google_url,
     venueLat: row.venue_lat,
     venueLng: row.venue_lng,
-    startDate: row.start_date,
+    directionsUrl: row.directions_url,
+    instagramUrl: row.instagram_url,
+    startDate,
     endDate: row.end_date,
     startTime: row.start_time,
     endTime: row.end_time,
+    dayKey: row.day_key || startDate,
+    weekday: row.weekday,
+    dayNumber: row.day_number,
+    month: row.month,
+    displayTime: row.display_time,
     recurring: row.recurring,
     recurringType: row.recurring_type,
     dayOfWeek: row.day_of_week,
@@ -182,6 +256,15 @@ export function toEventDto(row) {
     whatsappNumber: row.whatsapp_number,
     imageUrl: row.image_url,
     imageUrls: row.image_urls ?? (row.image_url ? [row.image_url] : []),
+    mobileImageUrl: row.mobile_image_url,
+    offerImageUrl: row.offer_image_url,
+    offerText: row.offer_text,
+    details: row.details ?? [],
+    venueLinks: row.venue_links ?? [],
+    passBenefit: row.pass_benefit,
+    eventOrder: row.event_order ?? 0,
+    sourceKey: row.source_key,
+    rawEvent: row.raw_event,
     tags: row.tags ?? [],
     featured: row.featured,
     editorialPick: row.editorial_pick,

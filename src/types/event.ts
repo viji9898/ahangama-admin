@@ -29,10 +29,17 @@ export interface EventRecord {
   venueGoogleUrl?: string | null;
   venueLat?: number | null;
   venueLng?: number | null;
+  directionsUrl?: string | null;
+  instagramUrl?: string | null;
   startDate: string;
   endDate?: string | null;
   startTime: string;
   endTime?: string | null;
+  dayKey?: string | null;
+  weekday?: string | null;
+  dayNumber?: string | null;
+  month?: string | null;
+  displayTime?: string | null;
   recurring: boolean;
   recurringType?: EventRecurringType | null;
   dayOfWeek?: string | null;
@@ -42,6 +49,19 @@ export interface EventRecord {
   whatsappNumber?: string | null;
   imageUrl?: string | null;
   imageUrls: string[];
+  mobileImageUrl?: string | null;
+  offerImageUrl?: string | null;
+  offerText?: string | null;
+  details: string[];
+  venueLinks: string[];
+  passBenefit?: {
+    label?: string | null;
+    discount?: string | null;
+    perk?: string | null;
+  } | null;
+  eventOrder: number;
+  sourceKey?: string | null;
+  rawEvent?: Record<string, unknown> | null;
   tags: string[];
   featured: boolean;
   editorialPick: boolean;

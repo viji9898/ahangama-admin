@@ -1,5 +1,5 @@
 import { requireAdmin } from "./_lib/auth.mjs";
-import { logAdminActivity } from "./_lib/adminActivity.mjs";
+import { diffFields, logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
 import { normalizeLowerText, normalizeOptionalText } from "./_lib/crm.mjs";
 import {
@@ -11,20 +11,19 @@ import {
   EVENT_SEASONS,
   EVENT_STATUSES,
   EVENTS_TABLE,
-  normalizeEventId,
+  normalizeEventBoolean,
+  normalizeEventDate,
+  normalizeEventEnum,
   normalizeEventImageUrls,
   normalizeEventObject,
-  normalizeOptionalEventNumber,
-  normalizeEventDate,
-  normalizeEventBoolean,
-  normalizeEventEnum,
   normalizeEventOrder,
   normalizeEventTags,
   normalizeEventTextArray,
   normalizeEventTime,
   normalizeIntelligenceScore,
-  normalizeOptionalEventObject,
   normalizeOptionalEventDate,
+  normalizeOptionalEventNumber,
+  normalizeOptionalEventObject,
   normalizeRequiredEventText,
   toEventDto,
 } from "./_lib/events.mjs";
@@ -34,10 +33,6 @@ const json = (statusCode, body) => ({
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
 });
-
-function badRequest(message) {
-  return json(400, { ok: false, error: message });
-}
 
 function makeDateParts(startDate) {
   const date = new Date(`${startDate}T00:00:00+05:30`);
@@ -72,9 +67,34 @@ function makeDisplayTime(startTime, endTime) {
     : `From ${formatTimeLabel(startTime)}`;
 }
 
+const EVENT_ACTIVITY_FIELDS = {
+  title: "title",
+  description: "description",
+  category: "category",
+  subcategory: "subcategory",
+  venue_id: "venue",
+  venue_name: "venue name",
+  start_date: "start date",
+  start_time: "start time",
+  display_time: "display time",
+  image_url: "main image",
+  image_urls: "image gallery",
+  mobile_image_url: "mobile image",
+  offer_image_url: "offer image",
+  offer_text: "offer text",
+  details: "details",
+  venue_links: "venue links",
+  pass_benefit: "pass benefit",
+  status: "status",
+  featured: "featured",
+  editorial_pick: "editorial pick",
+  featured_this_week: "this week",
+  event_order: "event order",
+};
+
 export async function handler(event) {
   try {
-    if (event.httpMethod !== "POST") {
+    if (event.httpMethod !== "PUT" && event.httpMethod !== "PATCH") {
       return json(405, { ok: false, error: "Method not allowed" });
     }
 
@@ -84,10 +104,26 @@ export async function handler(event) {
     try {
       body = JSON.parse(event.body || "{}");
     } catch {
-      return badRequest("Invalid JSON body");
+      return json(400, { ok: false, error: "Invalid JSON body" });
     }
 
-    const id = normalizeEventId(body.id);
+    const id = normalizeLowerText(body.id);
+    if (!id) return json(400, { ok: false, error: "id is required" });
+
+    const beforeResult = await query(
+      `
+        SELECT *
+        FROM ${EVENTS_TABLE}
+        WHERE id = $1
+          AND deleted_at IS NULL
+      `,
+      [id],
+    );
+    if (beforeResult.rowCount === 0) {
+      return json(404, { ok: false, error: "Event not found" });
+    }
+    const beforeRow = beforeResult.rows[0];
+
     const startDate = normalizeEventDate(body.startDate || body.eventDate);
     const endDate = normalizeOptionalEventDate(body.endDate);
     const title = normalizeRequiredEventText(body.title, "title");
@@ -154,9 +190,7 @@ export async function handler(event) {
     );
     const source = normalizeOptionalText(body.source);
     const lastVerifiedAt = normalizeOptionalText(body.lastVerifiedAt);
-    const intelligenceScore = normalizeIntelligenceScore(
-      body.intelligenceScore,
-    );
+    const intelligenceScore = normalizeIntelligenceScore(body.intelligenceScore);
     const editorPriority = normalizeEventEnum(
       body.editorPriority,
       EVENT_EDITOR_PRIORITIES,
@@ -187,61 +221,144 @@ export async function handler(event) {
     const displayTime = normalizeOptionalText(body.displayTime) || makeDisplayTime(startTime, endTime);
 
     if (endDate && startDate > endDate) {
-      return badRequest("startDate must be before or equal to endDate");
+      return json(400, { ok: false, error: "startDate must be before or equal to endDate" });
     }
 
     if (endTime && startTime >= endTime) {
-      return badRequest("startTime must be before endTime");
+      return json(400, { ok: false, error: "startTime must be before endTime" });
     }
-
-    const columns = [
-      "id", "title", "description", "category", "subcategory", "venue_id", "venue_name",
-      "venue_instagram", "venue_google_url", "venue_lat", "venue_lng", "directions_url", "instagram_url",
-      "start_date", "end_date", "start_time", "end_time", "day_key", "weekday", "day_number", "month", "display_time",
-      "recurring", "recurring_type", "day_of_week", "price_type", "price", "booking_url", "whatsapp_number",
-      "image_url", "image_urls", "mobile_image_url", "offer_image_url", "offer_text", "details", "venue_links", "pass_benefit",
-      "tags", "featured", "editorial_pick", "status", "source", "source_key", "raw_event", "last_verified_at",
-      "intelligence_score", "editor_priority", "editor_notes", "audience", "season", "featured_this_week", "event_order",
-      "notes", "created_by", "updated_by", "deleted_at",
-    ];
-    const values = [
-      id, title, description, category, subcategory, venueId, venueName,
-      venueInstagram, venueGoogleUrl, venueLat, venueLng, directionsUrl, instagramUrl,
-      startDate, endDate, startTime, endTime, dayKey, weekday, dayNumber, month, displayTime,
-      recurring, recurringType, dayOfWeek, priceType, price, bookingUrl, whatsappNumber,
-      imageUrl || imageUrls[0] || null, imageUrls, mobileImageUrl, offerImageUrl, offerText, JSON.stringify(details), JSON.stringify(venueLinks), JSON.stringify(passBenefit),
-      tags, featured, editorialPick, status, source, sourceKey, JSON.stringify(rawEvent), lastVerifiedAt,
-      intelligenceScore, editorPriority, editorNotes, audience, season, featuredThisWeek, eventOrder,
-      notes, actorEmail, actorEmail, null,
-    ];
 
     const result = await query(
       `
-        INSERT INTO ${EVENTS_TABLE} (${columns.join(", ")})
-        VALUES (${columns.map((_, index) => `$${index + 1}`).join(", ")})
+        UPDATE ${EVENTS_TABLE}
+        SET
+          title = $2,
+          description = $3,
+          category = $4,
+          subcategory = $5,
+          venue_id = $6,
+          venue_name = $7,
+          venue_instagram = $8,
+          venue_google_url = $9,
+          venue_lat = $10,
+          venue_lng = $11,
+          directions_url = $12,
+          instagram_url = $13,
+          start_date = $14,
+          end_date = $15,
+          start_time = $16,
+          end_time = $17,
+          day_key = $18,
+          weekday = $19,
+          day_number = $20,
+          month = $21,
+          display_time = $22,
+          recurring = $23,
+          recurring_type = $24,
+          day_of_week = $25,
+          price_type = $26,
+          price = $27,
+          booking_url = $28,
+          whatsapp_number = $29,
+          image_url = $30,
+          image_urls = $31,
+          mobile_image_url = $32,
+          offer_image_url = $33,
+          offer_text = $34,
+          details = $35::jsonb,
+          venue_links = $36::jsonb,
+          pass_benefit = $37::jsonb,
+          tags = $38,
+          featured = $39,
+          editorial_pick = $40,
+          status = $41,
+          source = $42,
+          source_key = $43,
+          raw_event = $44::jsonb,
+          last_verified_at = $45,
+          intelligence_score = $46,
+          editor_priority = $47,
+          editor_notes = $48,
+          audience = $49,
+          season = $50,
+          featured_this_week = $51,
+          event_order = $52,
+          notes = $53,
+          updated_by = $54,
+          updated_at = NOW()
+        WHERE id = $1
+          AND deleted_at IS NULL
         RETURNING *
       `,
-      values,
+      [
+        id,
+        title,
+        description,
+        category,
+        subcategory,
+        venueId,
+        venueName,
+        venueInstagram,
+        venueGoogleUrl,
+        venueLat,
+        venueLng,
+        directionsUrl,
+        instagramUrl,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        dayKey,
+        weekday,
+        dayNumber,
+        month,
+        displayTime,
+        recurring,
+        recurringType,
+        dayOfWeek,
+        priceType,
+        price,
+        bookingUrl,
+        whatsappNumber,
+        imageUrl || imageUrls[0] || null,
+        imageUrls,
+        mobileImageUrl,
+        offerImageUrl,
+        offerText,
+        JSON.stringify(details),
+        JSON.stringify(venueLinks),
+        JSON.stringify(passBenefit),
+        tags,
+        featured,
+        editorialPick,
+        status,
+        source,
+        sourceKey,
+        JSON.stringify(rawEvent),
+        lastVerifiedAt,
+        intelligenceScore,
+        editorPriority,
+        editorNotes,
+        audience,
+        season,
+        featuredThisWeek,
+        eventOrder,
+        notes,
+        actorEmail,
+      ],
     );
 
     const row = result.rows[0];
+    const changedFields = diffFields(beforeRow, row, EVENT_ACTIVITY_FIELDS);
 
     await logAdminActivity({
-      action: "create",
+      action: "update",
       actorEmail: actor?.email,
       entityType: "event",
       entityId: row.id,
       entityName: row.title,
-      details: {
-        category: row.category,
-        subcategory: row.subcategory,
-        startDate: row.start_date,
-        venueName: row.venue_name,
-        startTime: row.start_time,
-        endTime: row.end_time,
-        status: row.status,
-        featuredThisWeek: row.featured_this_week,
-      },
+      venueId: row.venue_id,
+      changedFields,
     });
 
     return json(200, { ok: true, event: toEventDto(row) });
