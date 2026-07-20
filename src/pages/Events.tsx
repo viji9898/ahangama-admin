@@ -188,6 +188,14 @@ function getVenueInstagramAccount(venue?: Venue | null) {
   return venue?.instagram || venue?.instagramUrl || "";
 }
 
+function getInstagramUrl(value?: string | null) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+  const handle = normalized.replace(/^@/, "").replace(/^instagram\.com\//i, "");
+  return `https://www.instagram.com/${handle.replace(/^\/+|\/+$/g, "")}/`;
+}
+
 function getVenueGoogleUrl(venue?: Venue | null) {
   if (venue?.mapUrl) return venue.mapUrl;
   if (venue?.googlePlaceId) return `https://www.google.com/maps/place/?q=place_id:${venue.googlePlaceId}`;
@@ -340,7 +348,7 @@ function EventListingPreview({
   const categoryLabel = subcategory?.trim() || getEventCategoryLabel(category);
   const descriptionLabel = description?.trim() || "Breathwork session with Ember & Ice.";
   const previewImage = imageUrls?.[0] || "https://ahangama.com/Images%20for%20Events%20Calendar/Ember%20&%20Ice%20-%20Breathworking%20Image_.png";
-  const instagramHref = instagramUrl || "https://www.instagram.com/emberandiceahangama";
+  const instagramHref = getInstagramUrl(instagramUrl) || "https://www.instagram.com/emberandiceahangama";
   const directionsHref = directionsUrl || "https://www.google.com/maps/search/?api=1&query=Ember%20%26%20Ice%20Ahangama";
   const actions = (
     <>
