@@ -22,6 +22,7 @@ import {
   normalizeEventTags,
   normalizeEventTextArray,
   normalizeEventTime,
+  normalizeEventWeekday,
   normalizeIntelligenceScore,
   normalizeOptionalEventObject,
   normalizeOptionalEventDate,
@@ -116,7 +117,6 @@ export async function handler(event) {
           "recurringType",
         )
       : null;
-    const dayOfWeek = normalizeOptionalText(body.dayOfWeek);
     const priceType = normalizeEventEnum(
       body.priceType,
       EVENT_PRICE_TYPES,
@@ -185,6 +185,9 @@ export async function handler(event) {
     const dayNumber = normalizeOptionalText(body.dayNumber) || dateParts.dayNumber;
     const month = normalizeOptionalText(body.month) || dateParts.month;
     const displayTime = normalizeOptionalText(body.displayTime) || makeDisplayTime(startTime, endTime);
+    const dayOfWeek = recurringType === "weekly"
+      ? normalizeEventWeekday(body.dayOfWeek, dateParts.weekday)
+      : null;
 
     if (endDate && startDate > endDate) {
       return badRequest("startDate must be before or equal to endDate");

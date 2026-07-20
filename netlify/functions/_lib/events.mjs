@@ -22,6 +22,15 @@ export const EVENT_STATUSES = new Set(["draft", "published"]);
 export const EVENT_EDITOR_PRIORITIES = new Set(["low", "medium", "high"]);
 export const EVENT_AUDIENCES = new Set(["tourist", "resident", "both"]);
 export const EVENT_SEASONS = new Set(["high", "shoulder", "low"]);
+export const EVENT_WEEKDAYS = new Set([
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+]);
 
 export function makeEventId() {
   return randomUUID();
@@ -94,6 +103,17 @@ export function normalizeEventEnum(value, allowed, fallback, fieldName) {
   const normalized = normalizeLowerText(value) || fallback;
   if (!allowed.has(normalized)) {
     const err = new Error(`${fieldName} is invalid`);
+    err.statusCode = 400;
+    throw err;
+  }
+  return normalized;
+}
+
+export function normalizeEventWeekday(value, fallback = null) {
+  const normalized = normalizeOptionalText(value) || fallback;
+  if (!normalized) return null;
+  if (!EVENT_WEEKDAYS.has(normalized)) {
+    const err = new Error("dayOfWeek must be a weekday");
     err.statusCode = 400;
     throw err;
   }

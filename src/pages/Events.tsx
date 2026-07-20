@@ -144,6 +144,16 @@ const STATUS_OPTIONS: { label: string; value: EventStatus }[] = [
   { label: "Published", value: "published" },
 ];
 
+const WEEKDAY_OPTIONS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+].map((day) => ({ label: day, value: day }));
+
 const INITIAL_VALUES: Partial<EventFormValues> = {
   category: "wellness",
   priceType: "free",
@@ -370,6 +380,8 @@ export default function Events({ mode }: EventsProps) {
   const mobileImageUrl = Form.useWatch("mobileImageUrl", form);
   const offerImageUrl = Form.useWatch("offerImageUrl", form);
   const recurring = Form.useWatch("recurring", form);
+  const recurringType = Form.useWatch("recurringType", form);
+  const startDate = Form.useWatch("startDate", form);
   const priceType = Form.useWatch("priceType", form);
 
   const loadEvents = async () => {
@@ -409,6 +421,16 @@ export default function Events({ mode }: EventsProps) {
   useEffect(() => {
     if (mode === "add") form.setFieldsValue(INITIAL_VALUES);
   }, [form, mode]);
+  useEffect(() => {
+    if (!recurring || recurringType !== "weekly") {
+      form.setFieldValue("dayOfWeek", undefined);
+      return;
+    }
+
+    if (startDate && !form.getFieldValue("dayOfWeek")) {
+      form.setFieldValue("dayOfWeek", startDate.format("dddd"));
+    }
+  }, [form, recurring, recurringType, startDate]);
 
   const summary = useMemo(() => {
     const today = dayjs().startOf("day");
@@ -507,7 +529,9 @@ export default function Events({ mode }: EventsProps) {
       displayTime: values.displayTime,
       recurring: values.recurring ?? false,
       recurringType: values.recurringType,
-      dayOfWeek: values.dayOfWeek,
+      dayOfWeek: values.recurring && values.recurringType === "weekly"
+        ? values.dayOfWeek || values.startDate.format("dddd")
+        : undefined,
       priceType: values.priceType,
       price: values.price,
       bookingUrl: values.bookingUrl,
@@ -621,7 +645,7 @@ export default function Events({ mode }: EventsProps) {
       <Row gutter={12}>
         <Col xs={24} sm={8}><Form.Item label="Recurring" name="recurring" valuePropName="checked"><Switch /></Form.Item></Col>
         <Col xs={24} sm={8}><Form.Item label="Recurring type" name="recurringType"><Select disabled={!recurring} options={[{ label: "Daily", value: "daily" }, { label: "Weekly", value: "weekly" }, { label: "Monthly", value: "monthly" }]} /></Form.Item></Col>
-        <Col xs={24} sm={8}><Form.Item label="Day of week" name="dayOfWeek"><Select allowClear disabled={!recurring} options={["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => ({ label: day, value: day }))} /></Form.Item></Col>
+        {recurring && recurringType === "weekly" ? <Col xs={24} sm={8}><Form.Item label="Repeat day" name="dayOfWeek" rules={[{ required: true, message: "Select a repeat day" }]}><Select options={WEEKDAY_OPTIONS} /></Form.Item></Col> : null}
       </Row>
 
       <Typography.Title level={5}>Images and offer</Typography.Title>
