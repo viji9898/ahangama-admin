@@ -243,6 +243,33 @@ body {
   color: #5b534d;
 }
 
+.event-preview-descriptionText p {
+  margin: 0;
+}
+
+.event-preview-descriptionText p + p,
+.event-preview-descriptionText p + ul,
+.event-preview-descriptionText ul + p {
+  margin-top: 8px;
+}
+
+.event-preview-descriptionText ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.event-preview-descriptionText li + li {
+  margin-top: 4px;
+}
+
+.event-preview-descriptionText strong {
+  font-weight: 700;
+}
+
+.event-preview-descriptionText em {
+  font-style: italic;
+}
+
 .event-feature__actions {
   margin-top: 18px;
   display: flex;

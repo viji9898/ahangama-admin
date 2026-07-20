@@ -43,15 +43,17 @@ import type {
   EventSeason,
   EventStatus,
 } from "../types/event";
+import FormattedDescription from "../components/FormattedDescription";
 import type { Venue } from "../types/venue";
 
 const EVENTS_LIST_ENDPOINT = "/.netlify/functions/api-events-list";
 const EVENTS_CREATE_ENDPOINT = "/.netlify/functions/api-events-create";
 const EVENTS_UPDATE_ENDPOINT = "/.netlify/functions/api-events-update";
 const EVENTS_DELETE_ENDPOINT = "/.netlify/functions/api-events-delete";
-const S3_PRESIGN_ENDPOINT = "/.netlify/functions/api-s3-presign";
+const S3_UPLOAD_ENDPOINT = "/.netlify/functions/api-s3-upload";
 const VENUES_LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
 const EVENT_IMAGE_MAX_BYTES = 500 * 1024;
+const EVENT_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 type EventFormValues = {
   placement: EventPlacement;
@@ -207,6 +209,17 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return payload;
 }
 
+async function fileToBase64(file: File) {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Could not read image file."));
+    reader.readAsDataURL(file);
+  });
+  const [, dataBase64 = ""] = dataUrl.split(",");
+  return dataBase64;
+}
+
 function formatEventDate(record: EventRecord) {
   if (record.weekday && record.dayNumber && record.month) return `${record.weekday} ${record.dayNumber} ${record.month}`.toUpperCase();
   return dayjs(record.startDate).format("ddd D MMM YYYY").toUpperCase();
@@ -355,7 +368,7 @@ function EventListingPreview({
               <h2>{titleLabel}</h2>
               <p className="event-feature__venue">{venueLabel}</p>
               <div className="event-feature__meta"><span><ClockCircleOutlined />{timeLabel}</span><span className="event-feature__dot">·</span><span>{categoryLabel}</span></div>
-              <p className="event-feature__description">{descriptionLabel}</p>
+              <div className="event-feature__description"><FormattedDescription value={descriptionLabel} /></div>
               <div className="event-feature__actions">{actions}</div>
             </div>
           </section>
@@ -371,7 +384,7 @@ function EventListingPreview({
               <h2>{titleLabel}</h2>
               <p className="mobile-event__venue">{venueLabel}</p>
               <div className="mobile-event__meta"><span><ClockCircleOutlined />{timeLabel}</span><span className="mobile-event__dot">·</span><span>{categoryLabel}</span></div>
-              <p className="mobile-event__description">{descriptionLabel}</p>
+              <div className="mobile-event__description"><FormattedDescription value={descriptionLabel} /></div>
               <div className="mobile-event__actions">{actions}</div>
             </div>
           </div>
@@ -482,10 +495,15 @@ export default function Events({ mode }: EventsProps) {
   }, [editingEvent, venues]);
   const subcategoryOptions = useMemo(() => (EVENT_CATEGORY_OPTIONS.find((item) => item.value === selectedCategory)?.subcategories || []).map((subcategory) => ({ label: subcategory, value: subcategory })), [selectedCategory]);
 
-  const presignEventImage = async () => {
-    const response = await fetchJson<{ upload: { url: string; fields: Record<string, string>; publicUrl: string; maxBytes: number } }>(S3_PRESIGN_ENDPOINT, {
+  const uploadEventImage = async (file: File) => {
+    const response = await fetchJson<{ upload: { publicUrl: string; maxBytes: number; contentType: string } }>(S3_UPLOAD_ENDPOINT, {
       method: "POST",
-      body: JSON.stringify({ id: editingEvent?.id || eventDraftId, kind: "eventImage" }),
+      body: JSON.stringify({
+        id: editingEvent?.id || eventDraftId,
+        kind: "eventImage",
+        contentType: file.type,
+        dataBase64: await fileToBase64(file),
+      }),
     });
     return response.upload;
   };
@@ -504,17 +522,9 @@ export default function Events({ mode }: EventsProps) {
     setUploadingImages(true);
     try {
       for (const file of files) {
-        if (file.type !== "image/jpeg") throw new Error("Only JPG event images are allowed.");
+        if (!EVENT_IMAGE_CONTENT_TYPES.has(file.type)) throw new Error("Only JPG, PNG, and WebP event images are allowed.");
         if (file.size > EVENT_IMAGE_MAX_BYTES) throw new Error(`Event images must be <= ${Math.round(EVENT_IMAGE_MAX_BYTES / 1024)}KB.`);
-        const upload = await presignEventImage();
-        const formData = new FormData();
-        Object.entries(upload.fields).forEach(([key, value]) => formData.append(key, value));
-        formData.append("file", file);
-        const uploadResponse = await fetch(upload.url, { method: "POST", body: formData });
-        if (!uploadResponse.ok) {
-          const text = await uploadResponse.text().catch(() => "");
-          throw new Error(text || `S3 upload failed (${uploadResponse.status})`);
-        }
+        const upload = await uploadEventImage(file);
         uploadedUrls.push(upload.publicUrl);
       }
       if (target === "gallery") form.setFieldValue("imageUrls", [...eventImageUrls, ...uploadedUrls]);
@@ -655,7 +665,7 @@ export default function Events({ mode }: EventsProps) {
 
   const renderEventForm = (submitLabel: string) => (
     <Form<EventFormValues> form={form} layout="vertical" initialValues={INITIAL_VALUES} onFinish={handleSubmit}>
-      <input ref={eventImageInputRef} type="file" accept="image/jpeg" multiple style={{ display: "none" }} onChange={handleEventImageChange} />
+      <input ref={eventImageInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: "none" }} onChange={handleEventImageChange} />
       <Typography.Title level={5}>Placement</Typography.Title>
       <Form.Item label="Where should this appear?" name="placement" rules={[{ required: true, message: "Select a placement" }]}>
         <Segmented block options={PLACEMENT_OPTIONS} />
@@ -663,7 +673,7 @@ export default function Events({ mode }: EventsProps) {
 
       <Typography.Title level={5}>Public card</Typography.Title>
       <Form.Item label="Title" name="title" rules={[{ required: true, message: "Enter an event title" }]}><Input placeholder="Kurundu Sundown Session" /></Form.Item>
-      <Form.Item label="Description" name="description"><Input.TextArea rows={3} placeholder="Short editorial description for listings and emails" /></Form.Item>
+      <Form.Item label="Description" name="description"><Input.TextArea rows={5} placeholder={"Short description\n- Bullet point\n- Use **bold** or *italic* text"} /></Form.Item>
       <Row gutter={12}>
         <Col xs={24} sm={12}><Form.Item label="Category" name="category" rules={[{ required: true, message: "Select a category" }]}><Select options={EVENT_CATEGORY_OPTIONS.map(({ label, value }) => ({ label, value }))} onChange={() => form.setFieldValue("subcategory", undefined)} /></Form.Item></Col>
         <Col xs={24} sm={12}><Form.Item label="Subcategory" name="subcategory"><Select allowClear showSearch placeholder="Select type" options={subcategoryOptions} optionFilterProp="label" /></Form.Item></Col>
@@ -700,7 +710,7 @@ export default function Events({ mode }: EventsProps) {
           <Button icon={<UploadOutlined />} loading={uploadingImages} onClick={() => openUpload("mobile")}>Replace mobile image</Button>
           <Button icon={<UploadOutlined />} loading={uploadingImages} onClick={() => openUpload("offer")}>Replace offer image</Button>
         </Space>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>JPG uploads are stored in S3 under this event id, up to {Math.round(EVENT_IMAGE_MAX_BYTES / 1024)}KB each.</Typography.Text>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>JPG, PNG, and WebP uploads are stored in S3 under this event id, up to {Math.round(EVENT_IMAGE_MAX_BYTES / 1024)}KB each.</Typography.Text>
         {eventImageUrls.length ? <Row gutter={[8, 8]}>{eventImageUrls.map((url) => <Col xs={12} sm={8} key={url}><div style={{ position: "relative" }}>{renderImagePreview(url, "Event")}<Button size="small" danger type="primary" icon={<DeleteOutlined />} aria-label="Remove event image" onClick={() => form.setFieldValue("imageUrls", eventImageUrls.filter((item) => item !== url))} style={{ position: "absolute", top: 6, right: 6 }} /></div></Col>)}</Row> : null}
         <Row gutter={[8, 8]}>{mobileImageUrl ? <Col xs={12}>{renderImagePreview(mobileImageUrl, "Mobile event")}</Col> : null}{offerImageUrl ? <Col xs={12}>{renderImagePreview(offerImageUrl, "Offer")}</Col> : null}</Row>
       </Space>
