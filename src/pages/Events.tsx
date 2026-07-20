@@ -12,6 +12,7 @@ import {
   Button,
   Card,
   Col,
+  Collapse,
   DatePicker,
   Empty,
   Form,
@@ -53,6 +54,7 @@ const VENUES_LIST_ENDPOINT = "/.netlify/functions/api-venues-list";
 const EVENT_IMAGE_MAX_BYTES = 500 * 1024;
 
 type EventFormValues = {
+  placement: EventPlacement;
   startDate: Dayjs;
   endDate?: Dayjs;
   title: string;
@@ -104,6 +106,7 @@ type EventFormValues = {
 type StatusFilter = EventStatus | "all";
 type EventsMode = "add" | "list";
 type ImageUploadTarget = "gallery" | "mobile" | "offer";
+type EventPlacement = "agenda" | "weekly_flow" | "local_perks";
 
 type EventsProps = { mode: EventsMode };
 
@@ -154,7 +157,14 @@ const WEEKDAY_OPTIONS = [
   "Sunday",
 ].map((day) => ({ label: day, value: day }));
 
+const PLACEMENT_OPTIONS: { label: string; value: EventPlacement }[] = [
+  { label: "Agenda", value: "agenda" },
+  { label: "The Weekly Flow", value: "weekly_flow" },
+  { label: "Local Perks", value: "local_perks" },
+];
+
 const INITIAL_VALUES: Partial<EventFormValues> = {
+  placement: "agenda",
   category: "wellness",
   priceType: "free",
   status: "draft",
@@ -215,9 +225,22 @@ function getEventCategoryLabel(value?: EventCategory) {
   return EVENT_CATEGORY_OPTIONS.find((option) => option.value === value)?.label || "Wellness";
 }
 
+function getEventPlacement(record: EventRecord): EventPlacement {
+  if (record.dayKey === "ongoing-this-week" || record.weekday === "The Weekly") return "weekly_flow";
+  if (record.dayKey === "ongoing" || record.weekday === "Local" || record.passBenefit || record.offerText) return "local_perks";
+  return "agenda";
+}
+
+function getEventDateValue(record: EventRecord) {
+  return record.dayKey && /^\d{4}-\d{2}-\d{2}$/.test(record.dayKey)
+    ? record.dayKey
+    : record.startDate;
+}
+
 function eventToFormValues(record: EventRecord): EventFormValues {
   return {
-    startDate: dayjs(record.dayKey || record.startDate),
+    placement: getEventPlacement(record),
+    startDate: dayjs(getEventDateValue(record)),
     endDate: record.endDate ? dayjs(record.endDate) : undefined,
     title: record.title,
     description: record.description || undefined,
@@ -379,6 +402,7 @@ export default function Events({ mode }: EventsProps) {
   const eventImageUrls = Form.useWatch("imageUrls", form) || [];
   const mobileImageUrl = Form.useWatch("mobileImageUrl", form);
   const offerImageUrl = Form.useWatch("offerImageUrl", form);
+  const placement = Form.useWatch("placement", form) || "agenda";
   const recurring = Form.useWatch("recurring", form);
   const recurringType = Form.useWatch("recurringType", form);
   const startDate = Form.useWatch("startDate", form);
@@ -421,6 +445,16 @@ export default function Events({ mode }: EventsProps) {
   useEffect(() => {
     if (mode === "add") form.setFieldsValue(INITIAL_VALUES);
   }, [form, mode]);
+  useEffect(() => {
+    if (placement === "weekly_flow") {
+      form.setFieldsValue({ recurring: true, recurringType: "weekly" });
+      return;
+    }
+
+    if (placement === "local_perks") {
+      form.setFieldsValue({ recurring: false, recurringType: undefined, dayOfWeek: undefined });
+    }
+  }, [form, placement]);
   useEffect(() => {
     if (!recurring || recurringType !== "weekly") {
       form.setFieldValue("dayOfWeek", undefined);
@@ -508,8 +542,14 @@ export default function Events({ mode }: EventsProps) {
 
   const buildPayload = (values: EventFormValues) => {
     const imageUrls = values.imageUrls || [];
+    const placement = values.placement || "agenda";
+    const isWeeklyFlow = placement === "weekly_flow";
+    const isLocalPerk = placement === "local_perks";
+    const isWeeklyRecurring = isWeeklyFlow || (values.recurring && values.recurringType === "weekly");
     return {
       id: editingEvent?.id || eventDraftId,
+      dayKey: isWeeklyFlow ? "ongoing-this-week" : isLocalPerk ? "ongoing" : undefined,
+      weekday: isWeeklyFlow ? "The Weekly" : isLocalPerk ? "Local" : undefined,
       startDate: values.startDate.format("YYYY-MM-DD"),
       endDate: values.endDate ? values.endDate.format("YYYY-MM-DD") : null,
       title: values.title,
@@ -527,9 +567,9 @@ export default function Events({ mode }: EventsProps) {
       startTime: values.startTime.format("HH:mm:ss"),
       endTime: values.endTime ? values.endTime.format("HH:mm:ss") : null,
       displayTime: values.displayTime,
-      recurring: values.recurring ?? false,
-      recurringType: values.recurringType,
-      dayOfWeek: values.recurring && values.recurringType === "weekly"
+      recurring: isWeeklyFlow || (values.recurring ?? false),
+      recurringType: isWeeklyFlow ? "weekly" : values.recurringType,
+      dayOfWeek: isWeeklyRecurring
         ? values.dayOfWeek || values.startDate.format("dddd")
         : undefined,
       priceType: values.priceType,
@@ -614,7 +654,12 @@ export default function Events({ mode }: EventsProps) {
   const renderEventForm = (submitLabel: string) => (
     <Form<EventFormValues> form={form} layout="vertical" initialValues={INITIAL_VALUES} onFinish={handleSubmit}>
       <input ref={eventImageInputRef} type="file" accept="image/jpeg" multiple style={{ display: "none" }} onChange={handleEventImageChange} />
-      <Typography.Title level={5}>Listing details</Typography.Title>
+      <Typography.Title level={5}>Placement</Typography.Title>
+      <Form.Item label="Where should this appear?" name="placement" rules={[{ required: true, message: "Select a placement" }]}>
+        <Segmented block options={PLACEMENT_OPTIONS} />
+      </Form.Item>
+
+      <Typography.Title level={5}>Public card</Typography.Title>
       <Form.Item label="Title" name="title" rules={[{ required: true, message: "Enter an event title" }]}><Input placeholder="Kurundu Sundown Session" /></Form.Item>
       <Form.Item label="Description" name="description"><Input.TextArea rows={3} placeholder="Short editorial description for listings and emails" /></Form.Item>
       <Row gutter={12}>
@@ -628,11 +673,8 @@ export default function Events({ mode }: EventsProps) {
       <Row gutter={12}>
         <Col xs={24} sm={12}><Form.Item label="Instagram URL" name="instagramUrl"><Input placeholder="https://www.instagram.com/..." /></Form.Item></Col>
         <Col xs={24} sm={12}><Form.Item label="Directions URL" name="directionsUrl"><Input placeholder="https://maps.app.goo.gl/..." /></Form.Item></Col>
-        <Col xs={24} sm={12}><Form.Item label="Venue Instagram snapshot" name="venueInstagram"><Input placeholder="@venue or URL" /></Form.Item></Col>
-        <Col xs={24} sm={12}><Form.Item label="Venue Google snapshot" name="venueGoogleUrl"><Input placeholder="Google Maps URL" /></Form.Item></Col>
-        <Col xs={24} sm={12}><Form.Item label="Latitude" name="venueLat"><InputNumber style={{ width: "100%" }} placeholder={formatReadonlyNumber(selectedVenue?.lat)} /></Form.Item></Col>
-        <Col xs={24} sm={12}><Form.Item label="Longitude" name="venueLng"><InputNumber style={{ width: "100%" }} placeholder={formatReadonlyNumber(selectedVenue?.lng)} /></Form.Item></Col>
       </Row>
+      <Form.Item label="Extra details / schedule notes" name="details"><Select mode="tags" tokenSeparators={["\n"]} placeholder="Add detail lines" /></Form.Item>
       <Row gutter={12}>
         <Col xs={24} sm={12}><Form.Item label="Start date" name="startDate" rules={[{ required: true, message: "Select a start date" }]}><DatePicker placeholder="Required" style={{ width: "100%" }} /></Form.Item></Col>
         <Col xs={24} sm={12}><Form.Item label="End date" name="endDate"><DatePicker placeholder="Optional" style={{ width: "100%" }} /></Form.Item></Col>
@@ -642,11 +684,9 @@ export default function Events({ mode }: EventsProps) {
         <Col xs={24} sm={12}><Form.Item label="End time" name="endTime"><TimePicker use12Hours format="h:mm A" minuteStep={5} placeholder="Optional" style={{ width: "100%" }} /></Form.Item></Col>
       </Row>
       <Form.Item label="Display time" name="displayTime"><Input placeholder="Happy Hour: 5:00 PM - 7:00 PM" /></Form.Item>
-      <Row gutter={12}>
-        <Col xs={24} sm={8}><Form.Item label="Recurring" name="recurring" valuePropName="checked"><Switch /></Form.Item></Col>
-        <Col xs={24} sm={8}><Form.Item label="Recurring type" name="recurringType"><Select disabled={!recurring} options={[{ label: "Daily", value: "daily" }, { label: "Weekly", value: "weekly" }, { label: "Monthly", value: "monthly" }]} /></Form.Item></Col>
-        {recurring && recurringType === "weekly" ? <Col xs={24} sm={8}><Form.Item label="Repeat day" name="dayOfWeek" rules={[{ required: true, message: "Select a repeat day" }]}><Select options={WEEKDAY_OPTIONS} /></Form.Item></Col> : null}
-      </Row>
+      {placement === "weekly_flow" ? <Row gutter={12}>
+        <Col xs={24} sm={12}><Form.Item label="Repeat day" name="dayOfWeek" rules={[{ required: true, message: "Select a repeat day" }]}><Select options={WEEKDAY_OPTIONS} /></Form.Item></Col>
+      </Row> : null}
 
       <Typography.Title level={5}>Images and offer</Typography.Title>
       <Form.Item name="imageUrls" hidden><Select mode="multiple" /></Form.Item>
@@ -662,48 +702,83 @@ export default function Events({ mode }: EventsProps) {
         {eventImageUrls.length ? <Row gutter={[8, 8]}>{eventImageUrls.map((url) => <Col xs={12} sm={8} key={url}><div style={{ position: "relative" }}>{renderImagePreview(url, "Event")}<Button size="small" danger type="primary" icon={<DeleteOutlined />} aria-label="Remove event image" onClick={() => form.setFieldValue("imageUrls", eventImageUrls.filter((item) => item !== url))} style={{ position: "absolute", top: 6, right: 6 }} /></div></Col>)}</Row> : null}
         <Row gutter={[8, 8]}>{mobileImageUrl ? <Col xs={12}>{renderImagePreview(mobileImageUrl, "Mobile event")}</Col> : null}{offerImageUrl ? <Col xs={12}>{renderImagePreview(offerImageUrl, "Offer")}</Col> : null}</Row>
       </Space>
-      <Form.Item label="Offer text" name="offerText"><Input.TextArea rows={2} placeholder="20% off cocktails" /></Form.Item>
-
-      <Typography.Title level={5}>Booking and promotion</Typography.Title>
-      <Row gutter={12}>
-        <Col xs={24} sm={12}><Form.Item label="Price type" name="priceType"><Select options={[{ label: "Free", value: "free" }, { label: "Paid", value: "paid" }]} /></Form.Item></Col>
-        <Col xs={24} sm={12}><Form.Item label="Price" name="price"><Input disabled={priceType === "free"} placeholder="Rs 5,000" /></Form.Item></Col>
-      </Row>
-      <Form.Item label="Booking URL" name="bookingUrl"><Input placeholder="https://..." /></Form.Item>
-      <Form.Item label="WhatsApp number" name="whatsappNumber"><Input placeholder="+94..." /></Form.Item>
-      <Form.Item label="Details" name="details"><Select mode="tags" tokenSeparators={["\n"]} placeholder="Add detail lines" /></Form.Item>
-      <Form.Item label="Venue links" name="venueLinks"><Select mode="tags" placeholder="Add venue links" /></Form.Item>
-      <Row gutter={12}>
-        <Col xs={24} sm={8}><Form.Item label="Pass label" name={["passBenefit", "label"]}><Input placeholder="Ahangama Pass" /></Form.Item></Col>
-        <Col xs={24} sm={8}><Form.Item label="Pass discount" name={["passBenefit", "discount"]}><Input placeholder="10% off" /></Form.Item></Col>
-        <Col xs={24} sm={8}><Form.Item label="Pass perk" name={["passBenefit", "perk"]}><Input placeholder="10% off the daily special" /></Form.Item></Col>
-      </Row>
-      <Form.Item label="Tags" name="tags"><Select mode="tags" placeholder="Add tags" options={EVENT_TAG_OPTIONS} /></Form.Item>
+      {placement === "local_perks" ? <>
+        <Typography.Title level={5}>Local perk</Typography.Title>
+        <Form.Item label="Offer text" name="offerText" rules={[{ required: true, message: "Enter the perk or offer text" }]}><Input.TextArea rows={2} placeholder="20% off cocktails" /></Form.Item>
+        <Row gutter={12}>
+          <Col xs={24} sm={8}><Form.Item label="Pass name" name={["passBenefit", "label"]}><Input placeholder="Ahangama Pass" /></Form.Item></Col>
+          <Col xs={24} sm={8}><Form.Item label="Discount" name={["passBenefit", "discount"]}><Input placeholder="10% off" /></Form.Item></Col>
+          <Col xs={24} sm={8}><Form.Item label="Redemption text" name={["passBenefit", "perk"]}><Input placeholder="10% off the daily special" /></Form.Item></Col>
+        </Row>
+      </> : null}
 
       <Typography.Title level={5}>Publishing</Typography.Title>
       <Row gutter={12}>
-        <Col xs={24} sm={12}><Form.Item label="Status" name="status"><Select options={STATUS_OPTIONS} /></Form.Item></Col>
-        <Col xs={24} sm={12}><Form.Item label="Event order" name="eventOrder"><InputNumber style={{ width: "100%" }} /></Form.Item></Col>
-        <Col xs={24} sm={12}><Form.Item label="Source" name="source"><Input placeholder="Instagram, partner, direct, seed, etc." /></Form.Item></Col>
-        <Col xs={24} sm={12}><Form.Item label="Source key" name="sourceKey"><Input placeholder="Stable seed/source key" /></Form.Item></Col>
+        <Col xs={24} sm={12}><Form.Item label="Publishing status" name="status"><Select options={STATUS_OPTIONS} /></Form.Item></Col>
+        <Col xs={24} sm={12}><Form.Item label="Sort order" name="eventOrder"><InputNumber style={{ width: "100%" }} /></Form.Item></Col>
       </Row>
       <Row gutter={12}>
         <Col xs={24} sm={8}><Form.Item label="Featured" name="featured" valuePropName="checked"><Switch /></Form.Item></Col>
         <Col xs={24} sm={8}><Form.Item label="Editor's pick" name="editorialPick" valuePropName="checked"><Switch /></Form.Item></Col>
         <Col xs={24} sm={8}><Form.Item label="This week" name="featuredThisWeek" valuePropName="checked"><Switch /></Form.Item></Col>
       </Row>
-      <Form.Item label="Last verified" name="lastVerifiedAt"><DatePicker style={{ width: "100%" }} /></Form.Item>
-      <Typography.Title level={5}>Intelligence email</Typography.Title>
-      <Row gutter={12}>
-        <Col xs={24} sm={12}><Form.Item label="Intelligence score" name="intelligenceScore"><InputNumber min={0} max={100} style={{ width: "100%" }} /></Form.Item></Col>
-        <Col xs={24} sm={12}><Form.Item label="Editor priority" name="editorPriority"><Select options={[{ label: "Low", value: "low" }, { label: "Medium", value: "medium" }, { label: "High", value: "high" }]} /></Form.Item></Col>
-      </Row>
-      <Row gutter={12}>
-        <Col xs={24} sm={12}><Form.Item label="Audience" name="audience"><Select options={[{ label: "Tourist", value: "tourist" }, { label: "Resident", value: "resident" }, { label: "Both", value: "both" }]} /></Form.Item></Col>
-        <Col xs={24} sm={12}><Form.Item label="Season" name="season"><Select options={[{ label: "High", value: "high" }, { label: "Shoulder", value: "shoulder" }, { label: "Low", value: "low" }]} /></Form.Item></Col>
-      </Row>
-      <Form.Item label="Editor notes" name="editorNotes"><Input.TextArea rows={3} placeholder="Why it matters, positioning, email angle" /></Form.Item>
-      <Form.Item label="Internal notes" name="notes"><Input.TextArea rows={3} placeholder="Operational notes" /></Form.Item>
+      <Collapse
+        size="small"
+        items={[
+          {
+            key: "booking",
+            label: "Booking and promotion",
+            children: <>
+              <Row gutter={12}>
+                <Col xs={24} sm={12}><Form.Item label="Price type" name="priceType"><Select options={[{ label: "Free", value: "free" }, { label: "Paid", value: "paid" }]} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Price" name="price"><Input disabled={priceType === "free"} placeholder="Rs 5,000" /></Form.Item></Col>
+              </Row>
+              <Form.Item label="Booking URL" name="bookingUrl"><Input placeholder="https://..." /></Form.Item>
+              <Form.Item label="WhatsApp number" name="whatsappNumber"><Input placeholder="+94..." /></Form.Item>
+              <Form.Item label="Extra links" name="venueLinks"><Select mode="tags" placeholder="Add venue or booking links" /></Form.Item>
+            </>,
+          },
+          {
+            key: "venue",
+            label: "Venue snapshots",
+            children: <Row gutter={12}>
+              <Col xs={24} sm={12}><Form.Item label="Venue Instagram snapshot" name="venueInstagram"><Input placeholder="@venue or URL" /></Form.Item></Col>
+              <Col xs={24} sm={12}><Form.Item label="Venue Google snapshot" name="venueGoogleUrl"><Input placeholder="Google Maps URL" /></Form.Item></Col>
+              <Col xs={24} sm={12}><Form.Item label="Latitude" name="venueLat"><InputNumber style={{ width: "100%" }} placeholder={formatReadonlyNumber(selectedVenue?.lat)} /></Form.Item></Col>
+              <Col xs={24} sm={12}><Form.Item label="Longitude" name="venueLng"><InputNumber style={{ width: "100%" }} placeholder={formatReadonlyNumber(selectedVenue?.lng)} /></Form.Item></Col>
+            </Row>,
+          },
+          {
+            key: "intelligence",
+            label: "Intelligence email",
+            children: <>
+              <Row gutter={12}>
+                <Col xs={24} sm={12}><Form.Item label="Intelligence score" name="intelligenceScore"><InputNumber min={0} max={100} style={{ width: "100%" }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Editor priority" name="editorPriority"><Select options={[{ label: "Low", value: "low" }, { label: "Medium", value: "medium" }, { label: "High", value: "high" }]} /></Form.Item></Col>
+              </Row>
+              <Row gutter={12}>
+                <Col xs={24} sm={12}><Form.Item label="Audience" name="audience"><Select options={[{ label: "Tourist", value: "tourist" }, { label: "Resident", value: "resident" }, { label: "Both", value: "both" }]} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Season" name="season"><Select options={[{ label: "High", value: "high" }, { label: "Shoulder", value: "shoulder" }, { label: "Low", value: "low" }]} /></Form.Item></Col>
+              </Row>
+              <Form.Item label="Editor notes" name="editorNotes"><Input.TextArea rows={3} placeholder="Why it matters, positioning, email angle" /></Form.Item>
+            </>,
+          },
+          {
+            key: "internal",
+            label: "Internal admin",
+            children: <>
+              <Row gutter={12}>
+                <Col xs={24} sm={12}><Form.Item label="Source" name="source"><Input placeholder="Instagram, partner, direct, seed, etc." /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Import/source key" name="sourceKey"><Input placeholder="Stable seed/source key" /></Form.Item></Col>
+              </Row>
+              <Form.Item label="Tags" name="tags"><Select mode="tags" placeholder="Add tags" options={EVENT_TAG_OPTIONS} /></Form.Item>
+              <Form.Item label="Last verified" name="lastVerifiedAt"><DatePicker style={{ width: "100%" }} /></Form.Item>
+              <Form.Item label="Internal notes" name="notes"><Input.TextArea rows={3} placeholder="Operational notes" /></Form.Item>
+            </>,
+          },
+        ]}
+        style={{ marginBottom: 20 }}
+      />
       <Button type="primary" htmlType="submit" size="large" loading={saving} block>{submitLabel}</Button>
     </Form>
   );
