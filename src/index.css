@@ -283,7 +283,7 @@ body {
   width: 100%;
   max-width: 430px;
   margin: 0 auto;
-  padding: 0 18px;
+  padding: 0 26px 28px;
   background: #ffffff;
   color: #241f1d;
   box-sizing: border-box;
@@ -293,7 +293,7 @@ body {
   display: grid;
   justify-items: start;
   gap: 0;
-  margin-bottom: 34px;
+  margin-bottom: 28px;
   text-align: left;
 }
 
@@ -303,52 +303,41 @@ body {
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 13px;
   font-weight: 850;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.34em;
   line-height: 1;
   text-transform: uppercase;
   color: #2b2725;
 }
 
 .mobile-event__month {
-  margin-top: 20px;
+  margin-top: 22px;
 }
 
 .mobile-event__day {
-  margin-top: 28px;
+  margin-top: 22px;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 88px;
+  font-size: 86px;
   font-weight: 400;
-  line-height: 0.68;
+  line-height: 0.72;
   letter-spacing: 0;
   color: #211d1b;
 }
 
 .mobile-event__card {
-  position: relative;
+  position: static;
   width: 100%;
   overflow: hidden;
-  background: #241f1d;
+  background: #ffffff;
 }
 
 .mobile-event__card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.02) 0%,
-    rgba(0, 0, 0, 0.08) 34%,
-    rgba(0, 0, 0, 0.58) 72%,
-    rgba(0, 0, 0, 0.76) 100%
-  );
+  content: none;
 }
 
 .mobile-event__imageWrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 0.72;
+  aspect-ratio: 1.45 / 1;
   background: #eee9df;
 }
 
@@ -360,34 +349,30 @@ body {
 }
 
 .mobile-event__content {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2;
-  padding: 0 28px 28px;
-  color: #ffffff;
+  position: static;
+  padding: 18px 0 0;
+  color: #241f1d;
 }
 
 .mobile-event__content h2 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(30px, 8.5vw, 38px);
+  font-size: 31px;
   font-weight: 400;
-  line-height: 1;
+  line-height: 0.92;
   letter-spacing: 0;
   text-transform: none;
-  color: #ffffff;
+  color: #241f1d;
   overflow-wrap: anywhere;
 }
 
 .mobile-event__venue {
   margin: 8px 0 0;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 19px;
+  font-size: 14px;
   font-weight: 400;
   line-height: 1.2;
-  color: rgba(255, 255, 255, 0.9);
+  color: #6d625b;
 }
 
 .mobile-event__meta {
@@ -395,51 +380,55 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 11px;
+  gap: 9px;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.88);
+  color: #6a625d;
 }
 
 .mobile-event__meta span {
-  gap: 9px;
+  gap: 7px;
 }
 
 .mobile-event__meta .anticon {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 18px;
+  color: #2f2b28;
+  font-size: 15px;
 }
 
 .mobile-event__description {
   margin: 18px 0 0;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 1.38;
-  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.55;
+  color: #5f5651;
 }
 
 .mobile-event__actions {
-  margin-top: 20px;
+  margin-top: 16px;
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 16px;
 }
 
 .mobile-event__actions a {
-  width: 32px;
-  height: 32px;
-  color: #ffffff;
+  width: 24px;
+  height: 24px;
+  color: #241f1d;
 }
 
 .mobile-event__actions .anticon {
-  font-size: 26px;
+  font-size: 22px;
+}
+
+.mobile-event__dots {
+  display: none;
 }
 
 @media (max-width: 360px) {
   .mobile-event {
-    padding-inline: 16px;
+    padding-inline: 20px;
   }
 
   .mobile-event__day {
@@ -447,11 +436,11 @@ body {
   }
 
   .mobile-event__content h2 {
-    font-size: 42px;
+    font-size: 28px;
   }
 
   .mobile-event__venue {
-    font-size: 22px;
+    font-size: 14px;
   }
 
   .mobile-event__meta {
@@ -459,7 +448,7 @@ body {
   }
 
   .mobile-event__description {
-    font-size: 19px;
+    font-size: 14px;
   }
 }
 

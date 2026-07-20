@@ -298,6 +298,7 @@ function EventListingPreview({
   title,
   venueName,
   category,
+  subcategory,
   description,
   imageUrls,
   instagramUrl,
@@ -309,6 +310,7 @@ function EventListingPreview({
   title?: string;
   venueName?: string;
   category?: EventCategory;
+  subcategory?: string;
   description?: string;
   imageUrls?: string[];
   instagramUrl?: string;
@@ -322,7 +324,7 @@ function EventListingPreview({
   const titleLabel = title?.trim() || "BREATHWORK";
   const venueLabel = venueName?.trim() || "Ember & Ice";
   const timeLabel = displayTime?.trim() || (startTime ? startTime.format("h.mma").toUpperCase() : "10.00AM");
-  const categoryLabel = getEventCategoryLabel(category);
+  const categoryLabel = subcategory?.trim() || getEventCategoryLabel(category);
   const descriptionLabel = description?.trim() || "Breathwork session with Ember & Ice.";
   const previewImage = imageUrls?.[0] || "https://ahangama.com/Images%20for%20Events%20Calendar/Ember%20&%20Ice%20-%20Breathworking%20Image_.png";
   const instagramHref = instagramUrl || "https://www.instagram.com/emberandiceahangama";
@@ -845,7 +847,7 @@ export default function Events({ mode }: EventsProps) {
         <Row gutter={[16, 16]}>
           <Col xs={24} xl={12}>
             <Card title="Event preview" styles={{ body: { padding: 20 } }} style={{ borderRadius: 20, border: "1px solid rgba(15, 23, 42, 0.06)", boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)", position: "sticky", top: 24 }}>
-              <EventListingPreview eventDate={previewValues.startDate} title={previewValues.title} venueName={previewValues.venueName || selectedVenue?.name} category={previewValues.category} description={previewValues.description} imageUrls={eventImageUrls} instagramUrl={previewValues.instagramUrl || getVenueInstagramAccount(selectedVenue)} directionsUrl={previewValues.directionsUrl || getVenueGoogleUrl(selectedVenue)} startTime={previewValues.startTime} displayTime={previewValues.displayTime} />
+              <EventListingPreview eventDate={previewValues.startDate} title={previewValues.title} venueName={previewValues.venueName || selectedVenue?.name} category={previewValues.category} subcategory={previewValues.subcategory} description={previewValues.description} imageUrls={eventImageUrls} instagramUrl={previewValues.instagramUrl || getVenueInstagramAccount(selectedVenue)} directionsUrl={previewValues.directionsUrl || getVenueGoogleUrl(selectedVenue)} startTime={previewValues.startTime} displayTime={previewValues.displayTime} />
             </Card>
           </Col>
           <Col xs={24} xl={12}><Card title="Add event" styles={{ body: { padding: 20 } }} style={{ borderRadius: 20, border: "1px solid rgba(15, 23, 42, 0.06)", boxShadow: "0 14px 32px rgba(15, 23, 42, 0.04)" }}>{renderEventForm("Add event")}</Card></Col>
