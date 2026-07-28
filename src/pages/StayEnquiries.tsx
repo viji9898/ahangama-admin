@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { EyeOutlined } from "@ant-design/icons";
+import { EyeOutlined, LoadingOutlined } from "@ant-design/icons";
 import {
   Alert,
   Button,
@@ -356,22 +356,37 @@ export default function StayEnquiries() {
         title={`Stay enquiries (${filteredEnquiries.length})`}
         styles={{ body: { padding: 0 } }}
       >
-        <Table<StayEnquiry>
-          rowKey="id"
-          columns={columns}
-          dataSource={filteredEnquiries}
-          loading={loading}
-          scroll={{ x: 1200 }}
-          pagination={{ pageSize: 20, showSizeChanger: true }}
-          locale={{
-            emptyText: (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No stay enquiries found."
-              />
-            ),
-          }}
-        />
+        {loading ? (
+          <Space
+            role="status"
+            aria-live="polite"
+            direction="vertical"
+            align="center"
+            size={12}
+            style={{ display: "flex", padding: 64 }}
+          >
+            <LoadingOutlined spin style={{ fontSize: 32, color: "#1677ff" }} />
+            <Typography.Text type="secondary">
+              Loading stay enquiries...
+            </Typography.Text>
+          </Space>
+        ) : (
+          <Table<StayEnquiry>
+            rowKey="id"
+            columns={columns}
+            dataSource={filteredEnquiries}
+            scroll={{ x: 1200 }}
+            pagination={{ pageSize: 20, showSizeChanger: true }}
+            locale={{
+              emptyText: (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="No stay enquiries found."
+                />
+              ),
+            }}
+          />
+        )}
       </Card>
 
       <Modal
