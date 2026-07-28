@@ -14,11 +14,24 @@ import {
   TeamOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Grid, Layout, Menu, Space, Typography, message } from "antd";
+import {
+  Badge,
+  Button,
+  Grid,
+  Layout,
+  Menu,
+  Space,
+  Typography,
+  message,
+} from "antd";
 import "antd/dist/reset.css";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/useAuth";
+
+const STAY_ENQUIRIES_SUMMARY_ENDPOINT =
+  "/.netlify/functions/api-stay-enquiries-list?summary=true";
+const UNREAD_COUNT_EVENT = "stay-enquiries-unread-change";
 
 const navItems = [
   { key: "/admin", label: "Home", icon: <HomeOutlined /> },
@@ -125,11 +138,83 @@ export default function AdminShell() {
   const screens = Grid.useBreakpoint();
   const [loggingOut, setLoggingOut] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadEnquiryCount, setUnreadEnquiryCount] = useState(0);
 
   const displayName = (user?.name || user?.email || "").toString();
   const isSmallScreen = !screens.md;
   const navCollapsed = !isSmallScreen && collapsed;
   const selectedKey = getSelectedKey(location.pathname);
+  const menuItems = useMemo(
+    () =>
+      navItems.map((item) =>
+        item.key === "/admin/enquiries"
+          ? {
+              ...item,
+              label: (
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                  }}
+                >
+                  <span>Enquiries</span>
+                  {unreadEnquiryCount > 0 ? (
+                    <Badge
+                      count={unreadEnquiryCount}
+                      overflowCount={99}
+                      size="small"
+                    />
+                  ) : null}
+                </span>
+              ),
+            }
+          : item,
+      ),
+    [unreadEnquiryCount],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadUnreadCount = async () => {
+      try {
+        const response = await fetch(STAY_ENQUIRIES_SUMMARY_ENDPOINT, {
+          credentials: "include",
+          signal: controller.signal,
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          unreadCount?: number;
+        };
+        if (response.ok && Number.isFinite(payload.unreadCount)) {
+          setUnreadEnquiryCount(Math.max(0, Number(payload.unreadCount)));
+        }
+      } catch (loadError) {
+        if ((loadError as Error)?.name !== "AbortError") {
+          console.error("Failed to load unread enquiry count", loadError);
+        }
+      }
+    };
+
+    const handleUnreadCountChange = (event: Event) => {
+      const count = (event as CustomEvent<{ unreadCount?: number }>).detail
+        ?.unreadCount;
+      if (Number.isFinite(count)) {
+        setUnreadEnquiryCount(Math.max(0, Number(count)));
+      }
+    };
+
+    void loadUnreadCount();
+    const intervalId = window.setInterval(() => void loadUnreadCount(), 60_000);
+    window.addEventListener(UNREAD_COUNT_EVENT, handleUnreadCountChange);
+
+    return () => {
+      controller.abort();
+      window.clearInterval(intervalId);
+      window.removeEventListener(UNREAD_COUNT_EVENT, handleUnreadCountChange);
+    };
+  }, []);
 
   const logout = async () => {
     setLoggingOut(true);
@@ -207,7 +292,7 @@ export default function AdminShell() {
               "/admin/enquiries",
               "/ga-menu",
             ]}
-            items={navItems}
+            items={menuItems}
             onClick={({ key }) => navigate(key)}
             style={{
               borderInlineEnd: 0,

@@ -9,14 +9,19 @@ import {
   Input,
   Modal,
   Space,
+  Switch,
   Table,
   Tag,
   Typography,
+  message,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 const STAY_ENQUIRIES_ENDPOINT =
   "/.netlify/functions/api-stay-enquiries-list";
+const STAY_ENQUIRIES_READ_ENDPOINT =
+  "/.netlify/functions/api-stay-enquiries-read";
+const UNREAD_COUNT_EVENT = "stay-enquiries-unread-change";
 
 type StayEnquiry = {
   id: string;
@@ -32,6 +37,7 @@ type StayEnquiry = {
   notes: string | null;
   source: string;
   status: string;
+  is_read: boolean;
   notification_sent_at: string | null;
   created_at: string;
   updated_at: string;
@@ -41,6 +47,7 @@ type StayEnquiriesPayload = {
   ok?: boolean;
   error?: string;
   enquiries?: StayEnquiry[];
+  unreadCount?: number;
 };
 
 function formatLabel(value: string) {
@@ -78,6 +85,8 @@ export default function StayEnquiries() {
   const [selectedEnquiry, setSelectedEnquiry] =
     useState<StayEnquiry | null>(null);
   const [search, setSearch] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -103,7 +112,19 @@ export default function StayEnquiries() {
           );
         }
 
-        setEnquiries(Array.isArray(payload.enquiries) ? payload.enquiries : []);
+        const loadedEnquiries = Array.isArray(payload.enquiries)
+          ? payload.enquiries
+          : [];
+        setEnquiries(loadedEnquiries);
+        const loadedUnreadCount =
+          payload.unreadCount ??
+          loadedEnquiries.filter((enquiry) => !enquiry.is_read).length;
+        setUnreadCount(loadedUnreadCount);
+        window.dispatchEvent(
+          new CustomEvent(UNREAD_COUNT_EVENT, {
+            detail: { unreadCount: loadedUnreadCount },
+          }),
+        );
       } catch (loadError) {
         if ((loadError as Error)?.name === "AbortError") return;
         setError(String((loadError as Error)?.message || loadError));
@@ -128,6 +149,69 @@ export default function StayEnquiries() {
       ),
     );
   }, [enquiries, search]);
+
+  const updateReadState = async (enquiry: StayEnquiry, isRead: boolean) => {
+    setUpdatingIds((current) => new Set(current).add(enquiry.id));
+
+    try {
+      const response = await fetch(STAY_ENQUIRIES_READ_ENDPOINT, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: enquiry.id, isRead }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        enquiry?: { updated_at?: string };
+      };
+
+      if (!response.ok || payload.ok === false) {
+        throw new Error(
+          payload.error || `Failed to update enquiry (${response.status})`,
+        );
+      }
+
+      const nextEnquiries = enquiries.map((item) =>
+        item.id === enquiry.id
+          ? {
+              ...item,
+              is_read: isRead,
+              updated_at: payload.enquiry?.updated_at || item.updated_at,
+            }
+          : item,
+      );
+      const nextUnreadCount = Math.max(
+        0,
+        unreadCount +
+          (!enquiry.is_read && isRead ? -1 : enquiry.is_read && !isRead ? 1 : 0),
+      );
+      setEnquiries(nextEnquiries);
+      setUnreadCount(nextUnreadCount);
+      setSelectedEnquiry((current) =>
+        current?.id === enquiry.id
+          ? {
+              ...current,
+              is_read: isRead,
+              updated_at: payload.enquiry?.updated_at || current.updated_at,
+            }
+          : current,
+      );
+      window.dispatchEvent(
+        new CustomEvent(UNREAD_COUNT_EVENT, {
+          detail: { unreadCount: nextUnreadCount },
+        }),
+      );
+    } catch (updateError) {
+      message.error(String((updateError as Error)?.message || updateError));
+    } finally {
+      setUpdatingIds((current) => {
+        const next = new Set(current);
+        next.delete(enquiry.id);
+        return next;
+      });
+    }
+  };
 
   const columns: ColumnsType<StayEnquiry> = [
     {
@@ -181,6 +265,26 @@ export default function StayEnquiries() {
       key: "status",
       render: (value: string) => (
         <Tag color={statusColor(value)}>{formatLabel(value)}</Tag>
+      ),
+    },
+    {
+      title: "Read",
+      dataIndex: "is_read",
+      key: "is_read",
+      width: 100,
+      filters: [
+        { text: "Unread", value: false },
+        { text: "Read", value: true },
+      ],
+      onFilter: (value, record) => record.is_read === value,
+      render: (value: boolean, record) => (
+        <Switch
+          checked={value}
+          checkedChildren="Read"
+          unCheckedChildren="Unread"
+          loading={updatingIds.has(record.id)}
+          onChange={(checked) => void updateReadState(record, checked)}
+        />
       ),
     },
     {
@@ -286,6 +390,17 @@ export default function StayEnquiries() {
               <Tag color={statusColor(selectedEnquiry.status)}>
                 {formatLabel(selectedEnquiry.status)}
               </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Read">
+              <Switch
+                checked={selectedEnquiry.is_read}
+                checkedChildren="Read"
+                unCheckedChildren="Unread"
+                loading={updatingIds.has(selectedEnquiry.id)}
+                onChange={(checked) =>
+                  void updateReadState(selectedEnquiry, checked)
+                }
+              />
             </Descriptions.Item>
             <Descriptions.Item label="Email">
               <Typography.Link href={`mailto:${selectedEnquiry.email}`}>

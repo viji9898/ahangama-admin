@@ -17,6 +17,18 @@ export async function handler(event) {
 
     requireAdmin(event);
 
+    if (event.queryStringParameters?.summary === "true") {
+      const countResult = await queryFromEnv(
+        DATABASE_ENV,
+        `SELECT COUNT(*)::int AS unread_count FROM stay_enquiries WHERE is_read = false`,
+      );
+
+      return json(200, {
+        ok: true,
+        unreadCount: countResult.rows[0]?.unread_count || 0,
+      });
+    }
+
     const result = await queryFromEnv(
       DATABASE_ENV,
       `
@@ -34,6 +46,7 @@ export async function handler(event) {
           notes,
           source,
           status,
+          is_read,
           notification_sent_at,
           created_at,
           updated_at
@@ -42,8 +55,16 @@ export async function handler(event) {
         LIMIT 1000
       `,
     );
+    const countResult = await queryFromEnv(
+      DATABASE_ENV,
+      `SELECT COUNT(*)::int AS unread_count FROM stay_enquiries WHERE is_read = false`,
+    );
 
-    return json(200, { ok: true, enquiries: result.rows });
+    return json(200, {
+      ok: true,
+      enquiries: result.rows,
+      unreadCount: countResult.rows[0]?.unread_count || 0,
+    });
   } catch (error) {
     return json(error?.statusCode || 500, {
       ok: false,
