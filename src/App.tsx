@@ -15,6 +15,7 @@ import GAAnalytics from "./pages/GAAnalytics";
 import GAFreePassScans from "./pages/GAFreePassScans";
 import GuestPassUsers from "./pages/GuestPassUsers";
 import HospoPassProfiles from "./pages/HospoPassProfiles";
+import PaidPassUsers from "./pages/PaidPassUsers";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import { RequireAuth } from "./auth/RequireAuth";
 import AdminShell from "./pages/AdminShell";
@@ -43,8 +44,9 @@ export default function App() {
           <Route path="travel-agents" element={<TravelAgentsCRM />} />
           <Route
             path="pass-users"
-            element={<Navigate to="/admin/pass-users/hospo" replace />}
+            element={<Navigate to="/admin/pass-users/paid" replace />}
           />
+          <Route path="pass-users/paid" element={<PaidPassUsers />} />
           <Route path="pass-users/hospo" element={<HospoPassProfiles />} />
           <Route path="pass-users/circle" element={<CirclePassUsers />} />
           <Route path="pass-users/guest-pass" element={<GuestPassUsers />} />

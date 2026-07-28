@@ -49,6 +49,7 @@ const navItems = [
     label: "Pass Users Details",
     icon: <UserOutlined />,
     children: [
+      { key: "/admin/pass-users/paid", label: "Paid Pass" },
       { key: "/admin/pass-users/hospo", label: "Hospo" },
       { key: "/admin/pass-users/circle", label: "Circle" },
       { key: "/admin/pass-users/guest-pass", label: "Guest Pass" },
@@ -91,7 +92,7 @@ const getSelectedKey = (pathname: string) => {
 
   if (pathname.startsWith("/admin/pass-users")) {
     return pathname === "/admin/pass-users"
-      ? "/admin/pass-users/hospo"
+      ? "/admin/pass-users/paid"
       : pathname;
   }
 
