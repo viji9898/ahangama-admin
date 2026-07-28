@@ -16,6 +16,7 @@ import GAFreePassScans from "./pages/GAFreePassScans";
 import GuestPassUsers from "./pages/GuestPassUsers";
 import HospoPassProfiles from "./pages/HospoPassProfiles";
 import PaidPassUsers from "./pages/PaidPassUsers";
+import StayEnquiries from "./pages/StayEnquiries";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import { RequireAuth } from "./auth/RequireAuth";
 import AdminShell from "./pages/AdminShell";
@@ -50,6 +51,11 @@ export default function App() {
           <Route path="pass-users/hospo" element={<HospoPassProfiles />} />
           <Route path="pass-users/circle" element={<CirclePassUsers />} />
           <Route path="pass-users/guest-pass" element={<GuestPassUsers />} />
+          <Route
+            path="enquiries"
+            element={<Navigate to="/admin/enquiries/stays" replace />}
+          />
+          <Route path="enquiries/stays" element={<StayEnquiries />} />
           <Route path="call-logs" element={<CallLogs />} />
           <Route
             path="events"

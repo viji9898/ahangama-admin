@@ -7,6 +7,7 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  MessageOutlined,
   PhoneOutlined,
   QrcodeOutlined,
   ShopOutlined,
@@ -61,6 +62,12 @@ const navItems = [
     icon: <PhoneOutlined />,
   },
   {
+    key: "/admin/enquiries",
+    label: "Enquiries",
+    icon: <MessageOutlined />,
+    children: [{ key: "/admin/enquiries/stays", label: "Stays" }],
+  },
+  {
     key: "/admin/events",
     label: "Events",
     icon: <CalendarOutlined />,
@@ -93,6 +100,12 @@ const getSelectedKey = (pathname: string) => {
   if (pathname.startsWith("/admin/pass-users")) {
     return pathname === "/admin/pass-users"
       ? "/admin/pass-users/paid"
+      : pathname;
+  }
+
+  if (pathname.startsWith("/admin/enquiries")) {
+    return pathname === "/admin/enquiries"
+      ? "/admin/enquiries/stays"
       : pathname;
   }
 
@@ -188,7 +201,12 @@ export default function AdminShell() {
             mode={isSmallScreen ? "horizontal" : "inline"}
             inlineCollapsed={isSmallScreen ? undefined : collapsed}
             selectedKeys={[selectedKey]}
-            defaultOpenKeys={["/admin/events", "/admin/pass-users", "/ga-menu"]}
+            defaultOpenKeys={[
+              "/admin/events",
+              "/admin/pass-users",
+              "/admin/enquiries",
+              "/ga-menu",
+            ]}
             items={navItems}
             onClick={({ key }) => navigate(key)}
             style={{
