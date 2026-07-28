@@ -17,6 +17,7 @@ import GuestPassUsers from "./pages/GuestPassUsers";
 import HospoPassProfiles from "./pages/HospoPassProfiles";
 import PaidPassUsers from "./pages/PaidPassUsers";
 import StayEnquiries from "./pages/StayEnquiries";
+import TransportEnquiries from "./pages/TransportEnquiries";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import { RequireAuth } from "./auth/RequireAuth";
 import AdminShell from "./pages/AdminShell";
@@ -56,6 +57,10 @@ export default function App() {
             element={<Navigate to="/admin/enquiries/stays" replace />}
           />
           <Route path="enquiries/stays" element={<StayEnquiries />} />
+          <Route
+            path="enquiries/transport"
+            element={<TransportEnquiries />}
+          />
           <Route path="call-logs" element={<CallLogs />} />
           <Route
             path="events"

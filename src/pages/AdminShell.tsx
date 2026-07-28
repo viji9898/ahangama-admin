@@ -31,7 +31,10 @@ import { useAuth } from "../auth/useAuth";
 
 const STAY_ENQUIRIES_SUMMARY_ENDPOINT =
   "/.netlify/functions/api-stay-enquiries-list?summary=true";
-const UNREAD_COUNT_EVENT = "stay-enquiries-unread-change";
+const TRANSPORT_ENQUIRIES_SUMMARY_ENDPOINT =
+  "/.netlify/functions/api-transport-enquiries-list?summary=true";
+const STAY_UNREAD_COUNT_EVENT = "stay-enquiries-unread-change";
+const TRANSPORT_UNREAD_COUNT_EVENT = "transport-enquiries-unread-change";
 
 const navItems = [
   { key: "/admin", label: "Home", icon: <HomeOutlined /> },
@@ -78,7 +81,10 @@ const navItems = [
     key: "/admin/enquiries",
     label: "Enquiries",
     icon: <MessageOutlined />,
-    children: [{ key: "/admin/enquiries/stays", label: "Stays" }],
+    children: [
+      { key: "/admin/enquiries/stays", label: "Stays" },
+      { key: "/admin/enquiries/transport", label: "Transport" },
+    ],
   },
   {
     key: "/admin/events",
@@ -138,12 +144,14 @@ export default function AdminShell() {
   const screens = Grid.useBreakpoint();
   const [loggingOut, setLoggingOut] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [unreadEnquiryCount, setUnreadEnquiryCount] = useState(0);
+  const [unreadStayCount, setUnreadStayCount] = useState(0);
+  const [unreadTransportCount, setUnreadTransportCount] = useState(0);
 
   const displayName = (user?.name || user?.email || "").toString();
   const isSmallScreen = !screens.md;
   const navCollapsed = !isSmallScreen && collapsed;
   const selectedKey = getSelectedKey(location.pathname);
+  const unreadEnquiryCount = unreadStayCount + unreadTransportCount;
   const menuItems = useMemo(
     () =>
       navItems.map((item) =>
@@ -178,17 +186,32 @@ export default function AdminShell() {
   useEffect(() => {
     const controller = new AbortController();
 
-    const loadUnreadCount = async () => {
+    const loadUnreadCounts = async () => {
       try {
-        const response = await fetch(STAY_ENQUIRIES_SUMMARY_ENDPOINT, {
-          credentials: "include",
-          signal: controller.signal,
-        });
-        const payload = (await response.json().catch(() => ({}))) as {
-          unreadCount?: number;
-        };
-        if (response.ok && Number.isFinite(payload.unreadCount)) {
-          setUnreadEnquiryCount(Math.max(0, Number(payload.unreadCount)));
+        const [stayResponse, transportResponse] = await Promise.all([
+          fetch(STAY_ENQUIRIES_SUMMARY_ENDPOINT, {
+            credentials: "include",
+            signal: controller.signal,
+          }),
+          fetch(TRANSPORT_ENQUIRIES_SUMMARY_ENDPOINT, {
+            credentials: "include",
+            signal: controller.signal,
+          }),
+        ]);
+        const [stayPayload, transportPayload] = (await Promise.all([
+          stayResponse.json().catch(() => ({})),
+          transportResponse.json().catch(() => ({})),
+        ])) as [{ unreadCount?: number }, { unreadCount?: number }];
+        if (stayResponse.ok && Number.isFinite(stayPayload.unreadCount)) {
+          setUnreadStayCount(Math.max(0, Number(stayPayload.unreadCount)));
+        }
+        if (
+          transportResponse.ok &&
+          Number.isFinite(transportPayload.unreadCount)
+        ) {
+          setUnreadTransportCount(
+            Math.max(0, Number(transportPayload.unreadCount)),
+          );
         }
       } catch (loadError) {
         if ((loadError as Error)?.name !== "AbortError") {
@@ -197,22 +220,39 @@ export default function AdminShell() {
       }
     };
 
-    const handleUnreadCountChange = (event: Event) => {
+    const readEventCount = (event: Event) => {
       const count = (event as CustomEvent<{ unreadCount?: number }>).detail
         ?.unreadCount;
-      if (Number.isFinite(count)) {
-        setUnreadEnquiryCount(Math.max(0, Number(count)));
-      }
+      return Number.isFinite(count) ? Math.max(0, Number(count)) : null;
+    };
+    const handleStayUnreadCountChange = (event: Event) => {
+      const count = readEventCount(event);
+      if (count !== null) setUnreadStayCount(count);
+    };
+    const handleTransportUnreadCountChange = (event: Event) => {
+      const count = readEventCount(event);
+      if (count !== null) setUnreadTransportCount(count);
     };
 
-    void loadUnreadCount();
-    const intervalId = window.setInterval(() => void loadUnreadCount(), 60_000);
-    window.addEventListener(UNREAD_COUNT_EVENT, handleUnreadCountChange);
+    void loadUnreadCounts();
+    const intervalId = window.setInterval(() => void loadUnreadCounts(), 60_000);
+    window.addEventListener(STAY_UNREAD_COUNT_EVENT, handleStayUnreadCountChange);
+    window.addEventListener(
+      TRANSPORT_UNREAD_COUNT_EVENT,
+      handleTransportUnreadCountChange,
+    );
 
     return () => {
       controller.abort();
       window.clearInterval(intervalId);
-      window.removeEventListener(UNREAD_COUNT_EVENT, handleUnreadCountChange);
+      window.removeEventListener(
+        STAY_UNREAD_COUNT_EVENT,
+        handleStayUnreadCountChange,
+      );
+      window.removeEventListener(
+        TRANSPORT_UNREAD_COUNT_EVENT,
+        handleTransportUnreadCountChange,
+      );
     };
   }, []);
 
