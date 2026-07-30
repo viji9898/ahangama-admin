@@ -31,9 +31,12 @@ import { useAuth } from "../auth/useAuth";
 
 const STAY_ENQUIRIES_SUMMARY_ENDPOINT =
   "/.netlify/functions/api-stay-enquiries-list?summary=true";
+const RETREAT_ENQUIRIES_SUMMARY_ENDPOINT =
+  "/.netlify/functions/api-retreat-enquiries-list?summary=true";
 const TRANSPORT_ENQUIRIES_SUMMARY_ENDPOINT =
   "/.netlify/functions/api-transport-enquiries-list?summary=true";
 const STAY_UNREAD_COUNT_EVENT = "stay-enquiries-unread-change";
+const RETREAT_UNREAD_COUNT_EVENT = "retreat-enquiries-unread-change";
 const TRANSPORT_UNREAD_COUNT_EVENT = "transport-enquiries-unread-change";
 
 const navItems = [
@@ -83,6 +86,7 @@ const navItems = [
     icon: <MessageOutlined />,
     children: [
       { key: "/admin/enquiries/stays", label: "Stays" },
+      { key: "/admin/enquiries/retreats", label: "Retreats" },
       { key: "/admin/enquiries/transport", label: "Transport" },
     ],
   },
@@ -145,13 +149,15 @@ export default function AdminShell() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [unreadStayCount, setUnreadStayCount] = useState(0);
+  const [unreadRetreatCount, setUnreadRetreatCount] = useState(0);
   const [unreadTransportCount, setUnreadTransportCount] = useState(0);
 
   const displayName = (user?.name || user?.email || "").toString();
   const isSmallScreen = !screens.md;
   const navCollapsed = !isSmallScreen && collapsed;
   const selectedKey = getSelectedKey(location.pathname);
-  const unreadEnquiryCount = unreadStayCount + unreadTransportCount;
+  const unreadEnquiryCount =
+    unreadStayCount + unreadRetreatCount + unreadTransportCount;
   const menuItems = useMemo(
     () =>
       navItems.map((item) =>
@@ -188,8 +194,13 @@ export default function AdminShell() {
 
     const loadUnreadCounts = async () => {
       try {
-        const [stayResponse, transportResponse] = await Promise.all([
+        const [stayResponse, retreatResponse, transportResponse] =
+          await Promise.all([
           fetch(STAY_ENQUIRIES_SUMMARY_ENDPOINT, {
+            credentials: "include",
+            signal: controller.signal,
+          }),
+          fetch(RETREAT_ENQUIRIES_SUMMARY_ENDPOINT, {
             credentials: "include",
             signal: controller.signal,
           }),
@@ -198,12 +209,26 @@ export default function AdminShell() {
             signal: controller.signal,
           }),
         ]);
-        const [stayPayload, transportPayload] = (await Promise.all([
-          stayResponse.json().catch(() => ({})),
-          transportResponse.json().catch(() => ({})),
-        ])) as [{ unreadCount?: number }, { unreadCount?: number }];
+        const [stayPayload, retreatPayload, transportPayload] =
+          (await Promise.all([
+            stayResponse.json().catch(() => ({})),
+            retreatResponse.json().catch(() => ({})),
+            transportResponse.json().catch(() => ({})),
+          ])) as [
+            { unreadCount?: number },
+            { unreadCount?: number },
+            { unreadCount?: number },
+          ];
         if (stayResponse.ok && Number.isFinite(stayPayload.unreadCount)) {
           setUnreadStayCount(Math.max(0, Number(stayPayload.unreadCount)));
+        }
+        if (
+          retreatResponse.ok &&
+          Number.isFinite(retreatPayload.unreadCount)
+        ) {
+          setUnreadRetreatCount(
+            Math.max(0, Number(retreatPayload.unreadCount)),
+          );
         }
         if (
           transportResponse.ok &&
@@ -229,6 +254,10 @@ export default function AdminShell() {
       const count = readEventCount(event);
       if (count !== null) setUnreadStayCount(count);
     };
+    const handleRetreatUnreadCountChange = (event: Event) => {
+      const count = readEventCount(event);
+      if (count !== null) setUnreadRetreatCount(count);
+    };
     const handleTransportUnreadCountChange = (event: Event) => {
       const count = readEventCount(event);
       if (count !== null) setUnreadTransportCount(count);
@@ -237,6 +266,10 @@ export default function AdminShell() {
     void loadUnreadCounts();
     const intervalId = window.setInterval(() => void loadUnreadCounts(), 60_000);
     window.addEventListener(STAY_UNREAD_COUNT_EVENT, handleStayUnreadCountChange);
+    window.addEventListener(
+      RETREAT_UNREAD_COUNT_EVENT,
+      handleRetreatUnreadCountChange,
+    );
     window.addEventListener(
       TRANSPORT_UNREAD_COUNT_EVENT,
       handleTransportUnreadCountChange,
@@ -248,6 +281,10 @@ export default function AdminShell() {
       window.removeEventListener(
         STAY_UNREAD_COUNT_EVENT,
         handleStayUnreadCountChange,
+      );
+      window.removeEventListener(
+        RETREAT_UNREAD_COUNT_EVENT,
+        handleRetreatUnreadCountChange,
       );
       window.removeEventListener(
         TRANSPORT_UNREAD_COUNT_EVENT,

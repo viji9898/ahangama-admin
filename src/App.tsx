@@ -16,6 +16,7 @@ import GAFreePassScans from "./pages/GAFreePassScans";
 import GuestPassUsers from "./pages/GuestPassUsers";
 import HospoPassProfiles from "./pages/HospoPassProfiles";
 import PaidPassUsers from "./pages/PaidPassUsers";
+import RetreatEnquiries from "./pages/RetreatEnquiries";
 import StayEnquiries from "./pages/StayEnquiries";
 import TransportEnquiries from "./pages/TransportEnquiries";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
@@ -57,6 +58,7 @@ export default function App() {
             element={<Navigate to="/admin/enquiries/stays" replace />}
           />
           <Route path="enquiries/stays" element={<StayEnquiries />} />
+          <Route path="enquiries/retreats" element={<RetreatEnquiries />} />
           <Route
             path="enquiries/transport"
             element={<TransportEnquiries />}
