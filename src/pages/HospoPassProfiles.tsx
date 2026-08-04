@@ -13,6 +13,7 @@ import {
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { makeWhatsAppUrlWithMessage } from "../components/crm/contactLinks";
 
 const HOSPO_PROFILES_ENDPOINT =
   "/.netlify/functions/api-hospo-pass-profiles-list";
@@ -56,6 +57,52 @@ function formatCellValue(value: unknown) {
     return JSON.stringify(value);
   }
   return String(value);
+}
+
+function renderHospoDetailValue(profile: HospoProfileRow, column: string) {
+  if (column === "phone") {
+    const phone = String(profile[column] ?? "").trim();
+    if (phone) {
+      const name = String(profile.full_name ?? "there").trim() || "there";
+      const whatsappUrl = makeWhatsAppUrlWithMessage(
+        phone,
+        `Hi ${name} thanks for signing up to Ahangama Pass.`,
+      );
+
+      if (whatsappUrl) {
+        return (
+          <Typography.Link href={whatsappUrl} target="_blank" rel="noreferrer">
+            {phone}
+          </Typography.Link>
+        );
+      }
+    }
+  }
+
+  return <Typography.Text style={{ wordBreak: "break-word" }}>{formatCellValue(profile[column])}</Typography.Text>;
+}
+
+function renderHospoTableValue(profile: HospoProfileRow, column: string) {
+  if (column === "phone") {
+    const phone = String(profile[column] ?? "").trim();
+    if (phone) {
+      const name = String(profile.full_name ?? "there").trim() || "there";
+      const whatsappUrl = makeWhatsAppUrlWithMessage(
+        phone,
+        `Hi ${name} thanks for signing up to Ahangama Pass.`,
+      );
+
+      if (whatsappUrl) {
+        return (
+          <Typography.Link href={whatsappUrl} target="_blank" rel="noreferrer">
+            {phone}
+          </Typography.Link>
+        );
+      }
+    }
+  }
+
+  return formatCellValue(profile[column]);
 }
 
 export default function HospoPassProfiles() {
@@ -145,14 +192,22 @@ export default function HospoPassProfiles() {
         ellipsis: true,
         sorter: (left: HospoProfileRow, right: HospoProfileRow) =>
           String(left[column] ?? "").localeCompare(String(right[column] ?? "")),
-        render: (value: unknown) => (
-          <Typography.Text
-            style={{ maxWidth: 320 }}
-            ellipsis={{ tooltip: String(value ?? "") }}
-          >
-            {formatCellValue(value)}
-          </Typography.Text>
-        ),
+        render: (value: unknown, record: HospoProfileRow) => {
+          const content = renderHospoTableValue(record, column);
+
+          if (column === "phone") {
+            return content;
+          }
+
+          return (
+            <Typography.Text
+              style={{ maxWidth: 320 }}
+              ellipsis={{ tooltip: String(value ?? "") }}
+            >
+              {content}
+            </Typography.Text>
+          );
+        },
       })),
       {
         title: "Details",
@@ -183,7 +238,7 @@ export default function HospoPassProfiles() {
           style={{ width: "100%", justifyContent: "space-between" }}
           wrap
         >
-          <Space direction="vertical" size={8}>
+          <Space orientation="vertical" size={8}>
             <Typography.Text type="secondary">
               Pass Users Details
             </Typography.Text>
@@ -213,7 +268,7 @@ export default function HospoPassProfiles() {
         <Alert
           type="error"
           showIcon
-          message="Hospo profiles unavailable"
+          title="Hospo profiles unavailable"
           description={error}
         />
       ) : null}
@@ -251,9 +306,7 @@ export default function HospoPassProfiles() {
           <Descriptions bordered column={1} size="small">
             {columnNames.map((column) => (
               <Descriptions.Item key={column} label={titleizeColumn(column)}>
-                <Typography.Text style={{ wordBreak: "break-word" }}>
-                  {formatCellValue(selectedProfile[column])}
-                </Typography.Text>
+                {renderHospoDetailValue(selectedProfile, column)}
               </Descriptions.Item>
             ))}
           </Descriptions>

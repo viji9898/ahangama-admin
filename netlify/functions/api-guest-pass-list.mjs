@@ -10,6 +10,22 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
+async function listColumns() {
+  const columnsResult = await queryFromEnv(
+    DATABASE_ENV,
+    `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = $1
+      ORDER BY ordinal_position
+    `,
+    [TABLE_NAME],
+  );
+
+  return columnsResult.rows.map((row) => row.column_name);
+}
+
 export async function handler(event) {
   try {
     if (event.httpMethod !== "GET") {
@@ -18,23 +34,12 @@ export async function handler(event) {
 
     requireAdmin(event);
 
-    const columnsResult = await queryFromEnv(
-      DATABASE_ENV,
-      `
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = $1
-        ORDER BY ordinal_position
-      `,
-      [TABLE_NAME],
-    );
-
-    const columns = columnsResult.rows.map((row) => row.column_name);
+    const columns = await listColumns();
     if (!columns.length) {
-      return json(404, {
-        ok: false,
-        error: `Table not found: ${TABLE_NAME}`,
+      return json(200, {
+        ok: true,
+        columns: [],
+        guests: [],
       });
     }
 

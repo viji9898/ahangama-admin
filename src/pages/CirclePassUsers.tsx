@@ -13,6 +13,7 @@ import {
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { makeWhatsAppUrlWithMessage } from "../components/crm/contactLinks";
 
 const CIRCLE_ENDPOINT = "/.netlify/functions/api-circle-list";
 
@@ -55,6 +56,52 @@ function formatCellValue(value: unknown) {
     return JSON.stringify(value);
   }
   return String(value);
+}
+
+function renderCircleDetailValue(entry: CircleRow, column: string) {
+  if (column === "mobile") {
+    const phone = String(entry[column] ?? "").trim();
+    if (phone) {
+      const name = String(entry.name ?? "there").trim() || "there";
+      const whatsappUrl = makeWhatsAppUrlWithMessage(
+        phone,
+        `Hi ${name} thanks for signing up to Ahangama Pass.`,
+      );
+
+      if (whatsappUrl) {
+        return (
+          <Typography.Link href={whatsappUrl} target="_blank" rel="noreferrer">
+            {phone}
+          </Typography.Link>
+        );
+      }
+    }
+  }
+
+  return <Typography.Text style={{ wordBreak: "break-word" }}>{formatCellValue(entry[column])}</Typography.Text>;
+}
+
+function renderCircleTableValue(entry: CircleRow, column: string) {
+  if (column === "mobile") {
+    const phone = String(entry[column] ?? "").trim();
+    if (phone) {
+      const name = String(entry.name ?? "there").trim() || "there";
+      const whatsappUrl = makeWhatsAppUrlWithMessage(
+        phone,
+        `Hi ${name} thanks for signing up to Ahangama Pass.`,
+      );
+
+      if (whatsappUrl) {
+        return (
+          <Typography.Link href={whatsappUrl} target="_blank" rel="noreferrer">
+            {phone}
+          </Typography.Link>
+        );
+      }
+    }
+  }
+
+  return formatCellValue(entry[column]);
 }
 
 export default function CirclePassUsers() {
@@ -138,14 +185,22 @@ export default function CirclePassUsers() {
         ellipsis: true,
         sorter: (left: CircleRow, right: CircleRow) =>
           String(left[column] ?? "").localeCompare(String(right[column] ?? "")),
-        render: (value: unknown) => (
-          <Typography.Text
-            style={{ maxWidth: 320 }}
-            ellipsis={{ tooltip: String(value ?? "") }}
-          >
-            {formatCellValue(value)}
-          </Typography.Text>
-        ),
+        render: (value: unknown, record: CircleRow) => {
+          const content = renderCircleTableValue(record, column);
+
+          if (column === "mobile") {
+            return content;
+          }
+
+          return (
+            <Typography.Text
+              style={{ maxWidth: 320 }}
+              ellipsis={{ tooltip: String(value ?? "") }}
+            >
+              {content}
+            </Typography.Text>
+          );
+        },
       })),
       {
         title: "Details",
@@ -176,7 +231,7 @@ export default function CirclePassUsers() {
           style={{ width: "100%", justifyContent: "space-between" }}
           wrap
         >
-          <Space direction="vertical" size={8}>
+          <Space orientation="vertical" size={8}>
             <Typography.Text type="secondary">
               Pass Users Details
             </Typography.Text>
@@ -205,7 +260,7 @@ export default function CirclePassUsers() {
         <Alert
           type="error"
           showIcon
-          message="Circle entries unavailable"
+          title="Circle entries unavailable"
           description={error}
         />
       ) : null}
@@ -243,9 +298,7 @@ export default function CirclePassUsers() {
           <Descriptions bordered column={1} size="small">
             {columnNames.map((column) => (
               <Descriptions.Item key={column} label={titleizeColumn(column)}>
-                <Typography.Text style={{ wordBreak: "break-word" }}>
-                  {formatCellValue(selectedEntry[column])}
-                </Typography.Text>
+                {renderCircleDetailValue(selectedEntry, column)}
               </Descriptions.Item>
             ))}
           </Descriptions>

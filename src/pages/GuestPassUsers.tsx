@@ -13,6 +13,7 @@ import {
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { makeWhatsAppUrlWithMessage } from "../components/crm/contactLinks";
 
 const GUEST_PASS_ENDPOINT = "/.netlify/functions/api-guest-pass-list";
 
@@ -55,6 +56,52 @@ function formatCellValue(value: unknown) {
     return JSON.stringify(value);
   }
   return String(value);
+}
+
+function renderGuestDetailValue(guest: GuestPassRow, column: string) {
+  if (column === "phone") {
+    const phone = String(guest[column] ?? "").trim();
+    if (phone) {
+      const name = String(guest.full_name ?? "there").trim() || "there";
+      const whatsappUrl = makeWhatsAppUrlWithMessage(
+        phone,
+        `Hi ${name} thanks for signing up to Ahangama Pass.`,
+      );
+
+      if (whatsappUrl) {
+        return (
+          <Typography.Link href={whatsappUrl} target="_blank" rel="noreferrer">
+            {phone}
+          </Typography.Link>
+        );
+      }
+    }
+  }
+
+  return <Typography.Text style={{ wordBreak: "break-word" }}>{formatCellValue(guest[column])}</Typography.Text>;
+}
+
+function renderGuestTableValue(guest: GuestPassRow, column: string) {
+  if (column === "phone") {
+    const phone = String(guest[column] ?? "").trim();
+    if (phone) {
+      const name = String(guest.full_name ?? "there").trim() || "there";
+      const whatsappUrl = makeWhatsAppUrlWithMessage(
+        phone,
+        `Hi ${name} thanks for signing up to Ahangama Pass.`,
+      );
+
+      if (whatsappUrl) {
+        return (
+          <Typography.Link href={whatsappUrl} target="_blank" rel="noreferrer">
+            {phone}
+          </Typography.Link>
+        );
+      }
+    }
+  }
+
+  return formatCellValue(guest[column]);
 }
 
 export default function GuestPassUsers() {
@@ -138,14 +185,22 @@ export default function GuestPassUsers() {
         ellipsis: true,
         sorter: (left: GuestPassRow, right: GuestPassRow) =>
           String(left[column] ?? "").localeCompare(String(right[column] ?? "")),
-        render: (value: unknown) => (
-          <Typography.Text
-            style={{ maxWidth: 320 }}
-            ellipsis={{ tooltip: String(value ?? "") }}
-          >
-            {formatCellValue(value)}
-          </Typography.Text>
-        ),
+        render: (value: unknown, record: GuestPassRow) => {
+          const content = renderGuestTableValue(record, column);
+
+          if (column === "phone") {
+            return content;
+          }
+
+          return (
+            <Typography.Text
+              style={{ maxWidth: 320 }}
+              ellipsis={{ tooltip: String(value ?? "") }}
+            >
+              {content}
+            </Typography.Text>
+          );
+        },
       })),
       {
         title: "Details",
@@ -176,7 +231,7 @@ export default function GuestPassUsers() {
           style={{ width: "100%", justifyContent: "space-between" }}
           wrap
         >
-          <Space direction="vertical" size={8}>
+          <Space orientation="vertical" size={8}>
             <Typography.Text type="secondary">
               Pass Users Details
             </Typography.Text>
@@ -205,7 +260,7 @@ export default function GuestPassUsers() {
         <Alert
           type="error"
           showIcon
-          message="Guest Pass entries unavailable"
+          title="Guest Pass entries unavailable"
           description={error}
         />
       ) : null}
@@ -243,9 +298,7 @@ export default function GuestPassUsers() {
           <Descriptions bordered column={1} size="small">
             {columnNames.map((column) => (
               <Descriptions.Item key={column} label={titleizeColumn(column)}>
-                <Typography.Text style={{ wordBreak: "break-word" }}>
-                  {formatCellValue(selectedGuest[column])}
-                </Typography.Text>
+                {renderGuestDetailValue(selectedGuest, column)}
               </Descriptions.Item>
             ))}
           </Descriptions>

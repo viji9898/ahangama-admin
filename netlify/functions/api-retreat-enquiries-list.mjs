@@ -9,6 +9,23 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
+async function hasReadStateTable() {
+  const result = await queryFromEnv(
+    DATABASE_ENV,
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'retreat_enquiries'
+          AND column_name = 'is_read'
+      ) AS available
+    `,
+  );
+
+  return Boolean(result.rows[0]?.available);
+}
+
 export async function handler(event) {
   try {
     if (event.httpMethod !== "GET") {
@@ -17,7 +34,16 @@ export async function handler(event) {
 
     requireAdmin(event);
 
+    const hasReadState = await hasReadStateTable();
+
     if (event.queryStringParameters?.summary === "true") {
+      if (!hasReadState) {
+        return json(200, {
+          ok: true,
+          unreadCount: 0,
+        });
+      }
+
       const countResult = await queryFromEnv(
         DATABASE_ENV,
         `SELECT COUNT(*)::int AS unread_count FROM retreat_enquiries WHERE is_read = false`,
@@ -26,6 +52,14 @@ export async function handler(event) {
       return json(200, {
         ok: true,
         unreadCount: countResult.rows[0]?.unread_count || 0,
+      });
+    }
+
+    if (!hasReadState) {
+      return json(200, {
+        ok: true,
+        enquiries: [],
+        unreadCount: 0,
       });
     }
 

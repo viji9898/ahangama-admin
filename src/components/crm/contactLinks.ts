@@ -7,6 +7,19 @@ export function makeWhatsAppUrl(value?: string | null) {
   return `https://wa.me/${encodeURIComponent(phone)}`;
 }
 
+export function makeWhatsAppUrlWithMessage(
+  value?: string | null,
+  message?: string | null,
+) {
+  const baseUrl = makeWhatsAppUrl(value);
+  const normalizedMessage = String(message || "").trim();
+
+  if (!baseUrl) return null;
+  if (!normalizedMessage) return baseUrl;
+
+  return `${baseUrl}?text=${encodeURIComponent(normalizedMessage)}`;
+}
+
 export function makeGmailComposeUrl(email?: string | null) {
   const normalized = String(email || "").trim();
   if (!normalized) return null;

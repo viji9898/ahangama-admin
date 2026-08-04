@@ -361,7 +361,7 @@ export default function AdminShell() {
           <Menu
             theme="dark"
             mode={isSmallScreen ? "horizontal" : "inline"}
-            inlineCollapsed={isSmallScreen ? undefined : collapsed}
+            {...(!isSmallScreen ? { inlineCollapsed: collapsed } : {})}
             selectedKeys={[selectedKey]}
             defaultOpenKeys={[
               "/admin/events",
@@ -378,7 +378,7 @@ export default function AdminShell() {
           />
 
           <Space
-            direction={isSmallScreen ? "horizontal" : "vertical"}
+            orientation={isSmallScreen ? "horizontal" : "vertical"}
             size={12}
             style={{
               padding: 24,

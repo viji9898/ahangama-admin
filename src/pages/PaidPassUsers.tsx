@@ -13,6 +13,7 @@ import {
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { makeWhatsAppUrlWithMessage } from "../components/crm/contactLinks";
 
 const PAID_PASS_ENDPOINT = "/.netlify/functions/api-paid-pass-list";
 
@@ -58,6 +59,11 @@ function formatAmount(record: PaidPassTransaction) {
     style: "currency",
     currency: record.currency || "USD",
   }).format(amount);
+}
+
+function makePaidPassWhatsappMessage(record: PaidPassTransaction) {
+  const name = String(record.customer_name || "there").trim() || "there";
+  return `Hi ${name} thanks for signing up to Ahangama Pass.`;
 }
 
 export default function PaidPassUsers() {
@@ -141,7 +147,21 @@ export default function PaidPassUsers() {
       title: "Phone",
       dataIndex: "customer_phone",
       key: "customer_phone",
-      render: (value: string | null) => value || "-",
+      render: (value: string | null, record) => {
+        const phone = String(value || "").trim();
+        const whatsappUrl = makeWhatsAppUrlWithMessage(
+          phone,
+          makePaidPassWhatsappMessage(record),
+        );
+
+        if (!whatsappUrl) return phone || "-";
+
+        return (
+          <Typography.Link href={whatsappUrl} target="_blank" rel="noreferrer">
+            {phone}
+          </Typography.Link>
+        );
+      },
     },
     {
       title: "Product",
@@ -193,7 +213,7 @@ export default function PaidPassUsers() {
           style={{ width: "100%", justifyContent: "space-between" }}
           wrap
         >
-          <Space direction="vertical" size={8}>
+          <Space orientation="vertical" size={8}>
             <Typography.Text type="secondary">
               Pass Users Details
             </Typography.Text>
@@ -219,7 +239,7 @@ export default function PaidPassUsers() {
         <Alert
           type="error"
           showIcon
-          message="Paid pass transactions unavailable"
+          title="Paid pass transactions unavailable"
           description={error}
         />
       ) : null}
@@ -265,7 +285,20 @@ export default function PaidPassUsers() {
           <Descriptions bordered column={1} size="small">
             {Object.entries(selectedTransaction).map(([key, value]) => (
               <Descriptions.Item key={key} label={titleizeColumn(key)}>
-                {key === "receipt_url" && value ? (
+                {key === "customer_phone" && value ? (
+                  <Typography.Link
+                    href={
+                      makeWhatsAppUrlWithMessage(
+                        String(value),
+                        makePaidPassWhatsappMessage(selectedTransaction),
+                      ) || undefined
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {String(value)}
+                  </Typography.Link>
+                ) : key === "receipt_url" && value ? (
                   <Typography.Link href={String(value)} target="_blank" rel="noreferrer">
                     View receipt
                   </Typography.Link>
