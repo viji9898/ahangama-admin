@@ -20,6 +20,7 @@ import RetreatEnquiries from "./pages/RetreatEnquiries";
 import StayEnquiries from "./pages/StayEnquiries";
 import TransportEnquiries from "./pages/TransportEnquiries";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
+import PublicStats from "./pages/PublicStats";
 import { RequireAuth } from "./auth/RequireAuth";
 import AdminShell from "./pages/AdminShell";
 
@@ -28,6 +29,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/stats" element={<PublicStats />} />
 
         <Route
           path="/admin"
