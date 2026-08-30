@@ -21,6 +21,7 @@ import StayEnquiries from "./pages/StayEnquiries";
 import TransportEnquiries from "./pages/TransportEnquiries";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import PublicStats from "./pages/PublicStats";
+import NewsletterBuilder from "./pages/NewsletterBuilder";
 import { RequireAuth } from "./auth/RequireAuth";
 import AdminShell from "./pages/AdminShell";
 
@@ -42,6 +43,7 @@ export default function App() {
           <Route index element={<AdminHome />} />
           <Route path="activity" element={<AdminActivity />} />
           <Route path="operations" element={<AdminOperations />} />
+          <Route path="newsletters" element={<NewsletterBuilder />} />
           <Route path="links" element={<LinkGenerator />} />
           <Route path="qr-links" element={<QrLinkGenerator />} />
           <Route path="venues" element={<Admin />} />

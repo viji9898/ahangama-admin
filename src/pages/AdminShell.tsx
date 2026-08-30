@@ -5,6 +5,7 @@ import {
   HomeOutlined,
   LinkOutlined,
   LogoutOutlined,
+  MailOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MessageOutlined,
@@ -50,6 +51,11 @@ const navItems = [
     key: "/admin/operations",
     label: "Daily Operations",
     icon: <ClockCircleOutlined />,
+  },
+  {
+    key: "/admin/newsletters",
+    label: "Newsletters",
+    icon: <MailOutlined />,
   },
   {
     key: "/admin/links",
@@ -196,19 +202,19 @@ export default function AdminShell() {
       try {
         const [stayResponse, retreatResponse, transportResponse] =
           await Promise.all([
-          fetch(STAY_ENQUIRIES_SUMMARY_ENDPOINT, {
-            credentials: "include",
-            signal: controller.signal,
-          }),
-          fetch(RETREAT_ENQUIRIES_SUMMARY_ENDPOINT, {
-            credentials: "include",
-            signal: controller.signal,
-          }),
-          fetch(TRANSPORT_ENQUIRIES_SUMMARY_ENDPOINT, {
-            credentials: "include",
-            signal: controller.signal,
-          }),
-        ]);
+            fetch(STAY_ENQUIRIES_SUMMARY_ENDPOINT, {
+              credentials: "include",
+              signal: controller.signal,
+            }),
+            fetch(RETREAT_ENQUIRIES_SUMMARY_ENDPOINT, {
+              credentials: "include",
+              signal: controller.signal,
+            }),
+            fetch(TRANSPORT_ENQUIRIES_SUMMARY_ENDPOINT, {
+              credentials: "include",
+              signal: controller.signal,
+            }),
+          ]);
         const [stayPayload, retreatPayload, transportPayload] =
           (await Promise.all([
             stayResponse.json().catch(() => ({})),
@@ -222,10 +228,7 @@ export default function AdminShell() {
         if (stayResponse.ok && Number.isFinite(stayPayload.unreadCount)) {
           setUnreadStayCount(Math.max(0, Number(stayPayload.unreadCount)));
         }
-        if (
-          retreatResponse.ok &&
-          Number.isFinite(retreatPayload.unreadCount)
-        ) {
+        if (retreatResponse.ok && Number.isFinite(retreatPayload.unreadCount)) {
           setUnreadRetreatCount(
             Math.max(0, Number(retreatPayload.unreadCount)),
           );
@@ -264,8 +267,14 @@ export default function AdminShell() {
     };
 
     void loadUnreadCounts();
-    const intervalId = window.setInterval(() => void loadUnreadCounts(), 60_000);
-    window.addEventListener(STAY_UNREAD_COUNT_EVENT, handleStayUnreadCountChange);
+    const intervalId = window.setInterval(
+      () => void loadUnreadCounts(),
+      60_000,
+    );
+    window.addEventListener(
+      STAY_UNREAD_COUNT_EVENT,
+      handleStayUnreadCountChange,
+    );
     window.addEventListener(
       RETREAT_UNREAD_COUNT_EVENT,
       handleRetreatUnreadCountChange,
