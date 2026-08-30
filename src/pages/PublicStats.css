@@ -217,6 +217,15 @@ html {
   font-size: 17px;
   font-weight: 600;
 }
+.stats-panel__title h3 a {
+  color: inherit;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+}
+.stats-panel__title h3 a:hover,
+.stats-panel__title h3 a:focus-visible {
+  text-decoration-color: currentColor;
+}
 .stats-panel__title > span {
   font:
     400 10px "DM Mono",

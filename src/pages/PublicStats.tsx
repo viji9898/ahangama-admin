@@ -353,8 +353,14 @@ export default function PublicStats() {
           <article className="stats-panel stats-panel--dark stats-panel--social-wide">
             <div className="stats-panel__title">
               <h3>
-                Instagram{" "}
-                {data?.social?.username ? `@${data.social.username}` : ""}
+                <a
+                  href="https://www.instagram.com/ahangama.pass/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Instagram{" "}
+                  {data?.social?.username ? `@${data.social.username}` : ""}
+                </a>
               </h3>
               <span>Reach · views · engagement</span>
             </div>
@@ -362,7 +368,15 @@ export default function PublicStats() {
           </article>
           <article className="stats-panel stats-panel--dark">
             <div className="stats-panel__title">
-              <h3>{data?.facebook?.name || "Facebook"}</h3>
+              <h3>
+                <a
+                  href="https://www.facebook.com/p/Ahangamacom-61592748144834/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Facebook @ahangama.com
+                </a>
+              </h3>
               <span>Views · engagement · followers</span>
             </div>
             <FacebookInsights facebook={data?.facebook} />
