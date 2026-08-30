@@ -61,10 +61,7 @@ export default function App() {
           />
           <Route path="enquiries/stays" element={<StayEnquiries />} />
           <Route path="enquiries/retreats" element={<RetreatEnquiries />} />
-          <Route
-            path="enquiries/transport"
-            element={<TransportEnquiries />}
-          />
+          <Route path="enquiries/transport" element={<TransportEnquiries />} />
           <Route path="call-logs" element={<CallLogs />} />
           <Route
             path="events"

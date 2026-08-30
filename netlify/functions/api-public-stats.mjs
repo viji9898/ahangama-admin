@@ -27,9 +27,13 @@ function numberMetric(row, index) {
 }
 
 function getMetaConfig() {
-  const accessToken = String(process.env.META_SYSTEM_USER_ACCESS_TOKEN || "").trim();
+  const accessToken = String(
+    process.env.META_SYSTEM_USER_ACCESS_TOKEN || "",
+  ).trim();
   const accountId = String(process.env.META_INSTAGRAM_ACCOUNT_ID || "").trim();
-  const rawVersion = String(process.env.META_GRAPH_API_VERSION || "v25.0").trim();
+  const rawVersion = String(
+    process.env.META_GRAPH_API_VERSION || "v25.0",
+  ).trim();
   const version = /^v\d+\.\d+$/.test(rawVersion)
     ? rawVersion
     : /^\d+\.\d+$/.test(rawVersion)
@@ -57,7 +61,9 @@ async function fetchMeta(path, params = {}, tokenOverride = "") {
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(payload?.error?.message || `Meta API request failed (${response.status})`);
+    throw new Error(
+      payload?.error?.message || `Meta API request failed (${response.status})`,
+    );
   }
 
   return payload;
@@ -92,7 +98,8 @@ async function getInstagramStats(days) {
       ),
     ),
     fetchMeta(`${accountId}/media`, {
-      fields: "id,caption,media_type,permalink,timestamp,like_count,comments_count,thumbnail_url,media_url",
+      fields:
+        "id,caption,media_type,permalink,timestamp,like_count,comments_count,thumbnail_url,media_url",
       limit: 50,
     }),
   ]);
@@ -109,7 +116,9 @@ async function getInstagramStats(days) {
     .filter((item) => new Date(item.timestamp).getTime() >= rangeStart)
     .map((item) => ({
       id: item.id,
-      caption: String(item.caption || "Instagram post").trim().slice(0, 120),
+      caption: String(item.caption || "Instagram post")
+        .trim()
+        .slice(0, 120),
       mediaType: item.media_type,
       permalink: item.permalink,
       imageUrl: item.thumbnail_url || item.media_url || "",
@@ -158,7 +167,8 @@ async function getFacebookStats(days) {
     fields: "name,fan_count,link,picture,access_token",
   });
   const pageAccessToken = String(profile.access_token || "").trim();
-  if (!pageAccessToken) throw new Error("Unable to acquire Facebook Page access");
+  if (!pageAccessToken)
+    throw new Error("Unable to acquire Facebook Page access");
 
   const metricResults = await Promise.all(
     [
@@ -167,11 +177,15 @@ async function getFacebookStats(days) {
       "page_views_total",
       "page_follows",
     ].map((metric) =>
-      fetchMeta(`${pageId}/insights/${metric}`, {
-        period: "day",
-        since,
-        until,
-      }, pageAccessToken).catch(() => null),
+      fetchMeta(
+        `${pageId}/insights/${metric}`,
+        {
+          period: "day",
+          since,
+          until,
+        },
+        pageAccessToken,
+      ).catch(() => null),
     ),
   );
 
@@ -195,57 +209,62 @@ async function getWebsiteStats(startDate, endDate) {
     keepEmptyRows: false,
   };
 
-  const [totalsReport, pagesReport, sourcesReport, countriesReport, clicksReport] =
-    await Promise.all([
-      runGaReport({
-        ...base,
-        metrics: [
-          { name: "activeUsers" },
-          { name: "screenPageViews" },
-          { name: "sessions" },
-        ],
-        limit: 1,
-      }),
-      runGaReport({
-        ...base,
-        dimensions: [{ name: "pagePath" }, { name: "pageTitle" }],
-        metrics: [{ name: "screenPageViews" }],
-        orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
-        limit: 8,
-      }),
-      runGaReport({
-        ...base,
-        dimensions: [{ name: "sessionDefaultChannelGroup" }],
-        metrics: [{ name: "sessions" }],
-        orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
-        limit: 6,
-      }),
-      runGaReport({
-        ...base,
-        dimensions: [{ name: "country" }],
-        metrics: [{ name: "activeUsers" }],
-        orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
-        limit: 6,
-      }),
-      runGaReport({
-        ...base,
-        metrics: [{ name: "eventCount" }],
-        dimensionFilter: {
-          andGroup: {
-            expressions: [
-              hostFilter(),
-              {
-                filter: {
-                  fieldName: "eventName",
-                  stringFilter: { matchType: "EXACT", value: "click" },
-                },
+  const [
+    totalsReport,
+    pagesReport,
+    sourcesReport,
+    countriesReport,
+    clicksReport,
+  ] = await Promise.all([
+    runGaReport({
+      ...base,
+      metrics: [
+        { name: "activeUsers" },
+        { name: "screenPageViews" },
+        { name: "sessions" },
+      ],
+      limit: 1,
+    }),
+    runGaReport({
+      ...base,
+      dimensions: [{ name: "pagePath" }, { name: "pageTitle" }],
+      metrics: [{ name: "screenPageViews" }],
+      orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
+      limit: 8,
+    }),
+    runGaReport({
+      ...base,
+      dimensions: [{ name: "sessionDefaultChannelGroup" }],
+      metrics: [{ name: "sessions" }],
+      orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+      limit: 6,
+    }),
+    runGaReport({
+      ...base,
+      dimensions: [{ name: "country" }],
+      metrics: [{ name: "activeUsers" }],
+      orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
+      limit: 6,
+    }),
+    runGaReport({
+      ...base,
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            hostFilter(),
+            {
+              filter: {
+                fieldName: "eventName",
+                stringFilter: { matchType: "EXACT", value: "click" },
               },
-            ],
-          },
+            },
+          ],
         },
-        limit: 1,
-      }),
-    ]);
+      },
+      limit: 1,
+    }),
+  ]);
 
   const totals = totalsReport?.rows?.[0];
 
@@ -286,20 +305,35 @@ async function countPasses() {
   const tables = new Set(tablesResult.rows.map((row) => row.table_name));
   const counts = await Promise.all([
     tables.has("purchases")
-      ? queryFromEnv(databaseEnv, "SELECT COUNT(*)::int AS count FROM purchases WHERE status = 'paid'")
+      ? queryFromEnv(
+          databaseEnv,
+          "SELECT COUNT(*)::int AS count FROM purchases WHERE status = 'paid'",
+        )
       : { rows: [{ count: 0 }] },
     tables.has("promo_purchases")
-      ? queryFromEnv(databaseEnv, "SELECT COUNT(*)::int AS count FROM promo_purchases")
+      ? queryFromEnv(
+          databaseEnv,
+          "SELECT COUNT(*)::int AS count FROM promo_purchases",
+        )
       : { rows: [{ count: 0 }] },
     tables.has("pass_guests")
-      ? queryFromEnv(databaseEnv, "SELECT COUNT(*)::int AS count FROM pass_guests")
+      ? queryFromEnv(
+          databaseEnv,
+          "SELECT COUNT(*)::int AS count FROM pass_guests",
+        )
       : { rows: [{ count: 0 }] },
     tables.has("hospo_pass_profiles")
-      ? queryFromEnv(databaseEnv, "SELECT COUNT(*)::int AS count FROM hospo_pass_profiles")
+      ? queryFromEnv(
+          databaseEnv,
+          "SELECT COUNT(*)::int AS count FROM hospo_pass_profiles",
+        )
       : { rows: [{ count: 0 }] },
   ]);
 
-  return counts.reduce((total, result) => total + Number(result.rows[0]?.count || 0), 0);
+  return counts.reduce(
+    (total, result) => total + Number(result.rows[0]?.count || 0),
+    0,
+  );
 }
 
 async function countVenues() {
@@ -362,15 +396,21 @@ export async function handler(event) {
   const days = ALLOWED_DAYS.has(requestedDays) ? requestedDays : 30;
   const startDate = `${days}daysAgo`;
   const endDate = "today";
-  const [websiteResult, qrResult, passesResult, venuesResult, instagramResult, facebookResult] =
-    await Promise.allSettled([
-      getWebsiteStats(startDate, endDate),
-      getQrDashboardSummary({ startDate, endDate }),
-      countPasses(),
-      countVenues(),
-      getInstagramStats(days),
-      getFacebookStats(days),
-    ]);
+  const [
+    websiteResult,
+    qrResult,
+    passesResult,
+    venuesResult,
+    instagramResult,
+    facebookResult,
+  ] = await Promise.allSettled([
+    getWebsiteStats(startDate, endDate),
+    getQrDashboardSummary({ startDate, endDate }),
+    countPasses(),
+    countVenues(),
+    getInstagramStats(days),
+    getFacebookStats(days),
+  ]);
 
   const website =
     websiteResult.status === "fulfilled"
@@ -401,14 +441,19 @@ export async function handler(event) {
         ? instagramResult.value
         : {
             available: false,
-            reason: String(instagramResult.reason?.message || "Instagram insights unavailable"),
+            reason: String(
+              instagramResult.reason?.message ||
+                "Instagram insights unavailable",
+            ),
           },
     facebook:
       facebookResult.status === "fulfilled"
         ? facebookResult.value
         : {
             available: false,
-            reason: String(facebookResult.reason?.message || "Facebook insights unavailable"),
+            reason: String(
+              facebookResult.reason?.message || "Facebook insights unavailable",
+            ),
           },
     campaigns: { available: false, reason: "Ad accounts not connected" },
   });

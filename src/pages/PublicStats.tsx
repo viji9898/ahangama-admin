@@ -78,7 +78,8 @@ const DISPLAY_LABELS: Record<string, string> = {
 };
 
 const titleCase = (value: string) =>
-  DISPLAY_LABELS[value.toLowerCase()] || value
+  DISPLAY_LABELS[value.toLowerCase()] ||
+  value
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
@@ -93,7 +94,9 @@ function Bars({ items = [] }: { items?: MetricItem[] }) {
             <strong>{formatNumber(item.value)}</strong>
           </div>
           <div className="stats-bar__track">
-            <span style={{ width: `${Math.max((item.value / maximum) * 100, 2)}%` }} />
+            <span
+              style={{ width: `${Math.max((item.value / maximum) * 100, 2)}%` }}
+            />
           </div>
         </div>
       ))}
@@ -104,7 +107,9 @@ function Bars({ items = [] }: { items?: MetricItem[] }) {
 function EmptyConnection({ label }: { label: string }) {
   return (
     <div className="stats-connection">
-      <span className="stats-connection__mark" aria-hidden="true">+</span>
+      <span className="stats-connection__mark" aria-hidden="true">
+        +
+      </span>
       <div>
         <strong>{label}</strong>
         <p>Connect this source to add live reporting.</p>
@@ -115,7 +120,9 @@ function EmptyConnection({ label }: { label: string }) {
 
 function InstagramInsights({ social }: { social?: StatsPayload["social"] }) {
   if (!social?.available) {
-    return <EmptyConnection label={social?.reason || "Meta account not connected"} />;
+    return (
+      <EmptyConnection label={social?.reason || "Meta account not connected"} />
+    );
   }
 
   return (
@@ -138,7 +145,12 @@ function InstagramInsights({ social }: { social?: StatsPayload["social"] }) {
         <div className="stats-instagram__content">
           <span>Top content</span>
           {social.topContent.map((item) => (
-            <a href={item.permalink} key={item.id} target="_blank" rel="noreferrer">
+            <a
+              href={item.permalink}
+              key={item.id}
+              target="_blank"
+              rel="noreferrer"
+            >
               {item.imageUrl ? <img src={item.imageUrl} alt="" /> : null}
               <span>{item.caption}</span>
               <strong>{formatNumber(item.likes + item.comments)}</strong>
@@ -150,9 +162,17 @@ function InstagramInsights({ social }: { social?: StatsPayload["social"] }) {
   );
 }
 
-function FacebookInsights({ facebook }: { facebook?: StatsPayload["facebook"] }) {
+function FacebookInsights({
+  facebook,
+}: {
+  facebook?: StatsPayload["facebook"];
+}) {
   if (!facebook?.available) {
-    return <EmptyConnection label={facebook?.reason || "Facebook Page not connected"} />;
+    return (
+      <EmptyConnection
+        label={facebook?.reason || "Facebook Page not connected"}
+      />
+    );
   }
 
   return (
@@ -185,10 +205,13 @@ export default function PublicStats() {
       signal: controller.signal,
     })
       .then(async (response) => {
-        const payload = (await response.json().catch(() => ({}))) as StatsPayload & {
+        const payload = (await response
+          .json()
+          .catch(() => ({}))) as StatsPayload & {
           error?: string;
         };
-        if (!response.ok) throw new Error(payload.error || "Unable to load stats");
+        if (!response.ok)
+          throw new Error(payload.error || "Unable to load stats");
         setData(payload);
       })
       .catch((loadError: Error) => {
@@ -206,7 +229,9 @@ export default function PublicStats() {
   return (
     <main className="stats-page">
       <header className="stats-header">
-        <a className="stats-brand" href="https://ahangama.com">AHANGAMA</a>
+        <a className="stats-brand" href="https://ahangama.com">
+          AHANGAMA
+        </a>
         <nav aria-label="Dashboard sections">
           <a href="#website">Website</a>
           <a href="#social">Social</a>
@@ -218,10 +243,16 @@ export default function PublicStats() {
       <section className="stats-hero">
         <div>
           <p className="stats-kicker">Community impact dashboard</p>
-          <h1>Ahangama,<br />in numbers.</h1>
+          <h1>
+            Ahangama,
+            <br />
+            in numbers.
+          </h1>
         </div>
         <div className="stats-hero__aside">
-          <p>A live view of how people discover, explore and support Ahangama.</p>
+          <p>
+            A live view of how people discover, explore and support Ahangama.
+          </p>
           <div className="stats-period" aria-label="Reporting period">
             {[7, 30, 90].map((value) => (
               <button
@@ -242,7 +273,10 @@ export default function PublicStats() {
       </section>
 
       {error ? <div className="stats-alert">{error}</div> : null}
-      <section className={`stats-overview ${loading ? "is-loading" : ""}`} aria-busy={loading}>
+      <section
+        className={`stats-overview ${loading ? "is-loading" : ""}`}
+        aria-busy={loading}
+      >
         {[
           ["Active visitors", overview?.activeVisitors],
           ["Page views", overview?.pageViews],
@@ -251,7 +285,11 @@ export default function PublicStats() {
           ["Live venues", overview?.liveVenues],
         ].map(([label, value]) => (
           <article key={String(label)}>
-            <strong>{loading ? "···" : formatNumber(value as number | null | undefined)}</strong>
+            <strong>
+              {loading
+                ? "···"
+                : formatNumber(value as number | null | undefined)}
+            </strong>
             <span>{label}</span>
           </article>
         ))}
@@ -260,7 +298,11 @@ export default function PublicStats() {
       <section className="stats-section" id="website">
         <div className="stats-section__heading">
           <p>01 / Website</p>
-          <h2>What people<br />are exploring</h2>
+          <h2>
+            What people
+            <br />
+            are exploring
+          </h2>
         </div>
         <div className="stats-grid stats-grid--website">
           <article className="stats-panel stats-panel--wide">
@@ -271,19 +313,28 @@ export default function PublicStats() {
             <div className="stats-list">
               {(data?.website?.topPages || []).map((page, index) => (
                 <div className="stats-list__row" key={`${page.path}-${index}`}>
-                  <span className="stats-list__index">{String(index + 1).padStart(2, "0")}</span>
-                  <span><strong>{page.title}</strong><small>{page.path}</small></span>
+                  <span className="stats-list__index">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span>
+                    <strong>{page.title}</strong>
+                    <small>{page.path}</small>
+                  </span>
                   <b>{formatNumber(page.views)}</b>
                 </div>
               ))}
             </div>
           </article>
           <article className="stats-panel">
-            <div className="stats-panel__title"><h3>Traffic sources</h3></div>
+            <div className="stats-panel__title">
+              <h3>Traffic sources</h3>
+            </div>
             <Bars items={data?.website?.trafficSources} />
           </article>
           <article className="stats-panel">
-            <div className="stats-panel__title"><h3>Top countries</h3></div>
+            <div className="stats-panel__title">
+              <h3>Top countries</h3>
+            </div>
             <Bars items={data?.website?.countries} />
           </article>
         </div>
@@ -292,21 +343,39 @@ export default function PublicStats() {
       <section className="stats-section stats-section--dark" id="social">
         <div className="stats-section__heading">
           <p>02 / Social &amp; campaigns</p>
-          <h2>Reach beyond<br />the coastline</h2>
+          <h2>
+            Reach beyond
+            <br />
+            the coastline
+          </h2>
         </div>
         <div className="stats-grid stats-grid--two">
           <article className="stats-panel stats-panel--dark stats-panel--social-wide">
-            <div className="stats-panel__title"><h3>Instagram {data?.social?.username ? `@${data.social.username}` : ""}</h3><span>Reach · views · engagement</span></div>
+            <div className="stats-panel__title">
+              <h3>
+                Instagram{" "}
+                {data?.social?.username ? `@${data.social.username}` : ""}
+              </h3>
+              <span>Reach · views · engagement</span>
+            </div>
             <InstagramInsights social={data?.social} />
           </article>
           <article className="stats-panel stats-panel--dark">
-            <div className="stats-panel__title"><h3>{data?.facebook?.name || "Facebook"}</h3><span>Views · engagement · followers</span></div>
+            <div className="stats-panel__title">
+              <h3>{data?.facebook?.name || "Facebook"}</h3>
+              <span>Views · engagement · followers</span>
+            </div>
             <FacebookInsights facebook={data?.facebook} />
           </article>
           <article className="stats-panel stats-panel--dark" id="campaigns">
-            <div className="stats-panel__title"><h3>Paid campaigns</h3><span>Spend · CTR · conversions</span></div>
+            <div className="stats-panel__title">
+              <h3>Paid campaigns</h3>
+              <span>Spend · CTR · conversions</span>
+            </div>
             <div className="stats-connection">
-              <span className="stats-connection__mark" aria-hidden="true">+</span>
+              <span className="stats-connection__mark" aria-hidden="true">
+                +
+              </span>
               <div>
                 <strong>Coming Soon</strong>
                 <p>Campaign reporting is being prepared.</p>
@@ -319,24 +388,55 @@ export default function PublicStats() {
       <section className="stats-section" id="partners">
         <div className="stats-section__heading">
           <p>03 / QR, passes &amp; partners</p>
-          <h2>From discovery<br />to action</h2>
+          <h2>
+            From discovery
+            <br />
+            to action
+          </h2>
         </div>
         <div className="stats-qr-summary">
-          <article><span>QR sessions</span><strong>{formatNumber(data?.qr?.scans)}</strong></article>
-          <article><span>Pass clicks</span><strong>{formatNumber(data?.qr?.clicks)}</strong></article>
-          <article><span>Purchases</span><strong>{formatNumber(data?.qr?.purchases)}</strong></article>
+          <article>
+            <span>QR sessions</span>
+            <strong>{formatNumber(data?.qr?.scans)}</strong>
+          </article>
+          <article>
+            <span>Pass clicks</span>
+            <strong>{formatNumber(data?.qr?.clicks)}</strong>
+          </article>
+          <article>
+            <span>Purchases</span>
+            <strong>{formatNumber(data?.qr?.purchases)}</strong>
+          </article>
         </div>
         <div className="stats-grid stats-grid--partners">
           <article className="stats-panel">
-            <div className="stats-panel__title"><h3>Scans by placement</h3></div>
+            <div className="stats-panel__title">
+              <h3>Scans by placement</h3>
+            </div>
             <Bars items={data?.qr?.surfaces} />
           </article>
           <article className="stats-panel stats-panel--wide">
-            <div className="stats-panel__title"><h3>Partner impact</h3><span>Exposure · scans · clicks</span></div>
-            <div className="stats-table" role="table" aria-label="Partner impact">
-              <div className="stats-table__head" role="row"><span>Partner</span><span>Exposure</span><span>Scans</span><span>Clicks</span></div>
+            <div className="stats-panel__title">
+              <h3>Partner impact</h3>
+              <span>Exposure · scans · clicks</span>
+            </div>
+            <div
+              className="stats-table"
+              role="table"
+              aria-label="Partner impact"
+            >
+              <div className="stats-table__head" role="row">
+                <span>Partner</span>
+                <span>Exposure</span>
+                <span>Scans</span>
+                <span>Clicks</span>
+              </div>
               {(data?.qr?.partners || []).map((partner) => (
-                <div className="stats-table__row" role="row" key={partner.venue}>
+                <div
+                  className="stats-table__row"
+                  role="row"
+                  key={partner.venue}
+                >
                   <strong>{titleCase(partner.venue)}</strong>
                   <span>{formatNumber(partner.exposure)}</span>
                   <span>{formatNumber(partner.scans)}</span>
@@ -379,7 +479,12 @@ export default function PublicStats() {
 
       <footer className="stats-footer">
         <span>AHANGAMA</span>
-        <p>Updated {data?.generatedAt ? new Date(data.generatedAt).toLocaleString() : "when data loads"}</p>
+        <p>
+          Updated{" "}
+          {data?.generatedAt
+            ? new Date(data.generatedAt).toLocaleString()
+            : "when data loads"}
+        </p>
       </footer>
     </main>
   );
