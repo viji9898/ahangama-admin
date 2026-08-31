@@ -105,7 +105,7 @@ async function handler(event) {
         best_for, tags, editorial_tags, card_perk, offer,
         how_to_claim, restrictions, discount, price, hours, area,
         lat, lng, map_url, google_place_id,
-        whatsapp, email, instagram,
+        whatsapp, email, instagram, contact_updated_at,
         logo, image, og_image,
         live, is_pass_venue, circle, circle_perk, staff_pick, is_featured, priority_score, pass_priority,
         created_by, updated_by, source, notes_internal, deleted_at
@@ -117,6 +117,14 @@ async function handler(event) {
         $16,$17,$18,$19,$20,$21,
         $22,$23,$24,$25,
         $26,$27,$28,
+        CASE
+          WHEN COALESCE(
+            NULLIF(BTRIM($26), ''),
+            NULLIF(BTRIM($27), ''),
+            NULLIF(BTRIM($28), '')
+          ) IS NOT NULL THEN NOW()
+          ELSE NULL
+        END,
         $29,$30,$31,
         $32,$33,$34,$35,$36,$37,$38,$39,
         $40,$41,$42,$43,NULL

@@ -54,6 +54,7 @@ export interface Venue {
   instagram?: string;
   instagramUrl?: string;
   whatsapp?: string;
+  contactUpdatedAt?: string;
 
   // Audit / lifecycle
   createdBy?: string;

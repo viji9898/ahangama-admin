@@ -198,6 +198,13 @@ async function handler(event) {
         email            = COALESCE($37, email),
         instagram        = COALESCE($38, instagram),
         whatsapp         = COALESCE($39, whatsapp),
+        contact_updated_at = CASE
+          WHEN ($37 IS NOT NULL AND email IS DISTINCT FROM $37)
+            OR ($38 IS NOT NULL AND instagram IS DISTINCT FROM $38)
+            OR ($39 IS NOT NULL AND whatsapp IS DISTINCT FROM $39)
+          THEN NOW()
+          ELSE contact_updated_at
+        END,
         updated_by       = COALESCE($40, updated_by),
         last_verified_at = COALESCE($41::timestamptz, last_verified_at),
         source           = COALESCE($42, source),

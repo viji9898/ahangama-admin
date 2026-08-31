@@ -69,7 +69,7 @@ async function handler(event) {
         how_to_claim, restrictions,
         price, hours, area, lat, lng,
         logo, image, og_image,
-        map_url, google_place_id, email, instagram, whatsapp,
+        map_url, google_place_id, email, instagram, whatsapp, contact_updated_at,
         created_by, updated_by, last_verified_at, deleted_at, source, notes_internal,
         updated_at, created_at
       FROM ${VENUES_TABLE}

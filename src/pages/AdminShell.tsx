@@ -63,7 +63,15 @@ const navItems = [
     icon: <LinkOutlined />,
   },
   { key: "/admin/qr-links", label: "QR Links", icon: <QrcodeOutlined /> },
-  { key: "/admin/venues", label: "Venues", icon: <ShopOutlined /> },
+  {
+    key: "/admin/venues-menu",
+    label: "Venues",
+    icon: <ShopOutlined />,
+    children: [
+      { key: "/admin/venues", label: "All Venues" },
+      { key: "/admin/venues/contact-info", label: "Contact Info" },
+    ],
+  },
   { key: "/admin/crm", label: "Partner CRM", icon: <TeamOutlined /> },
   {
     key: "/admin/travel-agents",
@@ -135,6 +143,12 @@ const getSelectedKey = (pathname: string) => {
   if (pathname.startsWith("/admin/enquiries")) {
     return pathname === "/admin/enquiries"
       ? "/admin/enquiries/stays"
+      : pathname;
+  }
+
+  if (pathname.startsWith("/admin/venues")) {
+    return pathname === "/admin/venues"
+      ? "/admin/venues"
       : pathname;
   }
 
@@ -376,6 +390,7 @@ export default function AdminShell() {
               "/admin/events",
               "/admin/pass-users",
               "/admin/enquiries",
+              "/admin/venues-menu",
               "/ga-menu",
             ]}
             items={menuItems}

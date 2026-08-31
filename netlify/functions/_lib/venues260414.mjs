@@ -93,6 +93,7 @@ export function toVenueDto(row) {
     instagram: row.instagram,
     instagramUrl: normalizeInstagramForDto(row.instagram),
     whatsapp: row.whatsapp,
+    contactUpdatedAt: row.contact_updated_at,
     createdBy: row.created_by,
     updatedBy: row.updated_by,
     lastVerifiedAt: row.last_verified_at,
