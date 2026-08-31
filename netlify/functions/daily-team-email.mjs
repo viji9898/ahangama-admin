@@ -1,3 +1,4 @@
+import { modernHandler } from "./_lib/modernHandler.mjs";
 import { runScheduledDailyTeamEmail } from "./_lib/dailyTeamEmail.mjs";
 
 const json = (statusCode, body) => ({
@@ -8,7 +9,7 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-export async function handler() {
+async function handler() {
   try {
     console.info("[daily-team-email] scheduled run started", {
       invokedAt: new Date().toISOString(),
@@ -39,3 +40,5 @@ export async function handler() {
     });
   }
 }
+
+export default modernHandler(handler);

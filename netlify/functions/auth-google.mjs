@@ -1,3 +1,4 @@
+import { modernHandler } from "./_lib/modernHandler.mjs";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import { logAdminActivity } from "./_lib/adminActivity.mjs";
@@ -18,7 +19,7 @@ const json = (statusCode, body, headers = {}) => ({
   body: JSON.stringify(body),
 });
 
-export async function handler(event) {
+async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204 };
   if (event.httpMethod !== "POST")
     return json(405, { error: "Method not allowed" });
@@ -81,3 +82,5 @@ export async function handler(event) {
     return json(401, { error: "Invalid Google token" });
   }
 }
+
+export default modernHandler(handler);

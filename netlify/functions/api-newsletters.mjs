@@ -1,3 +1,4 @@
+import { modernHandler } from "./_lib/modernHandler.mjs";
 import { randomUUID } from "node:crypto";
 import { requireAdmin } from "./_lib/auth.mjs";
 import { query } from "./_lib/db.mjs";
@@ -150,7 +151,7 @@ async function importRecipients(body) {
   return { imported, rejected };
 }
 
-export async function handler(event) {
+async function handler(event) {
   try {
     const actor = requireAdmin(event);
     const actorEmail = String(actor?.email || "")
@@ -260,3 +261,5 @@ export async function handler(event) {
     });
   }
 }
+
+export default modernHandler(handler);

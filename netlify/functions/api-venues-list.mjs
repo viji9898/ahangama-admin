@@ -1,3 +1,4 @@
+import { modernHandler } from "./_lib/modernHandler.mjs";
 import { requireAdmin } from "./_lib/auth.mjs";
 import { query } from "./_lib/db.mjs";
 import { VENUES_TABLE, toVenueDto } from "./_lib/venues260414.mjs";
@@ -12,7 +13,7 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-export async function handler(event) {
+async function handler(event) {
   try {
     if (event.httpMethod !== "GET") {
       return json(405, { ok: false, error: "Method not allowed" });
@@ -84,3 +85,5 @@ export async function handler(event) {
     return json(statusCode, { ok: false, error: String(e?.message || e) });
   }
 }
+
+export default modernHandler(handler);

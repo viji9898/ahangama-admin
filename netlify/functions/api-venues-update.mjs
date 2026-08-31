@@ -1,3 +1,4 @@
+import { modernHandler } from "./_lib/modernHandler.mjs";
 import { requireAdmin } from "./_lib/auth.mjs";
 import { diffFields, logAdminActivity } from "./_lib/adminActivity.mjs";
 import { query } from "./_lib/db.mjs";
@@ -61,7 +62,7 @@ const VENUE_ACTIVITY_FIELDS = {
   deleted_at: "deleted at",
 };
 
-export async function handler(event) {
+async function handler(event) {
   try {
     if (event.httpMethod !== "PUT" && event.httpMethod !== "PATCH") {
       return json(405, { ok: false, error: "Method not allowed" });
@@ -312,3 +313,5 @@ export async function handler(event) {
     });
   }
 }
+
+export default modernHandler(handler);

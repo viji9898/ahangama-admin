@@ -1,3 +1,4 @@
+import { modernHandler } from "./_lib/modernHandler.mjs";
 import { getQrDashboardSummary, runGaReport } from "./_lib/ga4QrAnalytics.mjs";
 import { query, queryFromEnv } from "./_lib/db.mjs";
 
@@ -387,7 +388,7 @@ function unavailable(error) {
   return { available: false, error: String(error?.message || error) };
 }
 
-export async function handler(event) {
+async function handler(event) {
   if (event.httpMethod !== "GET") {
     return json(405, { ok: false, error: "Method not allowed" });
   }
@@ -458,3 +459,5 @@ export async function handler(event) {
     campaigns: { available: false, reason: "Ad accounts not connected" },
   });
 }
+
+export default modernHandler(handler);

@@ -1,7 +1,8 @@
+import { modernHandler } from "./_lib/modernHandler.mjs";
 import { Client } from "pg";
 import { getDatabaseConfig } from "./_lib/db.mjs";
 
-export async function handler() {
+async function handler() {
   const client = new Client(getDatabaseConfig());
 
   try {
@@ -20,3 +21,5 @@ export async function handler() {
     await client.end();
   }
 }
+
+export default modernHandler(handler);

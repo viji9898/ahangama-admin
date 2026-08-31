@@ -1,3 +1,4 @@
+import { modernHandler } from "./_lib/modernHandler.mjs";
 import { logAdminActivity } from "./_lib/adminActivity.mjs";
 import { getClientContext, getSessionAdmin } from "./_lib/auth.mjs";
 
@@ -7,7 +8,7 @@ const json = (statusCode, body, headers = {}) => ({
   body: JSON.stringify(body),
 });
 
-export async function handler(event) {
+async function handler(event) {
   const user = getSessionAdmin(event);
 
   if (user?.email) {
@@ -39,3 +40,5 @@ export async function handler(event) {
   ].join("; ");
   return json(200, { ok: true }, { "Set-Cookie": cookie });
 }
+
+export default modernHandler(handler);

@@ -1,3 +1,4 @@
+import { modernHandler } from "./_lib/modernHandler.mjs";
 import { requireAdmin } from "./_lib/auth.mjs";
 import {
   getDailyTeamEmailPreview,
@@ -21,7 +22,7 @@ function resolveReportDate(queryStringParameters = {}) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : getPreviousDayReportDate();
 }
 
-export async function handler(event) {
+async function handler(event) {
   try {
     if (event.httpMethod !== "GET") {
       return json(405, { ok: false, error: "Method not allowed" });
@@ -63,3 +64,5 @@ export async function handler(event) {
     });
   }
 }
+
+export default modernHandler(handler);

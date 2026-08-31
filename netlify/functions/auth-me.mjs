@@ -1,6 +1,7 @@
 import { query } from "./_lib/db.mjs";
 import { logAdminActivity } from "./_lib/adminActivity.mjs";
 import { getClientContext, getSessionAdmin } from "./_lib/auth.mjs";
+import { modernHandler } from "./_lib/modernHandler.mjs";
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -8,7 +9,7 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-export async function handler(event) {
+async function handler(event) {
   const user = getSessionAdmin(event);
   if (!user) return json(401, { ok: false });
 
@@ -56,3 +57,5 @@ export async function handler(event) {
     return json(401, { ok: false });
   }
 }
+
+export default modernHandler(handler);

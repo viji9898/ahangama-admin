@@ -1,3 +1,4 @@
+import { modernHandler } from "./_lib/modernHandler.mjs";
 import { requireAdmin } from "./_lib/auth.mjs";
 import { queryFromEnv } from "./_lib/db.mjs";
 
@@ -26,7 +27,7 @@ async function listColumns() {
   return columnsResult.rows.map((row) => row.column_name);
 }
 
-export async function handler(event) {
+async function handler(event) {
   try {
     if (event.httpMethod !== "GET") {
       return json(405, { ok: false, error: "Method not allowed" });
@@ -60,3 +61,5 @@ export async function handler(event) {
     });
   }
 }
+
+export default modernHandler(handler);
