@@ -12,6 +12,7 @@ import {
   Row,
   Select,
   Space,
+  Switch,
   Typography,
   message,
 } from "antd";
@@ -57,6 +58,19 @@ type CreateVenueFormValues = {
   ogImage?: string;
   live?: boolean;
   status?: string;
+};
+
+type QuickCreateVenueFormValues = {
+  name: string;
+  destinationSlug: string;
+  slug: string;
+  category: string;
+  email?: string;
+  instagram?: string;
+  whatsapp?: string;
+  status: string;
+  live: boolean;
+  isPassVenue: boolean;
 };
 
 type VenueMediaPatch = Partial<Pick<Venue, "logo" | "image" | "ogImage">>;
@@ -224,6 +238,10 @@ export function VenueAdminPage() {
   const [focusDrawerOpen, setFocusDrawerOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createForm] = Form.useForm<CreateVenueFormValues>();
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [quickCreateSubmitting, setQuickCreateSubmitting] = useState(false);
+  const [quickCreateForm] = Form.useForm<QuickCreateVenueFormValues>();
+  const [quickSlugDirty, setQuickSlugDirty] = useState(false);
   const [slugDirty, setSlugDirty] = useState(false);
   const [idDirty, setIdDirty] = useState(false);
   const [coordinatesInput, setCoordinatesInput] = useState("");
@@ -233,6 +251,7 @@ export function VenueAdminPage() {
   const createLogo = Form.useWatch("logo", createForm);
   const createImage = Form.useWatch("image", createForm);
   const createOgImage = Form.useWatch("ogImage", createForm);
+  const quickCreateSlug = Form.useWatch("slug", quickCreateForm);
 
   const createOpen = searchParams.get("addVenue") === "1";
   const selectedVenueId = normalizeId(searchParams.get("venue"));
@@ -760,6 +779,60 @@ export function VenueAdminPage() {
     }
   };
 
+  const handleQuickCreateVenue = async (
+    values: QuickCreateVenueFormValues,
+  ) => {
+    const name = normalizeText(values.name);
+    const slug = slugify(values.slug);
+    const id = slug;
+    const category = normalizeText(values.category).toLowerCase();
+
+    if (venues.some((venue) => normalizeId(venue.id) === id)) {
+      message.error("A venue with this generated ID already exists.");
+      return;
+    }
+
+    setQuickCreateSubmitting(true);
+    try {
+      const response = await fetch(CREATE_ENDPOINT, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          name,
+          slug,
+          destinationSlug: normalizeText(values.destinationSlug).toLowerCase(),
+          category,
+          categories: [category],
+          email: normalizeText(values.email) || null,
+          instagram: normalizeText(values.instagram) || null,
+          whatsapp: normalizeText(values.whatsapp) || null,
+          status: normalizeText(values.status).toLowerCase() || "active",
+          live: Boolean(values.live),
+          isPassVenue: Boolean(values.isPassVenue),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data?.ok !== true) {
+        throw new Error(data?.error || `Failed (${response.status})`);
+      }
+
+      const created = mergeVenueUpdate((data?.venue || {}) as Venue);
+      setVenues((current) => [created, ...current]);
+      quickCreateForm.resetFields();
+      setQuickSlugDirty(false);
+      setQuickCreateOpen(false);
+      selectVenue(created.id);
+      setSearch("");
+      message.success("Venue created.");
+    } catch (createError) {
+      message.error(String((createError as Error)?.message || createError));
+    } finally {
+      setQuickCreateSubmitting(false);
+    }
+  };
+
   const handleDuplicate = () => {
     if (!selectedVenue) return;
     const baseSlug = slugify(
@@ -880,6 +953,14 @@ export function VenueAdminPage() {
               Open Focus
             </Button>
             <Button onClick={refreshVenues}>Refresh</Button>
+            <Button
+              onClick={() => {
+                setQuickSlugDirty(false);
+                setQuickCreateOpen(true);
+              }}
+            >
+              Quick Create
+            </Button>
             <Button type="primary" onClick={() => openCreateDrawer()}>
               Create New Venue
             </Button>
@@ -1252,6 +1333,134 @@ export function VenueAdminPage() {
               </Space>
             </Card>
           </Space>
+        </Form>
+      </Drawer>
+
+      <Drawer
+        title="Quick Create Venue"
+        placement="right"
+        width={screens.md ? 480 : "100%"}
+        open={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+        destroyOnClose
+        footer={
+          <Space style={{ width: "100%", justifyContent: "flex-end" }}>
+            <Button onClick={() => setQuickCreateOpen(false)}>Cancel</Button>
+            <Button
+              type="primary"
+              loading={quickCreateSubmitting}
+              onClick={() => quickCreateForm.submit()}
+            >
+              Create venue
+            </Button>
+          </Space>
+        }
+      >
+        <Form<QuickCreateVenueFormValues>
+          form={quickCreateForm}
+          layout="vertical"
+          initialValues={{
+            destinationSlug: "ahangama",
+            category: "eat",
+            status: "active",
+            live: true,
+            isPassVenue: true,
+          }}
+          onValuesChange={(changedValues, values) => {
+            if (
+              Object.prototype.hasOwnProperty.call(changedValues, "name") &&
+              !quickSlugDirty
+            ) {
+              quickCreateForm.setFieldValue("slug", slugify(values.name || ""));
+            }
+            if (Object.prototype.hasOwnProperty.call(changedValues, "slug")) {
+              setQuickSlugDirty(Boolean(changedValues.slug));
+            }
+          }}
+          onFinish={handleQuickCreateVenue}
+        >
+          <Form.Item
+            label="Venue name"
+            name="name"
+            rules={[{ required: true, message: "Venue name is required" }]}
+          >
+            <Input placeholder="Palm Hotel" autoFocus />
+          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                label="Destination"
+                name="destinationSlug"
+                rules={[
+                  { required: true, message: "Destination is required" },
+                ]}
+              >
+                <Input placeholder="ahangama" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                label="Slug"
+                name="slug"
+                rules={[{ required: true, message: "Slug is required" }]}
+              >
+                <Input placeholder="palm-hotel" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item
+            label="Generated Venue ID"
+            extra="The venue ID is generated from the slug and cannot be changed after creation."
+          >
+            <Input
+              value={slugify(quickCreateSlug || "")}
+              placeholder="Generated from the slug"
+              readOnly
+            />
+          </Form.Item>
+          <Form.Item
+            label="Category"
+            name="category"
+            rules={[{ required: true, message: "Category is required" }]}
+          >
+            <Select options={categoryOptions} />
+          </Form.Item>
+          <Form.Item
+            label="Email address"
+            name="email"
+            rules={[{ type: "email", message: "Enter a valid email address" }]}
+          >
+            <Input placeholder="hello@venue.com" />
+          </Form.Item>
+          <Form.Item label="Instagram" name="instagram">
+            <Input placeholder="@venue or profile URL" />
+          </Form.Item>
+          <Form.Item label="WhatsApp number" name="whatsapp">
+            <Input placeholder="+94 77 123 4567" />
+          </Form.Item>
+          <Card size="small" title="Visibility">
+            <Form.Item label="Status" name="status">
+              <Select options={VENUE_STATUS_OPTIONS} />
+            </Form.Item>
+            <Space size={24} wrap>
+              <Form.Item
+                label="Live"
+                name="live"
+                valuePropName="checked"
+                style={{ marginBottom: 0 }}
+              >
+                <Switch />
+              </Form.Item>
+              <Form.Item
+                label="Pass venue"
+                name="isPassVenue"
+                valuePropName="checked"
+                style={{ marginBottom: 0 }}
+              >
+                <Switch />
+              </Form.Item>
+            </Space>
+          </Card>
         </Form>
       </Drawer>
 

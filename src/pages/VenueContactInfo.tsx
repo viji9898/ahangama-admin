@@ -12,6 +12,7 @@ import {
   Button,
   Card,
   Input,
+  Segmented,
   Space,
   Table,
   Tag,
@@ -31,6 +32,8 @@ type ContactDraft = {
   instagram: string;
 };
 
+type ContactFilter = "all" | "complete" | "incomplete";
+
 function contactDraft(venue: Venue): ContactDraft {
   return {
     email: String(venue.email || ""),
@@ -41,6 +44,12 @@ function contactDraft(venue: Venue): ContactDraft {
 
 function normalizeContact(value?: string) {
   return String(value || "").trim();
+}
+
+function isContactComplete(draft?: ContactDraft) {
+  return Boolean(
+    draft && Object.values(draft).every((value) => normalizeContact(value)),
+  );
 }
 
 function formatContactUpdatedAt(value?: string) {
@@ -57,6 +66,7 @@ export default function VenueContactInfo() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [drafts, setDrafts] = useState<Record<string, ContactDraft>>({});
   const [search, setSearch] = useState("");
+  const [contactFilter, setContactFilter] = useState<ContactFilter>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
@@ -102,18 +112,23 @@ export default function VenueContactInfo() {
 
   const filteredVenues = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return venues;
-    return venues.filter((venue) =>
-      [
+    return venues.filter((venue) => {
+      const draft = venue.id ? drafts[venue.id] : undefined;
+      const complete = isContactComplete(contactDraft(venue));
+      if (contactFilter === "complete" && !complete) return false;
+      if (contactFilter === "incomplete" && complete) return false;
+      if (!query) return true;
+
+      return [
         venue.name,
         venue.area,
         venue.category,
-        venue.email,
-        venue.whatsapp,
-        venue.instagram,
-      ].some((value) => String(value || "").toLowerCase().includes(query)),
-    );
-  }, [search, venues]);
+        draft?.email,
+        draft?.whatsapp,
+        draft?.instagram,
+      ].some((value) => String(value || "").toLowerCase().includes(query));
+    });
+  }, [contactFilter, drafts, search, venues]);
 
   const updateDraft = (
     venueId: string,
@@ -286,8 +301,7 @@ export default function VenueContactInfo() {
   ];
 
   const completeCount = venues.filter((venue) => {
-    const draft = venue.id ? drafts[venue.id] : undefined;
-    return draft && Object.values(draft).every((value) => normalizeContact(value));
+    return isContactComplete(contactDraft(venue));
   }).length;
 
   return (
@@ -328,19 +342,31 @@ export default function VenueContactInfo() {
           style={{
             display: "flex",
             justifyContent: "space-between",
+            flexWrap: "wrap",
             gap: 12,
             padding: 16,
             borderBottom: "1px solid #f0f0f0",
           }}
         >
-          <Input
-            allowClear
-            prefix={<SearchOutlined />}
-            placeholder="Search venues or contact details"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            style={{ width: "min(420px, 100%)" }}
-          />
+          <Space wrap>
+            <Input
+              allowClear
+              prefix={<SearchOutlined />}
+              placeholder="Search venues or contact details"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              style={{ width: "min(420px, 100%)" }}
+            />
+            <Segmented
+              value={contactFilter}
+              options={[
+                { label: "All", value: "all" },
+                { label: "Complete", value: "complete" },
+                { label: "Needs details", value: "incomplete" },
+              ]}
+              onChange={(value) => setContactFilter(value as ContactFilter)}
+            />
+          </Space>
           <Button
             icon={<ReloadOutlined />}
             aria-label="Refresh venue contacts"
@@ -355,7 +381,12 @@ export default function VenueContactInfo() {
           loading={loading}
           pagination={{ pageSize: 25, showSizeChanger: true }}
           scroll={{ x: 1240 }}
-          locale={{ emptyText: search ? "No matching venues" : "No venues found" }}
+          locale={{
+            emptyText:
+              search || contactFilter !== "all"
+                ? "No matching venues"
+                : "No venues found",
+          }}
         />
       </Card>
     </Space>
