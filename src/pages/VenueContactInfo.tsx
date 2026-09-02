@@ -16,6 +16,7 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from "antd";
@@ -50,6 +51,23 @@ function isContactComplete(draft?: ContactDraft) {
   return Boolean(
     draft && Object.values(draft).every((value) => normalizeContact(value)),
   );
+}
+
+function getInstagramUrl(value?: string) {
+  const normalized = normalizeContact(value);
+  if (!normalized) return "";
+
+  if (/^https?:\/\//i.test(normalized)) {
+    try {
+      const url = new URL(normalized);
+      if (/(^|\.)instagram\.com$/i.test(url.hostname)) return url.toString();
+    } catch {
+      return "";
+    }
+  }
+
+  const handle = normalized.replace(/^@/, "").replace(/^\/+|\/+$/g, "");
+  return handle ? `https://www.instagram.com/${handle}/` : "";
 }
 
 function formatContactUpdatedAt(value?: string) {
@@ -251,16 +269,35 @@ export default function VenueContactInfo() {
     {
       title: "Instagram",
       width: 260,
-      render: (_, venue) => (
-        <Input
-          prefix={<InstagramOutlined />}
-          placeholder="@venue or profile URL"
-          value={venue.id ? drafts[venue.id]?.instagram || "" : ""}
-          onChange={(event) =>
-            venue.id && updateDraft(venue.id, "instagram", event.target.value)
-          }
-        />
-      ),
+      render: (_, venue) => {
+        const instagram = venue.id ? drafts[venue.id]?.instagram || "" : "";
+        const instagramUrl = getInstagramUrl(instagram);
+        return (
+          <Input
+            prefix={
+              instagramUrl ? (
+                <Tooltip title="Open Instagram profile">
+                  <a
+                    href={instagramUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Open Instagram profile"
+                  >
+                    <InstagramOutlined />
+                  </a>
+                </Tooltip>
+              ) : (
+                <InstagramOutlined style={{ color: "#bfbfbf" }} />
+              )
+            }
+            placeholder="@venue or profile URL"
+            value={instagram}
+            onChange={(event) =>
+              venue.id && updateDraft(venue.id, "instagram", event.target.value)
+            }
+          />
+        );
+      },
     },
     {
       title: "Status",
