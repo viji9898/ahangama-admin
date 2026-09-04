@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import "./PublicStats.css";
 
 type MetricItem = { label: string; value: number };
+type GuideVenue = {
+  id: string;
+  name: string;
+  engagements: number;
+  users: number;
+  linkTypes: MetricItem[];
+};
 type StatsPayload = {
   generatedAt?: string;
   overview?: {
@@ -18,6 +25,16 @@ type StatsPayload = {
     topPages?: Array<{ path: string; title: string; views: number }>;
     trafficSources?: MetricItem[];
     countries?: MetricItem[];
+  };
+  guide?: {
+    available?: boolean;
+    error?: string;
+    engagements?: number;
+    users?: number;
+    outboundClicks?: number;
+    navigationSelections?: number;
+    venues?: GuideVenue[];
+    linkTypes?: MetricItem[];
   };
   qr?: {
     available?: boolean;
@@ -71,6 +88,14 @@ const formatNumber = (value?: number | null) =>
   value === null || value === undefined
     ? "—"
     : new Intl.NumberFormat("en-US", { notation: "compact" }).format(value);
+
+const VENUE_FEE_USD = 150;
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(value);
 
 const DISPLAY_LABELS: Record<string, string> = {
   ps: "Postcard Stands",
@@ -194,6 +219,8 @@ function FacebookInsights({
 
 export default function PublicStats() {
   const [days, setDays] = useState(30);
+  const [selectedGuideVenue, setSelectedGuideVenue] = useState("all");
+  const [insightVenue, setInsightVenue] = useState<GuideVenue | null>(null);
   const [data, setData] = useState<StatsPayload | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -201,7 +228,7 @@ export default function PublicStats() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(`/.netlify/functions/api-public-stats?days=${days}&v=3`, {
+    fetch(`/.netlify/functions/api-public-stats?days=${days}&v=6`, {
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -225,6 +252,71 @@ export default function PublicStats() {
   }, [days]);
 
   const overview = data?.overview;
+  const guideVenues = data?.guide?.venues || [];
+  const filteredGuideVenues =
+    selectedGuideVenue === "all"
+      ? guideVenues
+      : guideVenues.filter(
+          (venue) => (venue.id || venue.name) === selectedGuideVenue,
+        );
+  const displayedGuideVenues =
+    selectedGuideVenue === "all"
+      ? filteredGuideVenues.slice(0, 10)
+      : filteredGuideVenues;
+  const filteredGuideTotals = {
+    engagements: filteredGuideVenues.reduce(
+      (total, venue) => total + venue.engagements,
+      0,
+    ),
+    users: filteredGuideVenues.reduce(
+      (total, venue) => total + venue.users,
+      0,
+    ),
+  };
+  const guideInsight = (() => {
+    if (!data?.guide?.available) {
+      return "Guide engagement is temporarily unavailable.";
+    }
+
+    if (selectedGuideVenue !== "all") {
+      const venue = filteredGuideVenues[0];
+      return venue
+        ? `${venue.name} prompted ${formatNumber(venue.engagements)} outbound ${venue.engagements === 1 ? "action" : "actions"} from ${formatNumber(venue.users)} ${venue.users === 1 ? "visitor" : "visitors"}.`
+        : "No guide engagement was recorded for this venue in the selected period.";
+    }
+
+    const topVenue = guideVenues[0];
+    const preferredLink = data.guide.linkTypes?.[0];
+    if (!topVenue) {
+      return "No venue engagement was recorded in the selected period.";
+    }
+
+    return `${topVenue.name} attracted the most guide interest with ${formatNumber(topVenue.engagements)} outbound ${topVenue.engagements === 1 ? "action" : "actions"}.${preferredLink ? ` ${titleCase(preferredLink.label)} was the leading recorded action.` : ""}`;
+  })();
+  const insightShare = insightVenue
+    ? Math.round(
+        (insightVenue.engagements /
+          Math.max(data?.guide?.outboundClicks || 0, 1)) *
+          100,
+      )
+    : 0;
+  const insightDepth = insightVenue
+    ? insightVenue.engagements / Math.max(insightVenue.users, 1)
+    : 0;
+  const leaderGap = insightVenue
+    ? Math.max((guideVenues[0]?.engagements || 0) - insightVenue.engagements, 0)
+    : 0;
+
+  useEffect(() => {
+    if (!insightVenue) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setInsightVenue(null);
+    };
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [insightVenue]);
 
   return (
     <main className="stats-page">
@@ -261,6 +353,7 @@ export default function PublicStats() {
                 onClick={() => {
                   setLoading(true);
                   setError("");
+                  setInsightVenue(null);
                   setDays(value);
                 }}
                 type="button"
@@ -338,7 +431,154 @@ export default function PublicStats() {
             <Bars items={data?.website?.countries} />
           </article>
         </div>
+
+        <div className="stats-guide">
+          <div className="stats-guide__header">
+            <div>
+              <p>Online guide engagement</p>
+              <h3>Where curiosity turns into action</h3>
+            </div>
+            <label className="stats-guide__filter">
+              <span>Filter by venue</span>
+              <select
+                value={selectedGuideVenue}
+                onChange={(event) => setSelectedGuideVenue(event.target.value)}
+              >
+                <option value="all">All venues</option>
+                {guideVenues.map((venue) => (
+                  <option
+                    key={venue.id || venue.name}
+                    value={venue.id || venue.name}
+                  >
+                    {venue.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="stats-guide__summary">
+            <article>
+              <strong>
+                {formatNumber(
+                  selectedGuideVenue === "all"
+                    ? data?.guide?.engagements
+                    : filteredGuideTotals.engagements,
+                )}
+              </strong>
+              <span>Guide engagements</span>
+            </article>
+            <article>
+              <strong>
+                {formatNumber(
+                  selectedGuideVenue === "all"
+                    ? data?.guide?.users
+                    : filteredGuideTotals.users,
+                )}
+              </strong>
+              <span>Engaged visitors</span>
+            </article>
+            <article>
+              <strong>{formatNumber(filteredGuideVenues.length)}</strong>
+              <span>Venues explored</span>
+            </article>
+          </div>
+
+          <p className="stats-guide__insight">{guideInsight}</p>
+
+          <div className="stats-guide__table" role="table" aria-label="Online guide venue engagement">
+            <div className="stats-guide__table-head" role="row">
+              <span>Venue</span>
+              <span>Actions</span>
+              <span>Visitors</span>
+            </div>
+            {displayedGuideVenues.map((venue) => (
+              <button
+                className="stats-guide__table-row"
+                role="row"
+                key={venue.id || venue.name}
+                type="button"
+                aria-haspopup="dialog"
+                onClick={() => setInsightVenue(venue)}
+              >
+                <strong>{venue.name}</strong>
+                <span>{formatNumber(venue.engagements)}</span>
+                <span>{formatNumber(venue.users)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
+
+      {insightVenue ? (
+        <div
+          className="stats-modal"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setInsightVenue(null);
+          }}
+        >
+          <section
+            className="stats-modal__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="guide-insight-title"
+          >
+            <button
+              className="stats-modal__close"
+              type="button"
+              aria-label="Close venue insight"
+              onClick={() => setInsightVenue(null)}
+              autoFocus
+            >
+              ×
+            </button>
+            <p className="stats-modal__eyebrow">
+              Online guide · {days} day view
+            </p>
+            <h2 id="guide-insight-title">{insightVenue.name}</h2>
+            <p className="stats-modal__lead">
+              {leaderGap === 0
+                ? "This venue currently shares the lead for outbound guide interest."
+                : `${formatNumber(leaderGap)} ${leaderGap === 1 ? "action" : "actions"} behind the current guide leader.`}
+            </p>
+
+            <div className="stats-modal__metrics">
+              <article>
+                <strong>{insightShare}%</strong>
+                <span>Share of venue actions</span>
+              </article>
+              <article>
+                <strong>{insightDepth.toFixed(1)}</strong>
+                <span>Actions per visitor</span>
+              </article>
+              <article>
+                <strong>
+                  {formatCurrency(
+                    VENUE_FEE_USD / Math.max(insightVenue.engagements, 1),
+                  )}
+                </strong>
+                <span>Cost per click</span>
+              </article>
+            </div>
+
+            <div className="stats-modal__intent">
+              <div>
+                <h3>Recorded intent</h3>
+                <span>{formatNumber(insightVenue.engagements)} total actions</span>
+              </div>
+              {insightVenue.linkTypes.length ? (
+                <Bars items={insightVenue.linkTypes} />
+              ) : (
+                <p>
+                  Link-level detail was not available for these historical
+                  interactions.
+                </p>
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <section className="stats-section stats-section--dark" id="social">
         <div className="stats-section__heading">

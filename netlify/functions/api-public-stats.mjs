@@ -291,6 +291,136 @@ async function getWebsiteStats(startDate, endDate) {
   };
 }
 
+async function getGuideEngagement(startDate, endDate) {
+  const dateRanges = [{ startDate, endDate }];
+  const guideEventFilter = {
+    filter: {
+      fieldName: "eventName",
+      stringFilter: {
+        matchType: "BEGINS_WITH",
+        value: "guide_",
+        caseSensitive: true,
+      },
+    },
+  };
+  const outboundFilter = {
+    filter: {
+      fieldName: "eventName",
+      stringFilter: {
+        matchType: "EXACT",
+        value: "guide_outbound_click",
+        caseSensitive: true,
+      },
+    },
+  };
+  const [eventsReport, venuesReport, linksReport, venueLinksReport] =
+    await Promise.all([
+    runGaReport({
+      dateRanges,
+      dimensions: [{ name: "eventName" }],
+      metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+      dimensionFilter: guideEventFilter,
+      metricAggregations: ["TOTAL"],
+      orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      limit: 20,
+    }),
+    runGaReport({
+      dateRanges,
+      dimensions: [
+        { name: "customEvent:venue_id" },
+        { name: "customEvent:venue_name" },
+      ],
+      metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+      dimensionFilter: outboundFilter,
+      orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      limit: 1000,
+    }),
+    runGaReport({
+      dateRanges,
+      dimensions: [{ name: "customEvent:link_type" }],
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: outboundFilter,
+      orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      limit: 20,
+    }),
+    runGaReport({
+      dateRanges,
+      dimensions: [
+        { name: "customEvent:venue_id" },
+        { name: "customEvent:venue_name" },
+        { name: "customEvent:link_type" },
+      ],
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: outboundFilter,
+      orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      limit: 2000,
+    }),
+  ]);
+  const totalMetrics = eventsReport?.totals?.[0]?.metricValues || [];
+  const events = (eventsReport?.rows || []).map((row) => ({
+    event: row.dimensionValues?.[0]?.value || "unknown",
+    engagements: numberMetric(row, 0),
+  }));
+  const venues = (venuesReport?.rows || [])
+    .map((row) => {
+      const rawId = row.dimensionValues?.[0]?.value || "";
+      const rawName = row.dimensionValues?.[1]?.value || "";
+
+      return {
+        id: rawId === "(not set)" ? "" : rawId,
+        name: rawName && rawName !== "(not set)" ? rawName : "Unknown venue",
+        engagements: numberMetric(row, 0),
+        users: numberMetric(row, 1),
+      };
+    })
+    .filter((venue) => venue.id || venue.name !== "Unknown venue");
+  const linkTypes = (linksReport?.rows || [])
+    .map((row) => ({
+      label: row.dimensionValues?.[0]?.value || "unknown",
+      value: numberMetric(row, 0),
+    }))
+    .filter((item) => item.label !== "(not set)");
+  const venueLinkTypes = (venueLinksReport?.rows || []).reduce(
+    (grouped, row) => {
+      const rawId = row.dimensionValues?.[0]?.value || "";
+      const rawName = row.dimensionValues?.[1]?.value || "";
+      const linkType = row.dimensionValues?.[2]?.value || "";
+      const venueKey =
+        rawId && rawId !== "(not set)"
+          ? rawId
+          : rawName && rawName !== "(not set)"
+            ? rawName
+            : "";
+
+      if (venueKey && linkType && linkType !== "(not set)") {
+        const items = grouped.get(venueKey) || [];
+        items.push({ label: linkType, value: numberMetric(row, 0) });
+        grouped.set(venueKey, items);
+      }
+
+      return grouped;
+    },
+    new Map(),
+  );
+
+  return {
+    available: true,
+    engagements: Number(totalMetrics[0]?.value || 0),
+    users: Number(totalMetrics[1]?.value || 0),
+    outboundClicks:
+      events.find((item) => item.event === "guide_outbound_click")
+        ?.engagements || 0,
+    navigationSelections:
+      events.find((item) => item.event === "guide_contents_select")
+        ?.engagements || 0,
+    venues: venues.map((venue) => ({
+      ...venue,
+      linkTypes: venueLinkTypes.get(venue.id || venue.name) || [],
+    })),
+    linkTypes,
+  };
+}
+
 async function countPasses() {
   const databaseEnv = "NETLIFY_DATABASE_URL";
   const tablesResult = await queryFromEnv(
@@ -399,6 +529,7 @@ async function handler(event) {
   const endDate = "today";
   const [
     websiteResult,
+    guideResult,
     qrResult,
     passesResult,
     venuesResult,
@@ -406,6 +537,7 @@ async function handler(event) {
     facebookResult,
   ] = await Promise.allSettled([
     getWebsiteStats(startDate, endDate),
+    getGuideEngagement(startDate, endDate),
     getQrDashboardSummary({ startDate, endDate }),
     countPasses(),
     countVenues(),
@@ -417,6 +549,10 @@ async function handler(event) {
     websiteResult.status === "fulfilled"
       ? websiteResult.value
       : unavailable(websiteResult.reason);
+  const guide =
+    guideResult.status === "fulfilled"
+      ? guideResult.value
+      : unavailable(guideResult.reason);
   const qr =
     qrResult.status === "fulfilled"
       ? summarizeQr(qrResult.value)
@@ -427,6 +563,7 @@ async function handler(event) {
     generatedAt: new Date().toISOString(),
     days,
     website,
+    guide,
     qr,
     overview: {
       activeVisitors: website.activeVisitors || 0,
