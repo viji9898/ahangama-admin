@@ -1,9 +1,6 @@
 import { modernHandler } from "./_lib/modernHandler.mjs";
 import { requireAdmin } from "./_lib/auth.mjs";
-import {
-  getGaMetadata,
-  runGaReport,
-} from "./_lib/ga4QrAnalytics.mjs";
+import { getGaMetadata, runGaReport } from "./_lib/ga4QrAnalytics.mjs";
 
 const DEFAULT_START_DATE = "30daysAgo";
 const DEFAULT_END_DATE = "today";

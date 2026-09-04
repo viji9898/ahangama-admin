@@ -18,8 +18,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 
 const { RangePicker } = DatePicker;
-const GUIDE_ENGAGEMENT_ENDPOINT =
-  "/.netlify/functions/ga-guide-engagement";
+const GUIDE_ENGAGEMENT_ENDPOINT = "/.netlify/functions/ga-guide-engagement";
 const DEFAULT_RANGE: [Dayjs, Dayjs] = [dayjs().subtract(29, "day"), dayjs()];
 
 type GuideEngagementRow = {

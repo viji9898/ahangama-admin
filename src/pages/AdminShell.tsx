@@ -148,9 +148,7 @@ const getSelectedKey = (pathname: string) => {
   }
 
   if (pathname.startsWith("/admin/venues")) {
-    return pathname === "/admin/venues"
-      ? "/admin/venues"
-      : pathname;
+    return pathname === "/admin/venues" ? "/admin/venues" : pathname;
   }
 
   return (

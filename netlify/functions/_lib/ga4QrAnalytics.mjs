@@ -770,7 +770,9 @@ function mapRows(
     const directPurchase = purchasesByRow.get(key);
 
     if (directPurchase) {
-      const existingVenuePurchase = directPurchasesByVenue.get(resolvedVenue) || {
+      const existingVenuePurchase = directPurchasesByVenue.get(
+        resolvedVenue,
+      ) || {
         count: 0,
         revenue: 0,
       };
@@ -788,7 +790,8 @@ function mapRows(
       count: 0,
       revenue: 0,
     };
-    const remainingCount = Number(venuePurchase.count || 0) - directPurchase.count;
+    const remainingCount =
+      Number(venuePurchase.count || 0) - directPurchase.count;
     const remainingRevenue =
       Number(venuePurchase.revenue || 0) - directPurchase.revenue;
 
@@ -803,7 +806,10 @@ function mapRows(
         continue;
       }
 
-      if (!targetRow || Number(row.sessions || 0) > Number(targetRow.sessions || 0)) {
+      if (
+        !targetRow ||
+        Number(row.sessions || 0) > Number(targetRow.sessions || 0)
+      ) {
         targetRow = row;
       }
     }
@@ -875,9 +881,10 @@ function buildScanMapRows(rows = [], venueDirectory = new Map()) {
     const ctaClick = Number(row.ctaClick || 0);
     const purchases = Number(row.purchases || 0);
     const revenue = Number(row.revenue || 0);
-    const surface = String(row.surface || "unknown")
-      .trim()
-      .toLowerCase() || "unknown";
+    const surface =
+      String(row.surface || "unknown")
+        .trim()
+        .toLowerCase() || "unknown";
 
     if (existing) {
       existing.sessions += sessions;
@@ -930,7 +937,10 @@ function buildScanMapRows(rows = [], venueDirectory = new Map()) {
         left.localeCompare(right),
       ),
       topSurfaces: [...row.surfaces.entries()]
-        .map(([surface, surfaceSessions]) => ({ surface, sessions: surfaceSessions }))
+        .map(([surface, surfaceSessions]) => ({
+          surface,
+          sessions: surfaceSessions,
+        }))
         .sort(
           (left, right) =>
             right.sessions - left.sessions ||
@@ -984,9 +994,10 @@ function createEmptyQrFunnel(error = "") {
 }
 
 function upsertQrFunnelRow(groupedRows, venueDirectory, key, rawVenue = "") {
-  const normalizedKey = String(key || "unknown")
-    .trim()
-    .toLowerCase() || "unknown";
+  const normalizedKey =
+    String(key || "unknown")
+      .trim()
+      .toLowerCase() || "unknown";
   const existing = groupedRows.get(normalizedKey);
 
   if (existing) {
@@ -1033,7 +1044,12 @@ function buildQrFunnelRows({
   for (const row of viewRows) {
     const rawVenue = String(row.dimensionValues?.[0]?.value || "").trim();
     const venueKey = resolveVenueSlug(rawVenue || "unknown");
-    const grouped = upsertQrFunnelRow(groupedRows, venueDirectory, venueKey, rawVenue);
+    const grouped = upsertQrFunnelRow(
+      groupedRows,
+      venueDirectory,
+      venueKey,
+      rawVenue,
+    );
 
     grouped.views += Number(row.metricValues?.[0]?.value || 0);
   }
@@ -1041,7 +1057,12 @@ function buildQrFunnelRows({
   for (const row of clickRows) {
     const rawVenue = String(row.dimensionValues?.[0]?.value || "").trim();
     const venueKey = resolveVenueSlug(rawVenue || "unknown");
-    const grouped = upsertQrFunnelRow(groupedRows, venueDirectory, venueKey, rawVenue);
+    const grouped = upsertQrFunnelRow(
+      groupedRows,
+      venueDirectory,
+      venueKey,
+      rawVenue,
+    );
 
     grouped.clicks += Number(row.metricValues?.[0]?.value || 0);
   }
@@ -1055,7 +1076,8 @@ function buildQrFunnelRows({
     const normalizedVenueSlug = normalizeCustomDimensionValue(rawVenueSlug);
     const normalizedLandingPage = normalizeCustomDimensionValue(rawLandingPage);
     const normalizedPromoType = normalizeCustomDimensionValue(rawPromoType);
-    const baseVenue = normalizedQrVenue || normalizedVenueSlug || "unattributed";
+    const baseVenue =
+      normalizedQrVenue || normalizedVenueSlug || "unattributed";
     const venueKey = resolveVenueSlug(baseVenue);
     const grouped = upsertQrFunnelRow(
       groupedRows,
@@ -1126,8 +1148,8 @@ function buildQrFunnelRows({
         sourceVenues: [...row.sourceVenues].sort((left, right) =>
           left.localeCompare(right),
         ),
-        purchaseLandingPages: [...row.purchaseLandingPages].sort((left, right) =>
-          left.localeCompare(right),
+        purchaseLandingPages: [...row.purchaseLandingPages].sort(
+          (left, right) => left.localeCompare(right),
         ),
         promoTypes: [...row.promoTypes].sort((left, right) =>
           left.localeCompare(right),
@@ -1163,8 +1185,7 @@ function buildQrFunnelTotals(rows = []) {
     viewToClickRate: totals.views > 0 ? totals.clicks / totals.views : 0,
     clickToPurchaseRate:
       totals.clicks > 0 ? totals.purchases / totals.clicks : 0,
-    viewToPurchaseRate:
-      totals.views > 0 ? totals.purchases / totals.views : 0,
+    viewToPurchaseRate: totals.views > 0 ? totals.purchases / totals.views : 0,
   };
 }
 
