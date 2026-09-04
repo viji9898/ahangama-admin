@@ -129,6 +129,25 @@ function Bars({ items = [] }: { items?: MetricItem[] }) {
   );
 }
 
+function LoadingIndicator({
+  label = "Loading data",
+  compact = false,
+}: {
+  label?: string;
+  compact?: boolean;
+}) {
+  return (
+    <span
+      className={`stats-loader ${compact ? "stats-loader--compact" : ""}`}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="stats-loader__icon" aria-hidden="true" />
+      <span>{label}</span>
+    </span>
+  );
+}
+
 function EmptyConnection({ label }: { label: string }) {
   return (
     <div className="stats-connection">
@@ -380,7 +399,7 @@ export default function PublicStats() {
           <article key={String(label)}>
             <strong>
               {loading
-                ? "···"
+                ? <LoadingIndicator label={`Loading ${String(label).toLowerCase()}`} compact />
                 : formatNumber(value as number | null | undefined)}
             </strong>
             <span>{label}</span>
@@ -403,32 +422,44 @@ export default function PublicStats() {
               <h3>Top pages</h3>
               <span>Views</span>
             </div>
-            <div className="stats-list">
-              {(data?.website?.topPages || []).map((page, index) => (
-                <div className="stats-list__row" key={`${page.path}-${index}`}>
-                  <span className="stats-list__index">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span>
-                    <strong>{page.title}</strong>
-                    <small>{page.path}</small>
-                  </span>
-                  <b>{formatNumber(page.views)}</b>
-                </div>
-              ))}
-            </div>
+            {loading ? (
+              <LoadingIndicator label="Loading top pages" />
+            ) : (
+              <div className="stats-list">
+                {(data?.website?.topPages || []).map((page, index) => (
+                  <div className="stats-list__row" key={`${page.path}-${index}`}>
+                    <span className="stats-list__index">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span>
+                      <strong>{page.title}</strong>
+                      <small>{page.path}</small>
+                    </span>
+                    <b>{formatNumber(page.views)}</b>
+                  </div>
+                ))}
+              </div>
+            )}
           </article>
           <article className="stats-panel">
             <div className="stats-panel__title">
               <h3>Traffic sources</h3>
             </div>
-            <Bars items={data?.website?.trafficSources} />
+            {loading ? (
+              <LoadingIndicator label="Loading traffic sources" />
+            ) : (
+              <Bars items={data?.website?.trafficSources} />
+            )}
           </article>
           <article className="stats-panel">
             <div className="stats-panel__title">
               <h3>Top countries</h3>
             </div>
-            <Bars items={data?.website?.countries} />
+            {loading ? (
+              <LoadingIndicator label="Loading countries" />
+            ) : (
+              <Bars items={data?.website?.countries} />
+            )}
           </article>
         </div>
 
@@ -457,6 +488,12 @@ export default function PublicStats() {
             </label>
           </div>
 
+          {loading ? (
+            <div className="stats-guide__loading">
+              <LoadingIndicator label="Loading guide engagement" />
+            </div>
+          ) : (
+            <>
           <div className="stats-guide__summary">
             <article>
               <strong>
@@ -507,6 +544,8 @@ export default function PublicStats() {
               </button>
             ))}
           </div>
+            </>
+          )}
         </div>
       </section>
 
@@ -604,7 +643,11 @@ export default function PublicStats() {
               </h3>
               <span>Reach · views · engagement</span>
             </div>
-            <InstagramInsights social={data?.social} />
+            {loading ? (
+              <LoadingIndicator label="Loading Instagram insights" />
+            ) : (
+              <InstagramInsights social={data?.social} />
+            )}
           </article>
           <article className="stats-panel stats-panel--dark">
             <div className="stats-panel__title">
@@ -619,7 +662,11 @@ export default function PublicStats() {
               </h3>
               <span>Views · engagement · followers</span>
             </div>
-            <FacebookInsights facebook={data?.facebook} />
+            {loading ? (
+              <LoadingIndicator label="Loading Facebook insights" />
+            ) : (
+              <FacebookInsights facebook={data?.facebook} />
+            )}
           </article>
           <article className="stats-panel stats-panel--dark" id="campaigns">
             <div className="stats-panel__title">
@@ -651,15 +698,33 @@ export default function PublicStats() {
         <div className="stats-qr-summary">
           <article>
             <span>QR sessions</span>
-            <strong>{formatNumber(data?.qr?.scans)}</strong>
+            <strong>
+              {loading ? (
+                <LoadingIndicator label="Loading QR sessions" compact />
+              ) : (
+                formatNumber(data?.qr?.scans)
+              )}
+            </strong>
           </article>
           <article>
             <span>Pass clicks</span>
-            <strong>{formatNumber(data?.qr?.clicks)}</strong>
+            <strong>
+              {loading ? (
+                <LoadingIndicator label="Loading pass clicks" compact />
+              ) : (
+                formatNumber(data?.qr?.clicks)
+              )}
+            </strong>
           </article>
           <article>
             <span>Purchases</span>
-            <strong>{formatNumber(data?.qr?.purchases)}</strong>
+            <strong>
+              {loading ? (
+                <LoadingIndicator label="Loading purchases" compact />
+              ) : (
+                formatNumber(data?.qr?.purchases)
+              )}
+            </strong>
           </article>
         </div>
         <div className="stats-grid stats-grid--partners">
@@ -667,18 +732,25 @@ export default function PublicStats() {
             <div className="stats-panel__title">
               <h3>Scans by placement</h3>
             </div>
-            <Bars items={data?.qr?.surfaces} />
+            {loading ? (
+              <LoadingIndicator label="Loading placements" />
+            ) : (
+              <Bars items={data?.qr?.surfaces} />
+            )}
           </article>
           <article className="stats-panel stats-panel--wide">
             <div className="stats-panel__title">
               <h3>Partner impact</h3>
               <span>Exposure · scans · clicks</span>
             </div>
-            <div
-              className="stats-table"
-              role="table"
-              aria-label="Partner impact"
-            >
+            {loading ? (
+              <LoadingIndicator label="Loading partner impact" />
+            ) : (
+              <div
+                className="stats-table"
+                role="table"
+                aria-label="Partner impact"
+              >
               <div className="stats-table__head" role="row">
                 <span>Partner</span>
                 <span>Exposure</span>
@@ -697,7 +769,8 @@ export default function PublicStats() {
                   <span>{formatNumber(partner.clicks)}</span>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
           </article>
         </div>
       </section>
