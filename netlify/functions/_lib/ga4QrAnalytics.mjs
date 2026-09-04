@@ -397,6 +397,34 @@ export async function runGaReport(body) {
   return payload;
 }
 
+export async function getGaMetadata() {
+  const propertyId = String(process.env.GA4_PROPERTY_ID || "").trim();
+
+  if (!propertyId) {
+    throw new Error("Missing env var: GA4_PROPERTY_ID");
+  }
+
+  const accessToken = await getAccessToken();
+  const response = await fetch(
+    `${API_BASE_URL}/properties/${propertyId}/metadata`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message =
+      payload?.error?.message ||
+      `GA4 metadata request failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  return payload;
+}
+
 async function runReport({ startDate, endDate, venue }) {
   return runGaReport({
     dateRanges: [{ startDate, endDate }],

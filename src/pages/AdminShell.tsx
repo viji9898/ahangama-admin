@@ -120,6 +120,7 @@ const navItems = [
     children: [
       { key: "/ga", label: "Overview" },
       { key: "/ga/free-pass-scans", label: "All Free Pass Scans" },
+      { key: "/ga/guide-engagement", label: "Guide Engagement" },
     ],
   },
   { key: "/admin/qr", label: "QR Analytics", icon: <BarChartOutlined /> },

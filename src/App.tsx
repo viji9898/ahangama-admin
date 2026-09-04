@@ -13,6 +13,7 @@ import CRM from "./pages/CRM";
 import Events from "./pages/Events";
 import GAAnalytics from "./pages/GAAnalytics";
 import GAFreePassScans from "./pages/GAFreePassScans";
+import GAGuideEngagement from "./pages/GAGuideEngagement";
 import GuestPassUsers from "./pages/GuestPassUsers";
 import HospoPassProfiles from "./pages/HospoPassProfiles";
 import PaidPassUsers from "./pages/PaidPassUsers";
@@ -86,6 +87,7 @@ export default function App() {
         >
           <Route index element={<GAAnalytics />} />
           <Route path="free-pass-scans" element={<GAFreePassScans />} />
+          <Route path="guide-engagement" element={<GAGuideEngagement />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
