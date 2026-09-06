@@ -385,7 +385,7 @@ html {
 }
 .stats-guide__summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   border: 1px solid var(--stats-ink);
   background: var(--stats-lime);
 }
@@ -405,11 +405,59 @@ html {
     600 48px/1 "Playfair Display",
     serif;
 }
-.stats-guide__summary span {
+.stats-guide__metric-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font:
     500 10px/1.2 "DM Mono",
     monospace;
   text-transform: uppercase;
+}
+.stats-metric-tip {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.stats-metric-tip__trigger {
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: help;
+  font: 700 10px/1 "Manrope", sans-serif;
+  text-transform: lowercase;
+}
+.stats-metric-tip__trigger:focus-visible {
+  outline: 2px solid var(--stats-ink);
+  outline-offset: 2px;
+}
+.stats-metric-tip__content {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  width: min(230px, calc(100vw - 48px));
+  padding: 10px 12px;
+  transform: translate(-50%, 4px);
+  background: var(--stats-ink);
+  color: #fffdf5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+  font: 500 11px/1.45 "Manrope", sans-serif;
+  text-align: left;
+  text-transform: none;
+}
+.stats-metric-tip:hover .stats-metric-tip__content,
+.stats-metric-tip:focus-within .stats-metric-tip__content {
+  transform: translate(-50%, 0);
+  opacity: 1;
 }
 .stats-guide__loading {
   min-height: 310px;
@@ -417,6 +465,13 @@ html {
   place-items: center;
   border: 1px solid var(--stats-ink);
   background: rgba(255, 255, 255, 0.3);
+}
+.stats-guide__disclaimer {
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--stats-line);
+  color: var(--stats-muted);
+  font: 500 11px/1.5 "Manrope", sans-serif;
 }
 .stats-guide__insight {
   margin: 0;
@@ -440,9 +495,9 @@ html {
 }
 .stats-guide__table-head,
 .stats-guide__table-row {
-  min-width: 430px;
+  min-width: 660px;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 90px 90px;
+  grid-template-columns: minmax(220px, 1fr) repeat(4, 90px);
   gap: 18px;
   align-items: center;
 }
@@ -938,8 +993,8 @@ html {
   }
   .stats-guide__table-head,
   .stats-guide__table-row {
-    min-width: 0;
-    grid-template-columns: minmax(150px, 1fr) 62px 62px;
+    min-width: 610px;
+    grid-template-columns: minmax(170px, 1fr) repeat(4, 90px);
     gap: 10px;
   }
   .stats-modal {

@@ -311,28 +311,90 @@ async function getWebsiteStats(startDate, endDate) {
 
 async function getGuideEngagement(startDate, endDate) {
   const dateRanges = [{ startDate, endDate }];
+  const hostExpression = hostFilter();
   const guideEventFilter = {
-    filter: {
-      fieldName: "eventName",
-      stringFilter: {
-        matchType: "BEGINS_WITH",
-        value: "guide_",
-        caseSensitive: true,
-      },
+    andGroup: {
+      expressions: [
+        hostExpression,
+        {
+          filter: {
+            fieldName: "eventName",
+            stringFilter: {
+              matchType: "BEGINS_WITH",
+              value: "guide_",
+              caseSensitive: true,
+            },
+          },
+        },
+      ],
     },
   };
   const outboundFilter = {
-    filter: {
-      fieldName: "eventName",
-      stringFilter: {
-        matchType: "EXACT",
-        value: "guide_outbound_click",
-        caseSensitive: true,
-      },
+    andGroup: {
+      expressions: [
+        hostExpression,
+        {
+          filter: {
+            fieldName: "eventName",
+            stringFilter: {
+              matchType: "EXACT",
+              value: "guide_outbound_click",
+              caseSensitive: true,
+            },
+          },
+        },
+      ],
+    },
+  };
+  const impressionFilter = {
+    andGroup: {
+      expressions: [
+        hostExpression,
+        {
+          filter: {
+            fieldName: "eventName",
+            stringFilter: {
+              matchType: "EXACT",
+              value: "venue_impression",
+              caseSensitive: true,
+            },
+          },
+        },
+        {
+          filter: {
+            fieldName: "pagePath",
+            stringFilter: {
+              matchType: "EXACT",
+              value: "/guide/",
+              caseSensitive: true,
+            },
+          },
+        },
+      ],
+    },
+  };
+  const guidePageFilter = {
+    andGroup: {
+      expressions: [
+        hostExpression,
+        {
+          filter: {
+            fieldName: "pagePath",
+            stringFilter: {
+              matchType: "EXACT",
+              value: "/guide/",
+              caseSensitive: true,
+            },
+          },
+        },
+      ],
     },
   };
   const [
     eventsReport,
+    guidePageReport,
+    impressionTotalsReport,
+    impressionVenuesReport,
     venueIdsReport,
     venuesReport,
     linksReport,
@@ -348,6 +410,29 @@ async function getGuideEngagement(startDate, endDate) {
       metricAggregations: ["TOTAL"],
       orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
       limit: 20,
+    }),
+    runGaReport({
+      dateRanges,
+      metrics: [{ name: "totalUsers" }],
+      dimensionFilter: guidePageFilter,
+      limit: 1,
+    }),
+    runGaReport({
+      dateRanges,
+      metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+      dimensionFilter: impressionFilter,
+      limit: 1,
+    }),
+    runGaReport({
+      dateRanges,
+      dimensions: [
+        { name: "customEvent:venue_id" },
+        { name: "customEvent:venue_name" },
+      ],
+      metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+      dimensionFilter: impressionFilter,
+      orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      limit: 1000,
     }),
     runGaReport({
       dateRanges,
@@ -398,6 +483,7 @@ async function getGuideEngagement(startDate, endDate) {
     }),
   ]);
   const totalMetrics = eventsReport?.totals?.[0]?.metricValues || [];
+  const impressionTotals = impressionTotalsReport?.rows?.[0];
   const events = (eventsReport?.rows || []).map((row) => ({
     event: row.dimensionValues?.[0]?.value || "unknown",
     engagements: numberMetric(row, 0),
@@ -442,9 +528,61 @@ async function getGuideEngagement(startDate, endDate) {
       users: numberMetric(row, 1),
     }))
     .filter((venue) => venue.name !== "(not set)");
-  const venues = [...venuesById, ...legacyVenues].sort(
-    (left, right) => right.engagements - left.engagements,
+  const venues = new Map(
+    venuesById.map((venue) => [
+      venue.id,
+      { ...venue, impressions: 0, usersExposed: 0 },
+    ]),
   );
+  const venueIdsByName = new Map(
+    venuesById.map((venue) => [venue.name.trim().toLowerCase(), venue.id]),
+  );
+  for (const legacyVenue of legacyVenues) {
+    const matchedId = venueIdsByName.get(legacyVenue.name.trim().toLowerCase());
+    const key = matchedId || legacyVenue.name;
+    const venue = venues.get(key) || {
+      ...legacyVenue,
+      impressions: 0,
+      usersExposed: 0,
+    };
+
+    if (matchedId) {
+      venue.engagements += legacyVenue.engagements;
+      venue.users = Math.max(venue.users, legacyVenue.users);
+    }
+    venues.set(key, venue);
+  }
+  for (const row of impressionVenuesReport?.rows || []) {
+    const rawId = row.dimensionValues?.[0]?.value || "";
+    const rawName = row.dimensionValues?.[1]?.value || "";
+    const id = rawId === "(not set)" ? "" : rawId;
+    const name = rawName === "(not set)" ? "Unknown venue" : rawName;
+    const key = id || name;
+    const legacyKey = id
+      ? [...venues.keys()].find(
+          (venueKey) =>
+            !venues.get(venueKey)?.id &&
+            venues.get(venueKey)?.name.trim().toLowerCase() ===
+              name.trim().toLowerCase(),
+        )
+      : undefined;
+    const legacyVenue = legacyKey ? venues.get(legacyKey) : undefined;
+    if (legacyKey) {
+      venues.delete(legacyKey);
+    }
+    const venue = venues.get(key) || {
+      ...legacyVenue,
+      id,
+      name: id ? name || id : "Unattributed",
+      engagements: legacyVenue?.engagements || 0,
+      users: legacyVenue?.users || 0,
+      impressions: 0,
+      usersExposed: 0,
+    };
+    venue.impressions += numberMetric(row, 0);
+    venue.usersExposed = numberMetric(row, 1);
+    venues.set(key, venue);
+  }
   const linkTypes = aggregateMetricItems(
     (linksReport?.rows || []).map((row) => ({
       label: row.dimensionValues?.[0]?.value || "unknown",
@@ -488,6 +626,9 @@ async function getGuideEngagement(startDate, endDate) {
 
   return {
     available: true,
+    guideUsers: numberMetric(guidePageReport?.rows?.[0], 0),
+    impressions: numberMetric(impressionTotals, 0),
+    usersExposed: numberMetric(impressionTotals, 1),
     engagements: Number(totalMetrics[0]?.value || 0),
     users: Number(totalMetrics[1]?.value || 0),
     outboundClicks:
@@ -496,12 +637,16 @@ async function getGuideEngagement(startDate, endDate) {
     navigationSelections:
       events.find((item) => item.event === "guide_contents_select")
         ?.engagements || 0,
-    venues: venues.map((venue) => ({
+    venues: [...venues.values()].map((venue) => ({
       ...venue,
       linkTypes: (venueLinkTypes.get(venue.id || venue.name) || []).sort(
         (left, right) => right.value - left.value,
       ),
-    })),
+    })).sort(
+      (left, right) =>
+        right.impressions - left.impressions ||
+        right.engagements - left.engagements,
+    ),
     linkTypes,
     countries: (countriesReport?.rows || []).map((row) => ({
       label: row.dimensionValues?.[0]?.value || "Unknown",
