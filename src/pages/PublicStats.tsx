@@ -35,6 +35,7 @@ type StatsPayload = {
     navigationSelections?: number;
     venues?: GuideVenue[];
     linkTypes?: MetricItem[];
+    countries?: MetricItem[];
   };
   qr?: {
     available?: boolean;
@@ -108,11 +109,26 @@ const titleCase = (value: string) =>
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
+const normalizeMetricItems = (items: MetricItem[]) =>
+  [...items.reduce((grouped, item) => {
+    const label = item.label
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+
+    if (label) grouped.set(label, (grouped.get(label) || 0) + item.value);
+    return grouped;
+  }, new Map<string, number>())]
+    .map(([label, value]) => ({ label, value }))
+    .sort((left, right) => right.value - left.value);
+
 function Bars({ items = [] }: { items?: MetricItem[] }) {
-  const maximum = Math.max(...items.map((item) => item.value), 1);
+  const normalizedItems = normalizeMetricItems(items);
+  const maximum = Math.max(...normalizedItems.map((item) => item.value), 1);
   return (
     <div className="stats-bars">
-      {items.map((item) => (
+      {normalizedItems.map((item) => (
         <div className="stats-bar" key={item.label}>
           <div className="stats-bar__labels">
             <span>{titleCase(item.label)}</span>
@@ -247,7 +263,7 @@ export default function PublicStats() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(`/.netlify/functions/api-public-stats?days=${days}&v=6`, {
+    fetch(`/.netlify/functions/api-public-stats?days=${days}&v=7`, {
       signal: controller.signal,
     })
       .then(async (response) => {

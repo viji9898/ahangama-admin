@@ -27,6 +27,24 @@ function numberMetric(row, index) {
   return Number(row?.metricValues?.[index]?.value || 0);
 }
 
+function normalizeLinkType(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function aggregateMetricItems(items) {
+  return [...items.reduce((grouped, item) => {
+    const label = normalizeLinkType(item.label);
+    if (label) grouped.set(label, (grouped.get(label) || 0) + item.value);
+    return grouped;
+  }, new Map())]
+    .map(([label, value]) => ({ label, value }))
+    .sort((left, right) => right.value - left.value);
+}
+
 function getMetaConfig() {
   const accessToken = String(
     process.env.META_SYSTEM_USER_ACCESS_TOKEN || "",
@@ -313,7 +331,14 @@ async function getGuideEngagement(startDate, endDate) {
       },
     },
   };
-  const [eventsReport, venuesReport, linksReport, venueLinksReport] =
+  const [
+    eventsReport,
+    venueIdsReport,
+    venuesReport,
+    linksReport,
+    venueLinksReport,
+    countriesReport,
+  ] =
     await Promise.all([
     runGaReport({
       dateRanges,
@@ -323,6 +348,14 @@ async function getGuideEngagement(startDate, endDate) {
       metricAggregations: ["TOTAL"],
       orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
       limit: 20,
+    }),
+    runGaReport({
+      dateRanges,
+      dimensions: [{ name: "customEvent:venue_id" }],
+      metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+      dimensionFilter: outboundFilter,
+      orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      limit: 1000,
     }),
     runGaReport({
       dateRanges,
@@ -355,31 +388,69 @@ async function getGuideEngagement(startDate, endDate) {
       orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
       limit: 2000,
     }),
+    runGaReport({
+      dateRanges,
+      dimensions: [{ name: "country" }],
+      metrics: [{ name: "totalUsers" }],
+      dimensionFilter: guideEventFilter,
+      orderBys: [{ metric: { metricName: "totalUsers" }, desc: true }],
+      limit: 8,
+    }),
   ]);
   const totalMetrics = eventsReport?.totals?.[0]?.metricValues || [];
   const events = (eventsReport?.rows || []).map((row) => ({
     event: row.dimensionValues?.[0]?.value || "unknown",
     engagements: numberMetric(row, 0),
   }));
-  const venues = (venuesReport?.rows || [])
+  const venueNames = (venuesReport?.rows || []).reduce((names, row) => {
+    const rawId = row.dimensionValues?.[0]?.value || "";
+    const rawName = row.dimensionValues?.[1]?.value || "";
+
+    if (
+      rawId &&
+      rawId !== "(not set)" &&
+      rawName &&
+      rawName !== "(not set)" &&
+      !names.has(rawId)
+    ) {
+      names.set(rawId, rawName);
+    }
+
+    return names;
+  }, new Map());
+  const venuesById = (venueIdsReport?.rows || [])
     .map((row) => {
       const rawId = row.dimensionValues?.[0]?.value || "";
-      const rawName = row.dimensionValues?.[1]?.value || "";
 
       return {
         id: rawId === "(not set)" ? "" : rawId,
-        name: rawName && rawName !== "(not set)" ? rawName : "Unknown venue",
+        name: venueNames.get(rawId) || "Unknown venue",
         engagements: numberMetric(row, 0),
         users: numberMetric(row, 1),
       };
     })
-    .filter((venue) => venue.id || venue.name !== "Unknown venue");
-  const linkTypes = (linksReport?.rows || [])
+    .filter((venue) => venue.id);
+  const legacyVenues = (venuesReport?.rows || [])
+    .filter((row) => {
+      const rawId = row.dimensionValues?.[0]?.value || "";
+      return !rawId || rawId === "(not set)";
+    })
     .map((row) => ({
+      id: "",
+      name: row.dimensionValues?.[1]?.value || "Unknown venue",
+      engagements: numberMetric(row, 0),
+      users: numberMetric(row, 1),
+    }))
+    .filter((venue) => venue.name !== "(not set)");
+  const venues = [...venuesById, ...legacyVenues].sort(
+    (left, right) => right.engagements - left.engagements,
+  );
+  const linkTypes = aggregateMetricItems(
+    (linksReport?.rows || []).map((row) => ({
       label: row.dimensionValues?.[0]?.value || "unknown",
       value: numberMetric(row, 0),
-    }))
-    .filter((item) => item.label !== "(not set)");
+    })),
+  );
   const venueLinkTypes = (venueLinksReport?.rows || []).reduce(
     (grouped, row) => {
       const rawId = row.dimensionValues?.[0]?.value || "";
@@ -394,7 +465,19 @@ async function getGuideEngagement(startDate, endDate) {
 
       if (venueKey && linkType && linkType !== "(not set)") {
         const items = grouped.get(venueKey) || [];
-        items.push({ label: linkType, value: numberMetric(row, 0) });
+        const normalizedLinkType = normalizeLinkType(linkType);
+        const existingItem = items.find(
+          (item) => item.label === normalizedLinkType,
+        );
+
+        if (existingItem) {
+          existingItem.value += numberMetric(row, 0);
+        } else if (normalizedLinkType) {
+          items.push({
+            label: normalizedLinkType,
+            value: numberMetric(row, 0),
+          });
+        }
         grouped.set(venueKey, items);
       }
 
@@ -415,9 +498,15 @@ async function getGuideEngagement(startDate, endDate) {
         ?.engagements || 0,
     venues: venues.map((venue) => ({
       ...venue,
-      linkTypes: venueLinkTypes.get(venue.id || venue.name) || [],
+      linkTypes: (venueLinkTypes.get(venue.id || venue.name) || []).sort(
+        (left, right) => right.value - left.value,
+      ),
     })),
     linkTypes,
+    countries: (countriesReport?.rows || []).map((row) => ({
+      label: row.dimensionValues?.[0]?.value || "Unknown",
+      value: numberMetric(row, 0),
+    })),
   };
 }
 

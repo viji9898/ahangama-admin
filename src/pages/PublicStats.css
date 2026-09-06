@@ -173,7 +173,9 @@ html {
   justify-content: center;
   gap: 12px;
   color: currentColor;
-  font: 500 10px/1.2 "DM Mono", monospace;
+  font:
+    500 10px/1.2 "DM Mono",
+    monospace;
   text-transform: uppercase;
 }
 .stats-loader__icon {
@@ -346,12 +348,16 @@ html {
 }
 .stats-guide__header p {
   margin: 0 0 10px;
-  font: 500 10px/1 "DM Mono", monospace;
+  font:
+    500 10px/1 "DM Mono",
+    monospace;
   text-transform: uppercase;
 }
 .stats-guide__header h3 {
   margin: 0;
-  font: 600 36px/1.05 "Playfair Display", serif;
+  font:
+    600 36px/1.05 "Playfair Display",
+    serif;
   letter-spacing: 0;
 }
 .stats-guide__filter {
@@ -360,7 +366,9 @@ html {
   gap: 8px;
 }
 .stats-guide__filter span {
-  font: 500 9px/1 "DM Mono", monospace;
+  font:
+    500 9px/1 "DM Mono",
+    monospace;
   text-transform: uppercase;
 }
 .stats-guide__filter select {
@@ -371,7 +379,9 @@ html {
   border-radius: 0;
   background: #fffdf5;
   color: var(--stats-ink);
-  font: 500 12px "Manrope", sans-serif;
+  font:
+    500 12px "Manrope",
+    sans-serif;
 }
 .stats-guide__summary {
   display: grid;
@@ -391,10 +401,14 @@ html {
   border-right: 0;
 }
 .stats-guide__summary strong {
-  font: 600 48px/1 "Playfair Display", serif;
+  font:
+    600 48px/1 "Playfair Display",
+    serif;
 }
 .stats-guide__summary span {
-  font: 500 10px/1.2 "DM Mono", monospace;
+  font:
+    500 10px/1.2 "DM Mono",
+    monospace;
   text-transform: uppercase;
 }
 .stats-guide__loading {
@@ -408,7 +422,9 @@ html {
   margin: 0;
   padding: 26px 0;
   border-bottom: 1px solid var(--stats-line);
-  font: 500 18px/1.55 "Manrope", sans-serif;
+  font:
+    500 18px/1.55 "Manrope",
+    sans-serif;
 }
 .stats-guide__insight::before {
   width: 8px;
@@ -436,7 +452,9 @@ html {
   z-index: 1;
   padding: 14px 0;
   background: var(--stats-paper);
-  font: 500 9px/1 "DM Mono", monospace;
+  font:
+    500 9px/1 "DM Mono",
+    monospace;
   text-transform: uppercase;
 }
 .stats-guide__table-row {
@@ -468,7 +486,9 @@ html {
   white-space: nowrap;
 }
 .stats-guide__table-row span {
-  font: 500 11px/1 "DM Mono", monospace;
+  font:
+    500 11px/1 "DM Mono",
+    monospace;
 }
 .stats-modal {
   position: fixed;
@@ -501,7 +521,9 @@ html {
   border-radius: 0;
   background: transparent;
   color: inherit;
-  font: 400 24px/1 "DM Mono", monospace;
+  font:
+    400 24px/1 "DM Mono",
+    monospace;
   cursor: pointer;
 }
 .stats-modal__close:hover,
@@ -511,12 +533,16 @@ html {
 }
 .stats-modal__eyebrow {
   margin: 0 54px 14px 0;
-  font: 500 10px/1 "DM Mono", monospace;
+  font:
+    500 10px/1 "DM Mono",
+    monospace;
   text-transform: uppercase;
 }
 .stats-modal__dialog h2 {
   margin: 0;
-  font: 600 clamp(42px, 7vw, 76px)/0.94 "Playfair Display", serif;
+  font:
+    600 clamp(42px, 7vw, 76px)/0.94 "Playfair Display",
+    serif;
   letter-spacing: 0;
 }
 .stats-modal__lead {
@@ -538,10 +564,14 @@ html {
   gap: 10px;
 }
 .stats-modal__metrics strong {
-  font: 600 38px/1 "Playfair Display", serif;
+  font:
+    600 38px/1 "Playfair Display",
+    serif;
 }
 .stats-modal__metrics span {
-  font: 500 9px/1.3 "DM Mono", monospace;
+  font:
+    500 9px/1.3 "DM Mono",
+    monospace;
   text-transform: uppercase;
 }
 .stats-modal__intent {
@@ -559,7 +589,9 @@ html {
   font-size: 17px;
 }
 .stats-modal__intent > div:first-child span {
-  font: 500 10px/1 "DM Mono", monospace;
+  font:
+    500 10px/1 "DM Mono",
+    monospace;
   text-transform: uppercase;
 }
 .stats-modal__intent > p {
