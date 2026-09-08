@@ -119,6 +119,7 @@ const navItems = [
     icon: <BarChartOutlined />,
     children: [
       { key: "/ga", label: "Overview" },
+      { key: "/ga/article-engagement", label: "Article Engagement" },
       { key: "/ga/free-pass-scans", label: "All Free Pass Scans" },
       { key: "/ga/guide-engagement", label: "Guide Engagement" },
     ],

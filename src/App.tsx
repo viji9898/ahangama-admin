@@ -12,6 +12,7 @@ import CirclePassUsers from "./pages/CirclePassUsers";
 import CRM from "./pages/CRM";
 import Events from "./pages/Events";
 import GAAnalytics from "./pages/GAAnalytics";
+import GAArticleEngagement from "./pages/GAArticleEngagement";
 import GAFreePassScans from "./pages/GAFreePassScans";
 import GAGuideEngagement from "./pages/GAGuideEngagement";
 import GuestPassUsers from "./pages/GuestPassUsers";
@@ -86,6 +87,7 @@ export default function App() {
           }
         >
           <Route index element={<GAAnalytics />} />
+          <Route path="article-engagement" element={<GAArticleEngagement />} />
           <Route path="free-pass-scans" element={<GAFreePassScans />} />
           <Route path="guide-engagement" element={<GAGuideEngagement />} />
         </Route>
