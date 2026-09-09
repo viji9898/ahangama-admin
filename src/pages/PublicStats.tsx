@@ -107,13 +107,24 @@ const formatRate = (numerator: number, denominator: number) =>
   denominator > 0 ? `${((numerator / denominator) * 100).toFixed(1)}%` : "—";
 
 function MetricTip({ id, text }: { id: string; text: string }) {
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <span className="stats-metric-tip">
+    <span
+      className="stats-metric-tip"
+      data-open={focused || hovered}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <button
         className="stats-metric-tip__trigger"
         type="button"
         aria-label="Explain this metric"
         aria-describedby={id}
+        aria-expanded={focused || hovered}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
       >
         i
       </button>
@@ -136,16 +147,18 @@ const titleCase = (value: string) =>
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 const normalizeMetricItems = (items: MetricItem[]) =>
-  [...items.reduce((grouped, item) => {
-    const label = item.label
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "");
+  [
+    ...items.reduce((grouped, item) => {
+      const label = item.label
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
 
-    if (label) grouped.set(label, (grouped.get(label) || 0) + item.value);
-    return grouped;
-  }, new Map<string, number>())]
+      if (label) grouped.set(label, (grouped.get(label) || 0) + item.value);
+      return grouped;
+    }, new Map<string, number>()),
+  ]
     .map(([label, value]) => ({ label, value }))
     .sort((left, right) => right.value - left.value);
 
@@ -289,7 +302,7 @@ export default function PublicStats() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(`/.netlify/functions/api-public-stats?days=${days}&v=9`, {
+    fetch(`/.netlify/functions/api-public-stats?days=${days}&v=10`, {
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -337,10 +350,7 @@ export default function PublicStats() {
       (total, venue) => total + venue.engagements,
       0,
     ),
-    users: filteredGuideVenues.reduce(
-      (total, venue) => total + venue.users,
-      0,
-    ),
+    users: filteredGuideVenues.reduce((total, venue) => total + venue.users, 0),
   };
   const guideInsight = (() => {
     if (!data?.guide?.available) {
@@ -448,9 +458,14 @@ export default function PublicStats() {
         ].map(([label, value]) => (
           <article key={String(label)}>
             <strong>
-              {loading
-                ? <LoadingIndicator label={`Loading ${String(label).toLowerCase()}`} compact />
-                : formatNumber(value as number | null | undefined)}
+              {loading ? (
+                <LoadingIndicator
+                  label={`Loading ${String(label).toLowerCase()}`}
+                  compact
+                />
+              ) : (
+                formatNumber(value as number | null | undefined)
+              )}
             </strong>
             <span>{label}</span>
           </article>
@@ -477,7 +492,10 @@ export default function PublicStats() {
             ) : (
               <div className="stats-list">
                 {(data?.website?.topPages || []).map((page, index) => (
-                  <div className="stats-list__row" key={`${page.path}-${index}`}>
+                  <div
+                    className="stats-list__row"
+                    key={`${page.path}-${index}`}
+                  >
                     <span className="stats-list__index">
                       {String(index + 1).padStart(2, "0")}
                     </span>
@@ -544,116 +562,122 @@ export default function PublicStats() {
             </div>
           ) : (
             <>
-          <div className="stats-guide__summary">
-            <article>
-              <strong>{formatNumber(data?.guide?.guideUsers)}</strong>
-              <span className="stats-guide__metric-label">
-                Guide users
-                <MetricTip
-                  id="guide-users-tip"
-                  text="Unique GA4 users who visited /guide/ during the selected period, including visits before venue exposure tracking began."
-                />
-              </span>
-            </article>
-            <article>
-              <strong>
-                {formatNumber(
-                  selectedGuideVenue === "all"
-                    ? data?.guide?.impressions
-                    : filteredGuideTotals.impressions,
-                )}
-              </strong>
-              <span className="stats-guide__metric-label">
-                Tracked venue impressions
-                <MetricTip
-                  id="venue-impressions-tip"
-                  text="The number of times venue cards entered a visitor's view on /guide/. Repeat views are counted."
-                />
-              </span>
-            </article>
-            <article>
-              <strong>
-                {formatNumber(
-                  selectedGuideVenue === "all"
-                    ? data?.guide?.usersExposed
-                    : filteredGuideTotals.usersExposed,
-                )}
-              </strong>
-              <span className="stats-guide__metric-label">
-                Users exposed
-                <MetricTip
-                  id="users-exposed-tip"
-                  text="Unique GA4 users who generated at least one tracked venue impression. Tracking began September 7, 2026."
-                />
-              </span>
-            </article>
-            <article>
-              <strong>
-                {formatNumber(
-                  selectedGuideVenue === "all"
-                    ? data?.guide?.engagements
-                    : filteredGuideTotals.engagements,
-                )}
-              </strong>
-              <span className="stats-guide__metric-label">
-                Guide engagements
-                <MetricTip
-                  id="guide-engagements-tip"
-                  text="All recorded guide interactions, including navigation selections, venue interactions and outbound activity."
-                />
-              </span>
-            </article>
-            <article>
-              <strong>
-                {formatNumber(
-                  selectedGuideVenue === "all"
-                    ? data?.guide?.outboundClicks
-                    : filteredGuideTotals.engagements,
-                )}
-              </strong>
-              <span className="stats-guide__metric-label">
-                Outbound actions
-                <MetricTip
-                  id="outbound-actions-tip"
-                  text="Clicks from the guide to destinations such as Instagram, Google Maps or a venue website."
-                />
-              </span>
-            </article>
-          </div>
+              <div className="stats-guide__summary">
+                <article>
+                  <strong>{formatNumber(data?.guide?.guideUsers)}</strong>
+                  <span className="stats-guide__metric-label">
+                    Guide users
+                    <MetricTip
+                      id="guide-users-tip"
+                      text="Unique GA4 users who visited /guide/ during the selected period, including visits before venue exposure tracking began."
+                    />
+                  </span>
+                </article>
+                <article>
+                  <strong>
+                    {formatNumber(
+                      selectedGuideVenue === "all"
+                        ? data?.guide?.impressions
+                        : filteredGuideTotals.impressions,
+                    )}
+                  </strong>
+                  <span className="stats-guide__metric-label">
+                    Tracked venue impressions
+                    <MetricTip
+                      id="venue-impressions-tip"
+                      text="The number of times venue cards entered a visitor's view on /guide/. Repeat views are counted."
+                    />
+                  </span>
+                </article>
+                <article>
+                  <strong>
+                    {formatNumber(
+                      selectedGuideVenue === "all"
+                        ? data?.guide?.usersExposed
+                        : filteredGuideTotals.usersExposed,
+                    )}
+                  </strong>
+                  <span className="stats-guide__metric-label">
+                    Users exposed
+                    <MetricTip
+                      id="users-exposed-tip"
+                      text="Unique GA4 users who generated at least one tracked venue impression. Tracking began September 7, 2026."
+                    />
+                  </span>
+                </article>
+                <article>
+                  <strong>
+                    {formatNumber(
+                      selectedGuideVenue === "all"
+                        ? data?.guide?.engagements
+                        : filteredGuideTotals.engagements,
+                    )}
+                  </strong>
+                  <span className="stats-guide__metric-label">
+                    Guide engagements
+                    <MetricTip
+                      id="guide-engagements-tip"
+                      text="All recorded guide interactions, including navigation selections, venue interactions and outbound activity."
+                    />
+                  </span>
+                </article>
+                <article>
+                  <strong>
+                    {formatNumber(
+                      selectedGuideVenue === "all"
+                        ? data?.guide?.outboundClicks
+                        : filteredGuideTotals.engagements,
+                    )}
+                  </strong>
+                  <span className="stats-guide__metric-label">
+                    Outbound actions
+                    <MetricTip
+                      id="outbound-actions-tip"
+                      text="Clicks from the guide to destinations such as Instagram, Google Maps or a venue website."
+                    />
+                  </span>
+                </article>
+              </div>
 
-          <p className="stats-guide__disclaimer">
-            Guide users include everyone who visited /guide/ during this period.
-            Venue exposure tracking began September 7, 2026, so earlier visitors
-            are not included in Users exposed.
-          </p>
+              <p className="stats-guide__disclaimer">
+                Guide users include everyone who visited /guide/ during this
+                period. Venue exposure tracking began September 7, 2026, so
+                earlier visitors are not included in Users exposed.
+              </p>
 
-          <p className="stats-guide__insight">{guideInsight}</p>
+              <p className="stats-guide__insight">{guideInsight}</p>
 
-          <div className="stats-guide__table" role="table" aria-label="Online guide venue engagement">
-            <div className="stats-guide__table-head" role="row">
-              <span>Venue</span>
-              <span>Impressions</span>
-              <span>Exposed</span>
-              <span>Actions</span>
-              <span>Action rate</span>
-            </div>
-            {displayedGuideVenues.map((venue) => (
-              <button
-                className="stats-guide__table-row"
-                role="row"
-                key={venue.id || venue.name}
-                type="button"
-                aria-haspopup="dialog"
-                onClick={() => setInsightVenue(venue)}
+              <div
+                className="stats-guide__table"
+                role="table"
+                aria-label="Online guide venue engagement"
               >
-                <strong>{venue.name}</strong>
-                <span>{formatNumber(venue.impressions)}</span>
-                <span>{formatNumber(venue.usersExposed)}</span>
-                <span>{formatNumber(venue.engagements)}</span>
-                <span>{formatRate(venue.engagements, venue.impressions)}</span>
-              </button>
-            ))}
-          </div>
+                <div className="stats-guide__table-head" role="row">
+                  <span>Venue</span>
+                  <span>Impressions</span>
+                  <span>Exposed</span>
+                  <span>Actions</span>
+                  <span>Action rate</span>
+                </div>
+                {displayedGuideVenues.map((venue) => (
+                  <button
+                    className="stats-guide__table-row"
+                    role="row"
+                    key={venue.id || venue.name}
+                    type="button"
+                    aria-haspopup="dialog"
+                    onClick={() => setInsightVenue(venue)}
+                  >
+                    <strong>{venue.name}</strong>
+                    <span>{formatNumber(venue.impressions)}</span>
+                    <span>{formatNumber(venue.usersExposed)}</span>
+                    <span>{formatNumber(venue.engagements)}</span>
+                    <span>
+                      {formatRate(venue.engagements, venue.impressions)}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </>
           )}
         </div>
@@ -695,19 +719,43 @@ export default function PublicStats() {
             <div className="stats-modal__metrics">
               <article>
                 <strong>{formatNumber(insightVenue.impressions)}</strong>
-                <span>Tracked impressions</span>
+                <span className="stats-modal__metric-label">
+                  Tracked impressions
+                  <MetricTip
+                    id="modal-impressions-tip"
+                    text="The number of times this venue's card entered a visitor's view on /guide/. Repeat views are counted."
+                  />
+                </span>
               </article>
               <article>
                 <strong>{formatNumber(insightVenue.usersExposed)}</strong>
-                <span>Users exposed</span>
+                <span className="stats-modal__metric-label">
+                  Users exposed
+                  <MetricTip
+                    id="modal-users-exposed-tip"
+                    text="Unique GA4 users who generated a tracked impression for this venue. Tracking began September 7, 2026."
+                  />
+                </span>
               </article>
               <article>
                 <strong>{insightShare}%</strong>
-                <span>Share of venue actions</span>
+                <span className="stats-modal__metric-label">
+                  Share of venue actions
+                  <MetricTip
+                    id="modal-action-share-tip"
+                    text="This venue's outbound actions as a percentage of all venue outbound actions in the selected period."
+                  />
+                </span>
               </article>
               <article>
                 <strong>{insightDepth.toFixed(1)}</strong>
-                <span>Actions per visitor</span>
+                <span className="stats-modal__metric-label">
+                  Actions per visitor
+                  <MetricTip
+                    id="modal-actions-per-visitor-tip"
+                    text="This venue's outbound actions divided by its unique visitors who took an action."
+                  />
+                </span>
               </article>
               <article>
                 <strong>
@@ -715,7 +763,13 @@ export default function PublicStats() {
                     VENUE_FEE_USD / Math.max(insightVenue.engagements, 1),
                   )}
                 </strong>
-                <span>Cost per click</span>
+                <span className="stats-modal__metric-label">
+                  Cost per click
+                  <MetricTip
+                    id="modal-cost-per-click-tip"
+                    text="The assumed $150 venue fee divided by this venue's recorded outbound actions in the selected period."
+                  />
+                </span>
               </article>
               <article>
                 <strong>
@@ -724,14 +778,22 @@ export default function PublicStats() {
                     insightVenue.impressions,
                   )}
                 </strong>
-                <span>Exposure to action rate</span>
+                <span className="stats-modal__metric-label">
+                  Exposure to action rate
+                  <MetricTip
+                    id="modal-exposure-rate-tip"
+                    text="Outbound actions divided by tracked impressions. It can exceed 100% because visitors may take multiple actions and exposure tracking began later."
+                  />
+                </span>
               </article>
             </div>
 
             <div className="stats-modal__intent">
               <div>
                 <h3>Recorded intent</h3>
-                <span>{formatNumber(insightVenue.engagements)} total actions</span>
+                <span>
+                  {formatNumber(insightVenue.engagements)} total actions
+                </span>
               </div>
               {insightVenue.linkTypes.length ? (
                 <Bars items={insightVenue.linkTypes} />
@@ -878,24 +940,24 @@ export default function PublicStats() {
                 role="table"
                 aria-label="Partner impact"
               >
-              <div className="stats-table__head" role="row">
-                <span>Partner</span>
-                <span>Exposure</span>
-                <span>Scans</span>
-                <span>Clicks</span>
-              </div>
-              {(data?.qr?.partners || []).map((partner) => (
-                <div
-                  className="stats-table__row"
-                  role="row"
-                  key={partner.venue}
-                >
-                  <strong>{titleCase(partner.venue)}</strong>
-                  <span>{formatNumber(partner.exposure)}</span>
-                  <span>{formatNumber(partner.scans)}</span>
-                  <span>{formatNumber(partner.clicks)}</span>
+                <div className="stats-table__head" role="row">
+                  <span>Partner</span>
+                  <span>Exposure</span>
+                  <span>Scans</span>
+                  <span>Clicks</span>
                 </div>
-              ))}
+                {(data?.qr?.partners || []).map((partner) => (
+                  <div
+                    className="stats-table__row"
+                    role="row"
+                    key={partner.venue}
+                  >
+                    <strong>{titleCase(partner.venue)}</strong>
+                    <span>{formatNumber(partner.exposure)}</span>
+                    <span>{formatNumber(partner.scans)}</span>
+                    <span>{formatNumber(partner.clicks)}</span>
+                  </div>
+                ))}
               </div>
             )}
           </article>

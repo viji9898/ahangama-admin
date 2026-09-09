@@ -49,6 +49,9 @@ export function calculateDiscoveryRows(rows) {
   }
 
   return [...grouped.values()]
-    .map((item) => ({ ...item, ctr: safeRate(item.selections, item.impressions) }))
+    .map((item) => ({
+      ...item,
+      ctr: safeRate(item.selections, item.impressions),
+    }))
     .sort((left, right) => right.impressions - left.impressions);
 }

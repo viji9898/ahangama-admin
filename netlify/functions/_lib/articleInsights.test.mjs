@@ -46,9 +46,21 @@ test("returns null for rates and averages without a valid denominator", () => {
 
 test("calculates discovery CTR independently for each placement", () => {
   const rows = calculateDiscoveryRows([
-    { componentLocation: "articles_featured", eventName: "article_card_impression", eventCount: 20 },
-    { componentLocation: "articles_featured", eventName: "article_select", eventCount: 4 },
-    { componentLocation: "articles_index", eventName: "article_select", eventCount: 2 },
+    {
+      componentLocation: "articles_featured",
+      eventName: "article_card_impression",
+      eventCount: 20,
+    },
+    {
+      componentLocation: "articles_featured",
+      eventName: "article_select",
+      eventCount: 4,
+    },
+    {
+      componentLocation: "articles_index",
+      eventName: "article_select",
+      eventCount: 2,
+    },
   ]);
 
   assert.equal(rows[0].ctr, 0.2);

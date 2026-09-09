@@ -87,7 +87,10 @@ function rowsByHeader(report) {
   const headers = report?.dimensionHeaders || [];
   return (report?.rows || []).map((row) => ({
     ...Object.fromEntries(
-      headers.map((header, index) => [header.name, clean(row.dimensionValues?.[index]?.value)]),
+      headers.map((header, index) => [
+        header.name,
+        clean(row.dimensionValues?.[index]?.value),
+      ]),
     ),
     eventCount: metric(row, 0),
     activeReadSeconds: metric(row, 1),
@@ -99,7 +102,10 @@ function reportDimensions(names, available) {
 }
 
 function articleFilters(params, available, eventNames = ARTICLE_EVENTS) {
-  const expressions = [exactFilter("hostName", HOST_NAME), eventFilter(eventNames)];
+  const expressions = [
+    exactFilter("hostName", HOST_NAME),
+    eventFilter(eventNames),
+  ];
   const optional = [
     [CUSTOM_DIMENSIONS.contentId, clean(params.contentId)],
     [CUSTOM_DIMENSIONS.articleCategory, clean(params.category)],
@@ -216,7 +222,8 @@ async function getArticleInsights(params) {
   if (!available.has(CUSTOM_DIMENSIONS.contentId)) {
     return {
       available: false,
-      error: "content_id is not registered as a GA4 event-scoped custom dimension.",
+      error:
+        "content_id is not registered as a GA4 event-scoped custom dimension.",
       dimensionStatus,
       metricStatus,
     };
@@ -253,55 +260,94 @@ async function getArticleInsights(params) {
   const { values, warnings } = await settleReports([
     {
       label: "article catalog",
-      run: () => runGaReport({
-        dateRanges,
-        dimensions: catalogDimensions,
-        metrics: [{ name: "eventCount" }],
-        dimensionFilter: {
-          andGroup: {
-            expressions: [
-              exactFilter("hostName", HOST_NAME),
-              eventFilter(["article_view"]),
-            ],
+      run: () =>
+        runGaReport({
+          dateRanges,
+          dimensions: catalogDimensions,
+          metrics: [{ name: "eventCount" }],
+          dimensionFilter: {
+            andGroup: {
+              expressions: [
+                exactFilter("hostName", HOST_NAME),
+                eventFilter(["article_view"]),
+              ],
+            },
           },
-        },
-        keepEmptyRows: false,
-        limit: 10000,
-        returnPropertyQuota: true,
-      }),
+          keepEmptyRows: false,
+          limit: 10000,
+          returnPropertyQuota: true,
+        }),
     },
     {
       label: "article totals",
-      run: () => runGaReport({
-        dateRanges,
-        dimensions: [{ name: "eventName" }],
-        metrics: [{ name: "eventCount" }],
-        dimensionFilter: selectedFilter,
-        keepEmptyRows: false,
-        limit: 100,
-        returnPropertyQuota: true,
-      }),
+      run: () =>
+        runGaReport({
+          dateRanges,
+          dimensions: [{ name: "eventName" }],
+          metrics: [{ name: "eventCount" }],
+          dimensionFilter: selectedFilter,
+          keepEmptyRows: false,
+          limit: 100,
+          returnPropertyQuota: true,
+        }),
     },
-    { label: "active reading time", run: () => report([], ["article_engaged_read"], activeMetrics) },
-    { label: "reading progress", run: () => report([CUSTOM_DIMENSIONS.progressPercent], ["article_progress"]) },
-    { label: "section reach", run: () => report([CUSTOM_DIMENSIONS.articleSection, "pagePath"], ["article_section_view"]) },
-    { label: "discovery performance", run: () => report([CUSTOM_DIMENSIONS.componentLocation, "eventName"], ["article_card_impression", "article_select"]) },
+    {
+      label: "active reading time",
+      run: () => report([], ["article_engaged_read"], activeMetrics),
+    },
+    {
+      label: "reading progress",
+      run: () =>
+        report([CUSTOM_DIMENSIONS.progressPercent], ["article_progress"]),
+    },
+    {
+      label: "section reach",
+      run: () =>
+        report(
+          [CUSTOM_DIMENSIONS.articleSection, "pagePath"],
+          ["article_section_view"],
+        ),
+    },
+    {
+      label: "discovery performance",
+      run: () =>
+        report(
+          [CUSTOM_DIMENSIONS.componentLocation, "eventName"],
+          ["article_card_impression", "article_select"],
+        ),
+    },
     {
       label: "traffic quality",
-      run: () => report(
-        [CUSTOM_DIMENSIONS.utmSource, CUSTOM_DIMENSIONS.utmMedium, CUSTOM_DIMENSIONS.utmCampaign, "eventName"],
-        ["article_view", "article_engaged_read", "article_complete"],
-        activeMetrics,
-      ),
+      run: () =>
+        report(
+          [
+            CUSTOM_DIMENSIONS.utmSource,
+            CUSTOM_DIMENSIONS.utmMedium,
+            CUSTOM_DIMENSIONS.utmCampaign,
+            "eventName",
+          ],
+          ["article_view", "article_engaged_read", "article_complete"],
+          activeMetrics,
+        ),
     },
     {
       label: "outbound intent",
-      run: () => report(
-        [CUSTOM_DIMENSIONS.articleSection, CUSTOM_DIMENSIONS.linkType, CUSTOM_DIMENSIONS.destinationUrl, CUSTOM_DIMENSIONS.sourceDomain],
-        ["article_outbound_click"],
-      ),
+      run: () =>
+        report(
+          [
+            CUSTOM_DIMENSIONS.articleSection,
+            CUSTOM_DIMENSIONS.linkType,
+            CUSTOM_DIMENSIONS.destinationUrl,
+            CUSTOM_DIMENSIONS.sourceDomain,
+          ],
+          ["article_outbound_click"],
+        ),
     },
-    { label: "article continuation", run: () => report([CUSTOM_DIMENSIONS.targetContentId], ["article_next_select"]) },
+    {
+      label: "article continuation",
+      run: () =>
+        report([CUSTOM_DIMENSIONS.targetContentId], ["article_next_select"]),
+    },
   ]);
   const [
     catalogReport,
@@ -318,9 +364,15 @@ async function getArticleInsights(params) {
   const catalogRows = rowsByHeader(catalogReport);
   const totalRows = rowsByHeader(totalsReport);
   const activeSeconds = metric(activeReport?.rows?.[0], 1);
-  const kpis = calculateArticleKpis(sumEvents(totalRows), metricStatus.registered ? activeSeconds : null);
+  const kpis = calculateArticleKpis(
+    sumEvents(totalRows),
+    metricStatus.registered ? activeSeconds : null,
+  );
   const progress = Object.fromEntries(
-    rowsByHeader(progressReport).map((row) => [Number(row[CUSTOM_DIMENSIONS.progressPercent]), row.eventCount]),
+    rowsByHeader(progressReport).map((row) => [
+      Number(row[CUSTOM_DIMENSIONS.progressPercent]),
+      row.eventCount,
+    ]),
   );
   const sections = rowsByHeader(sectionReport).map((row, index) => ({
     key: `${row[CUSTOM_DIMENSIONS.articleSection] || "unclassified"}:${index}`,
@@ -351,7 +403,8 @@ async function getArticleInsights(params) {
       item.engagedReads += row.eventCount;
       item.activeReadSeconds += row.activeReadSeconds;
     }
-    if (row.eventName === "article_complete") item.completions += row.eventCount;
+    if (row.eventName === "article_complete")
+      item.completions += row.eventCount;
     traffic.set(key, item);
   }
   const trafficQuality = [...traffic.values()].map((item) => ({
@@ -411,11 +464,17 @@ async function getArticleInsights(params) {
         eventCount: row.eventCount,
       })),
     ),
-    trafficQuality: trafficQuality.sort((left, right) => right.views - left.views),
-    outboundIntent: outboundIntent.sort((left, right) => right.clicks - left.clicks),
+    trafficQuality: trafficQuality.sort(
+      (left, right) => right.views - left.views,
+    ),
+    outboundIntent: outboundIntent.sort(
+      (left, right) => right.clicks - left.clicks,
+    ),
     continuation,
     filters: {
-      articles: [...articles.values()].sort((left, right) => left.contentTitle.localeCompare(right.contentTitle)),
+      articles: [...articles.values()].sort((left, right) =>
+        left.contentTitle.localeCompare(right.contentTitle),
+      ),
       categories: optionList(catalogRows, CUSTOM_DIMENSIONS.articleCategory),
       trafficSources: optionList(catalogRows, CUSTOM_DIMENSIONS.utmSource),
       devices: optionList(catalogRows, "deviceCategory"),
@@ -439,7 +498,10 @@ async function handler(event) {
 
   try {
     requireAdmin(event);
-    return json(200, { ok: true, ...(await getArticleInsights(event.queryStringParameters || {})) });
+    return json(200, {
+      ok: true,
+      ...(await getArticleInsights(event.queryStringParameters || {})),
+    });
   } catch (error) {
     return json(error?.statusCode || 500, {
       ok: false,

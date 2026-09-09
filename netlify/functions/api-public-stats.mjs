@@ -36,11 +36,13 @@ function normalizeLinkType(value) {
 }
 
 function aggregateMetricItems(items) {
-  return [...items.reduce((grouped, item) => {
-    const label = normalizeLinkType(item.label);
-    if (label) grouped.set(label, (grouped.get(label) || 0) + item.value);
-    return grouped;
-  }, new Map())]
+  return [
+    ...items.reduce((grouped, item) => {
+      const label = normalizeLinkType(item.label);
+      if (label) grouped.set(label, (grouped.get(label) || 0) + item.value);
+      return grouped;
+    }, new Map()),
+  ]
     .map(([label, value]) => ({ label, value }))
     .sort((left, right) => right.value - left.value);
 }
@@ -400,8 +402,7 @@ async function getGuideEngagement(startDate, endDate) {
     linksReport,
     venueLinksReport,
     countriesReport,
-  ] =
-    await Promise.all([
+  ] = await Promise.all([
     runGaReport({
       dateRanges,
       dimensions: [{ name: "eventName" }],
@@ -637,16 +638,18 @@ async function getGuideEngagement(startDate, endDate) {
     navigationSelections:
       events.find((item) => item.event === "guide_contents_select")
         ?.engagements || 0,
-    venues: [...venues.values()].map((venue) => ({
-      ...venue,
-      linkTypes: (venueLinkTypes.get(venue.id || venue.name) || []).sort(
-        (left, right) => right.value - left.value,
+    venues: [...venues.values()]
+      .map((venue) => ({
+        ...venue,
+        linkTypes: (venueLinkTypes.get(venue.id || venue.name) || []).sort(
+          (left, right) => right.value - left.value,
+        ),
+      }))
+      .sort(
+        (left, right) =>
+          right.impressions - left.impressions ||
+          right.engagements - left.engagements,
       ),
-    })).sort(
-      (left, right) =>
-        right.impressions - left.impressions ||
-        right.engagements - left.engagements,
-    ),
     linkTypes,
     countries: (countriesReport?.rows || []).map((row) => ({
       label: row.dimensionValues?.[0]?.value || "Unknown",
