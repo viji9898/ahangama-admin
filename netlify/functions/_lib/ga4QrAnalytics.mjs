@@ -338,7 +338,16 @@ function isDateWithinRange(dateValue, startDate, endDate) {
   return dateValue >= startDate && dateValue <= endDate;
 }
 
-async function getAccessToken() {
+const METADATA_CACHE_MS = 15 * 60 * 1000;
+let authClientPromise = null;
+let metadataCache = {
+  propertyId: "",
+  expiresAt: 0,
+  payload: null,
+  request: null,
+};
+
+async function getAuthClient() {
   const clientEmail = String(process.env.GOOGLE_CLIENT_EMAIL || "").trim();
   const privateKey = normalizePrivateKey(process.env.GOOGLE_PRIVATE_KEY);
 
@@ -346,15 +355,25 @@ async function getAccessToken() {
     throw new Error("Missing Google service account credentials");
   }
 
-  const auth = new GoogleAuth({
-    credentials: {
-      client_email: clientEmail,
-      private_key: privateKey,
-    },
-    scopes: [ANALYTICS_SCOPE],
-  });
+  if (!authClientPromise) {
+    const auth = new GoogleAuth({
+      credentials: {
+        client_email: clientEmail,
+        private_key: privateKey,
+      },
+      scopes: [ANALYTICS_SCOPE],
+    });
+    authClientPromise = auth.getClient().catch((error) => {
+      authClientPromise = null;
+      throw error;
+    });
+  }
 
-  const client = await auth.getClient();
+  return authClientPromise;
+}
+
+async function getAccessToken() {
+  const client = await getAuthClient();
   const tokenResponse = await client.getAccessToken();
   const token =
     typeof tokenResponse === "string" ? tokenResponse : tokenResponse?.token;
@@ -404,25 +423,44 @@ export async function getGaMetadata() {
     throw new Error("Missing env var: GA4_PROPERTY_ID");
   }
 
-  const accessToken = await getAccessToken();
-  const response = await fetch(
-    `${API_BASE_URL}/properties/${propertyId}/metadata`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-  );
-  const payload = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const message =
-      payload?.error?.message ||
-      `GA4 metadata request failed (${response.status})`;
-    throw new Error(message);
+  if (
+    metadataCache.propertyId === propertyId &&
+    metadataCache.payload &&
+    metadataCache.expiresAt > Date.now()
+  ) {
+    return metadataCache.payload;
   }
 
-  return payload;
+  if (!metadataCache.request || metadataCache.propertyId !== propertyId) {
+    metadataCache.propertyId = propertyId;
+    metadataCache.request = (async () => {
+      const accessToken = await getAccessToken();
+      const response = await fetch(
+        `${API_BASE_URL}/properties/${propertyId}/metadata`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const message =
+          payload?.error?.message ||
+          `GA4 metadata request failed (${response.status})`;
+        throw new Error(message);
+      }
+
+      metadataCache.payload = payload;
+      metadataCache.expiresAt = Date.now() + METADATA_CACHE_MS;
+      return payload;
+    })().finally(() => {
+      metadataCache.request = null;
+    });
+  }
+
+  return metadataCache.request;
 }
 
 async function runReport({ startDate, endDate, venue }) {

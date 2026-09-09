@@ -39,6 +39,17 @@ type Payload = {
   };
   dimensionStatus?: Status[];
   metricStatus?: Status;
+  warnings?: Array<{ report: string; message: string }>;
+  quota?: {
+    successfulReports: number;
+    failedReports: number;
+    coreTokensConsumed: number;
+    projectTokensRemainingThisHour: number | null;
+    propertyTokensRemainingThisHour: number | null;
+    propertyTokensRemainingToday: number | null;
+    concurrentRequestsRemaining: number | null;
+    serverErrorsRemainingThisHour: number | null;
+  };
   limitations?: string[];
 };
 
@@ -178,6 +189,12 @@ export default function ArticleInsights({ days }: { days: number }) {
       {!loading && error ? <div className="article-insights__state article-insights__state--error"><strong>Article Insights unavailable</strong><span>{error}</span></div> : null}
       {!loading && !error && kpis ? (
         <>
+          {payload.warnings?.length ? (
+            <div className="article-insights__state article-insights__state--warning">
+              <strong>Some GA4 reports are temporarily unavailable</strong>
+              <span>{payload.warnings.map((warning) => label(warning.report)).join(", ")}. Available data is shown below; retry later.</span>
+            </div>
+          ) : null}
           <div className="article-insights__kpis">{kpiItems.map(([title, value, detail]) => <article key={title}><strong>{value}</strong><span>{title}</span><small>{detail}</small></article>)}</div>
           {!kpis.views ? <div className="article-insights__state"><strong>No article views</strong><span>Try another article, date range, source, category, or device.</span></div> : null}
 
@@ -193,7 +210,25 @@ export default function ArticleInsights({ days }: { days: number }) {
 
           <div className="article-insights__panel"><h4>Article continuation</h4><DataTable headings={["Target article", "Selections", "Continuation rate"]} empty={!payload.continuation?.length}>{(payload.continuation || []).map((item) => <div className="article-insights__table-row" role="row" style={{ "--columns": 3 } as React.CSSProperties} key={item.targetContentId}><strong>{label(item.targetContentId)}</strong><span>{number(item.selections)}</span><span>{rate(item.continuationRate)}</span></div>)}</DataTable></div>
 
-          <div className="article-insights__qa"><div><h4>GA4 custom definitions</h4>{[...(payload.dimensionStatus || []), ...(payload.metricStatus ? [payload.metricStatus] : [])].map((item) => <p key={item.apiName}><span>{item.apiName.replace("customEvent:", "")}</span><strong data-ready={item.registered}>{item.registered ? "Registered" : "Needs registration"}</strong></p>)}</div><div><h4>Reporting notes</h4>{(payload.limitations || []).map((item) => <p key={item}>{item}</p>)}</div></div>
+          <div className="article-insights__qa">
+            <div><h4>GA4 custom definitions</h4>{[...(payload.dimensionStatus || []), ...(payload.metricStatus ? [payload.metricStatus] : [])].map((item) => <p key={item.apiName}><span>{item.apiName.replace("customEvent:", "")}</span><strong data-ready={item.registered}>{item.registered ? "Registered" : "Needs registration"}</strong></p>)}</div>
+            <div>
+              <h4>GA4 quota usage</h4>
+              {payload.quota ? (
+                <>
+                  <p><span>Reports completed</span><strong>{payload.quota.successfulReports} / 9</strong></p>
+                  <p><span>Reports failed</span><strong>{payload.quota.failedReports}</strong></p>
+                  <p><span>Core tokens used by this load</span><strong>{number(payload.quota.coreTokensConsumed)}</strong></p>
+                  <p><span>Project tokens left this hour</span><strong>{number(payload.quota.projectTokensRemainingThisHour)}</strong></p>
+                  <p><span>Property tokens left this hour</span><strong>{number(payload.quota.propertyTokensRemainingThisHour)}</strong></p>
+                  <p><span>Property tokens left today</span><strong>{number(payload.quota.propertyTokensRemainingToday)}</strong></p>
+                  <p><span>Concurrent request slots left</span><strong>{number(payload.quota.concurrentRequestsRemaining)}</strong></p>
+                  <p><span>Server errors left this hour</span><strong>{number(payload.quota.serverErrorsRemainingThisHour)}</strong></p>
+                </>
+              ) : <p>Quota telemetry is unavailable until a GA4 report succeeds.</p>}
+            </div>
+            <div><h4>Reporting notes</h4>{(payload.limitations || []).map((item) => <p key={item}>{item}</p>)}</div>
+          </div>
         </>
       ) : null}
     </section>

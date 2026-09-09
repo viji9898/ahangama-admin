@@ -44,7 +44,7 @@ const json = (statusCode, body) => ({
   statusCode,
   headers: {
     "Content-Type": "application/json",
-    "Cache-Control": "public, max-age=300, s-maxage=900",
+    "Cache-Control": "private, no-store",
   },
   body: JSON.stringify(body),
 });
@@ -134,6 +134,63 @@ function sumEvents(rows) {
   }, {});
 }
 
+async function settleReports(reports, concurrency = 3) {
+  const results = new Array(reports.length);
+  let nextIndex = 0;
+  const workers = Array.from(
+    { length: Math.min(concurrency, reports.length) },
+    async () => {
+      while (nextIndex < reports.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        try {
+          results[index] = {
+            status: "fulfilled",
+            value: await reports[index].run(),
+          };
+        } catch (reason) {
+          results[index] = { status: "rejected", reason };
+        }
+      }
+    },
+  );
+  await Promise.all(workers);
+  const warnings = [];
+  const values = results.map((result, index) => {
+    if (result.status === "fulfilled") return result.value;
+
+    warnings.push({
+      report: reports[index].label,
+      message: String(result.reason?.message || result.reason),
+    });
+    return null;
+  });
+
+  return { values, warnings };
+}
+
+function summarizeQuota(reports, failedReports) {
+  const quotas = reports.map((report) => report?.propertyQuota).filter(Boolean);
+  const quota = (name) => quotas.map((item) => item[name]).filter(Boolean);
+  const consumed = (name) =>
+    quota(name).reduce((total, item) => total + Number(item.consumed || 0), 0);
+  const remaining = (name) => {
+    const values = quota(name).map((item) => Number(item.remaining));
+    return values.length ? Math.min(...values) : null;
+  };
+
+  return {
+    successfulReports: reports.filter(Boolean).length,
+    failedReports,
+    coreTokensConsumed: consumed("tokensPerProjectPerHour"),
+    projectTokensRemainingThisHour: remaining("tokensPerProjectPerHour"),
+    propertyTokensRemainingThisHour: remaining("tokensPerHour"),
+    propertyTokensRemainingToday: remaining("tokensPerDay"),
+    concurrentRequestsRemaining: remaining("concurrentRequests"),
+    serverErrorsRemainingThisHour: remaining("serverErrorsPerProjectPerHour"),
+  };
+}
+
 async function getArticleInsights(params) {
   const normalizedParams = {
     ...params,
@@ -188,10 +245,64 @@ async function getArticleInsights(params) {
       dimensionFilter: articleFilters(normalizedParams, available, eventNames),
       keepEmptyRows: false,
       limit: 10000,
+      returnPropertyQuota: true,
     });
   const activeMetrics = [{ name: "eventCount" }];
   if (metricStatus.registered) activeMetrics.push({ name: ACTIVE_READ_METRIC });
 
+  const { values, warnings } = await settleReports([
+    {
+      label: "article catalog",
+      run: () => runGaReport({
+        dateRanges,
+        dimensions: catalogDimensions,
+        metrics: [{ name: "eventCount" }],
+        dimensionFilter: {
+          andGroup: {
+            expressions: [
+              exactFilter("hostName", HOST_NAME),
+              eventFilter(["article_view"]),
+            ],
+          },
+        },
+        keepEmptyRows: false,
+        limit: 10000,
+        returnPropertyQuota: true,
+      }),
+    },
+    {
+      label: "article totals",
+      run: () => runGaReport({
+        dateRanges,
+        dimensions: [{ name: "eventName" }],
+        metrics: [{ name: "eventCount" }],
+        dimensionFilter: selectedFilter,
+        keepEmptyRows: false,
+        limit: 100,
+        returnPropertyQuota: true,
+      }),
+    },
+    { label: "active reading time", run: () => report([], ["article_engaged_read"], activeMetrics) },
+    { label: "reading progress", run: () => report([CUSTOM_DIMENSIONS.progressPercent], ["article_progress"]) },
+    { label: "section reach", run: () => report([CUSTOM_DIMENSIONS.articleSection, "pagePath"], ["article_section_view"]) },
+    { label: "discovery performance", run: () => report([CUSTOM_DIMENSIONS.componentLocation, "eventName"], ["article_card_impression", "article_select"]) },
+    {
+      label: "traffic quality",
+      run: () => report(
+        [CUSTOM_DIMENSIONS.utmSource, CUSTOM_DIMENSIONS.utmMedium, CUSTOM_DIMENSIONS.utmCampaign, "eventName"],
+        ["article_view", "article_engaged_read", "article_complete"],
+        activeMetrics,
+      ),
+    },
+    {
+      label: "outbound intent",
+      run: () => report(
+        [CUSTOM_DIMENSIONS.articleSection, CUSTOM_DIMENSIONS.linkType, CUSTOM_DIMENSIONS.destinationUrl, CUSTOM_DIMENSIONS.sourceDomain],
+        ["article_outbound_click"],
+      ),
+    },
+    { label: "article continuation", run: () => report([CUSTOM_DIMENSIONS.targetContentId], ["article_next_select"]) },
+  ]);
   const [
     catalogReport,
     totalsReport,
@@ -202,45 +313,7 @@ async function getArticleInsights(params) {
     trafficReport,
     outboundReport,
     continuationReport,
-  ] = await Promise.all([
-    runGaReport({
-      dateRanges,
-      dimensions: catalogDimensions,
-      metrics: [{ name: "eventCount" }],
-      dimensionFilter: {
-        andGroup: {
-          expressions: [
-            exactFilter("hostName", HOST_NAME),
-            eventFilter(["article_view"]),
-          ],
-        },
-      },
-      keepEmptyRows: false,
-      limit: 10000,
-    }),
-    runGaReport({
-      dateRanges,
-      dimensions: [{ name: "eventName" }],
-      metrics: [{ name: "eventCount" }],
-      dimensionFilter: selectedFilter,
-      keepEmptyRows: false,
-      limit: 100,
-    }),
-    report([], ["article_engaged_read"], activeMetrics),
-    report([CUSTOM_DIMENSIONS.progressPercent], ["article_progress"]),
-    report([CUSTOM_DIMENSIONS.articleSection, "pagePath"], ["article_section_view"]),
-    report([CUSTOM_DIMENSIONS.componentLocation, "eventName"], ["article_card_impression", "article_select"]),
-    report(
-      [CUSTOM_DIMENSIONS.utmSource, CUSTOM_DIMENSIONS.utmMedium, CUSTOM_DIMENSIONS.utmCampaign, "eventName"],
-      ["article_view", "article_engaged_read", "article_complete"],
-      activeMetrics,
-    ),
-    report(
-      [CUSTOM_DIMENSIONS.articleSection, CUSTOM_DIMENSIONS.linkType, CUSTOM_DIMENSIONS.destinationUrl, CUSTOM_DIMENSIONS.sourceDomain],
-      ["article_outbound_click"],
-    ),
-    report([CUSTOM_DIMENSIONS.targetContentId], ["article_next_select"]),
-  ]);
+  ] = values;
 
   const catalogRows = rowsByHeader(catalogReport);
   const totalRows = rowsByHeader(totalsReport);
@@ -349,6 +422,8 @@ async function getArticleInsights(params) {
     },
     dimensionStatus,
     metricStatus,
+    warnings,
+    quota: summarizeQuota(values, warnings.length),
     limitations: [
       "Milestones use event counts because the browser tracker emits each milestone once per article render. GA4 cannot independently deduplicate duplicate client emissions by render ID.",
       "Section order follows GA4 report order because article_section has no numeric order parameter. Register a section_index event dimension to guarantee editorial order.",
