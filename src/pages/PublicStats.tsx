@@ -11,6 +11,18 @@ type GuideVenue = {
   users: number;
   linkTypes: MetricItem[];
 };
+type ArticleEngagement = {
+  contentId: string;
+  title: string;
+  url: string;
+  pageViews: number;
+  visitors: number;
+  engagedVisits: number;
+  engagedReads: number;
+  completions: number;
+  placeClicks: number;
+  inDepthAvailable: boolean;
+};
 type StatsPayload = {
   generatedAt?: string;
   overview?: {
@@ -27,6 +39,11 @@ type StatsPayload = {
     topPages?: Array<{ path: string; title: string; views: number }>;
     trafficSources?: MetricItem[];
     countries?: MetricItem[];
+  };
+  articles?: {
+    available?: boolean;
+    error?: string;
+    articles?: ArticleEngagement[];
   };
   guide?: {
     available?: boolean;
@@ -96,6 +113,7 @@ const formatNumber = (value?: number | null) =>
     : new Intl.NumberFormat("en-US", { notation: "compact" }).format(value);
 
 const VENUE_FEE_USD = 150;
+const ARTICLES_PER_PAGE = 5;
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -293,6 +311,7 @@ function FacebookInsights({
 
 export default function PublicStats() {
   const [days, setDays] = useState(30);
+  const [articlePage, setArticlePage] = useState(1);
   const [selectedGuideVenue, setSelectedGuideVenue] = useState("all");
   const [insightVenue, setInsightVenue] = useState<GuideVenue | null>(null);
   const [data, setData] = useState<StatsPayload | null>(null);
@@ -326,6 +345,15 @@ export default function PublicStats() {
   }, [days]);
 
   const overview = data?.overview;
+  const articles = data?.articles?.articles || [];
+  const articlePageCount = Math.max(
+    Math.ceil(articles.length / ARTICLES_PER_PAGE),
+    1,
+  );
+  const paginatedArticles = articles.slice(
+    (articlePage - 1) * ARTICLES_PER_PAGE,
+    articlePage * ARTICLES_PER_PAGE,
+  );
   const guideVenues = data?.guide?.venues || [];
   const filteredGuideVenues =
     selectedGuideVenue === "all"
@@ -433,6 +461,7 @@ export default function PublicStats() {
                   setLoading(true);
                   setError("");
                   setInsightVenue(null);
+                  setArticlePage(1);
                   setDays(value);
                 }}
                 type="button"
@@ -529,6 +558,120 @@ export default function PublicStats() {
               <Bars items={data?.website?.countries} />
             )}
           </article>
+        </div>
+
+        <div className="stats-articles" id="articles">
+          <div className="stats-articles__header">
+            <div>
+              <p>Editorial performance</p>
+              <h3>Online Article Engagement</h3>
+            </div>
+            <span>All articles published on ahangama.com</span>
+          </div>
+          {loading ? (
+            <div className="stats-articles__loading">
+              <LoadingIndicator label="Loading article engagement" />
+            </div>
+          ) : !data?.articles?.available ? (
+            <p className="stats-articles__state">
+              {data?.articles?.error || "Article engagement is unavailable."}
+            </p>
+          ) : (
+            <>
+              <div className="stats-articles__table" role="table">
+              <div className="stats-articles__table-head" role="row">
+                <span>Article</span>
+                <span>Page views</span>
+                <span>Visitors</span>
+                <span>Engaged visits</span>
+                <span>Engaged reads</span>
+                <span>Completions</span>
+                <span>Place clicks</span>
+              </div>
+              {paginatedArticles.map((article) => (
+                <div
+                  className="stats-articles__table-row"
+                  role="row"
+                  key={article.contentId}
+                >
+                  <div>
+                    <a href={article.url} target="_blank" rel="noreferrer">
+                      {article.title}
+                    </a>
+                    {!article.inDepthAvailable ? (
+                      <small>
+                        In-depth reading analysis is not yet available for this
+                        article.
+                      </small>
+                    ) : (
+                      <small className="is-available">
+                        In-depth analysis available
+                      </small>
+                    )}
+                  </div>
+                  <span>{formatNumber(article.pageViews)}</span>
+                  <span>{formatNumber(article.visitors)}</span>
+                  <span>{formatNumber(article.engagedVisits)}</span>
+                  <span>
+                    {article.inDepthAvailable
+                      ? formatNumber(article.engagedReads)
+                      : "—"}
+                  </span>
+                  <span>
+                    {article.inDepthAvailable
+                      ? formatNumber(article.completions)
+                      : "—"}
+                  </span>
+                  <span>
+                    {article.inDepthAvailable
+                      ? formatNumber(article.placeClicks)
+                      : "—"}
+                  </span>
+                </div>
+              ))}
+              </div>
+              {articlePageCount > 1 ? (
+              <nav
+                className="stats-articles__pagination"
+                aria-label="Article engagement pages"
+              >
+                <button
+                  type="button"
+                  aria-label="Previous page"
+                  title="Previous page"
+                  disabled={articlePage === 1}
+                  onClick={() => setArticlePage((page) => page - 1)}
+                >
+                  ←
+                </button>
+                {Array.from({ length: articlePageCount }, (_, index) => {
+                  const page = index + 1;
+                  return (
+                    <button
+                      className={articlePage === page ? "is-active" : ""}
+                      type="button"
+                      aria-current={articlePage === page ? "page" : undefined}
+                      aria-label={`Page ${page}`}
+                      key={page}
+                      onClick={() => setArticlePage(page)}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  aria-label="Next page"
+                  title="Next page"
+                  disabled={articlePage === articlePageCount}
+                  onClick={() => setArticlePage((page) => page + 1)}
+                >
+                  →
+                </button>
+              </nav>
+              ) : null}
+            </>
+          )}
         </div>
 
         <div className="stats-guide">

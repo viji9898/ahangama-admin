@@ -3,7 +3,14 @@ import { getQrDashboardSummary, runGaReport } from "./_lib/ga4QrAnalytics.mjs";
 import { query, queryFromEnv } from "./_lib/db.mjs";
 
 const HOST_NAME = "ahangama.com";
+const ARTICLE_SITEMAP_URL = `https://${HOST_NAME}/sitemaps/articles.xml`;
 const ALLOWED_DAYS = new Set([7, 30, 90]);
+const ARTICLE_EVENTS = [
+  "article_view",
+  "article_engaged_read",
+  "article_complete",
+  "article_outbound_click",
+];
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -25,6 +32,133 @@ function hostFilter() {
 
 function numberMetric(row, index) {
   return Number(row?.metricValues?.[index]?.value || 0);
+}
+
+function articleEventFilter(startDate, endDate) {
+  return {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [
+      { name: "customEvent:content_id" },
+      { name: "eventName" },
+    ],
+    metrics: [{ name: "eventCount" }],
+    dimensionFilter: {
+      andGroup: {
+        expressions: [
+          hostFilter(),
+          {
+            filter: {
+              fieldName: "eventName",
+              inListFilter: { values: ARTICLE_EVENTS, caseSensitive: true },
+            },
+          },
+        ],
+      },
+    },
+    keepEmptyRows: false,
+    limit: 10000,
+  };
+}
+
+function articleTitle(path) {
+  return decodeURIComponent(path)
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+async function getOnlineArticleEngagement(startDate, endDate) {
+  const [sitemapResponse, trafficReport, eventReport, historyReport] =
+    await Promise.all([
+      fetch(ARTICLE_SITEMAP_URL, {
+        headers: { Accept: "application/xml" },
+        signal: AbortSignal.timeout(8000),
+      }),
+      runGaReport({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "pagePath" }, { name: "pageTitle" }],
+        metrics: [
+          { name: "screenPageViews" },
+          { name: "totalUsers" },
+          { name: "engagedSessions" },
+        ],
+        dimensionFilter: hostFilter(),
+        keepEmptyRows: false,
+        limit: 10000,
+      }),
+      runGaReport(articleEventFilter(startDate, endDate)),
+      runGaReport(articleEventFilter("2020-01-01", "today")),
+    ]);
+
+  if (!sitemapResponse.ok) {
+    throw new Error(`Article sitemap request failed (${sitemapResponse.status})`);
+  }
+
+  const sitemap = await sitemapResponse.text();
+  const catalog = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
+    (match) => {
+      const url = new URL(match[1].replace(/&amp;/g, "&"));
+      return { path: url.pathname.replace(/\/$/, "") || "/", url: url.href };
+    },
+  );
+  const traffic = new Map();
+  for (const row of trafficReport?.rows || []) {
+    const path = (row.dimensionValues?.[0]?.value || "/").replace(/\/$/, "");
+    const current = traffic.get(path) || {
+      title: "",
+      pageViews: 0,
+      visitors: 0,
+      engagedVisits: 0,
+    };
+    current.title = row.dimensionValues?.[1]?.value || current.title;
+    current.pageViews += numberMetric(row, 0);
+    current.visitors += numberMetric(row, 1);
+    current.engagedVisits += numberMetric(row, 2);
+    traffic.set(path, current);
+  }
+
+  const events = new Map();
+  for (const row of eventReport?.rows || []) {
+    const contentId = row.dimensionValues?.[0]?.value || "";
+    const eventName = row.dimensionValues?.[1]?.value || "";
+    if (!contentId || contentId === "(not set)") continue;
+    const current = events.get(contentId) || {};
+    current[eventName] = (current[eventName] || 0) + numberMetric(row, 0);
+    events.set(contentId, current);
+  }
+  const analyzedContentIds = new Set(
+    (historyReport?.rows || [])
+      .filter((row) => row.dimensionValues?.[1]?.value === "article_view")
+      .map((row) => row.dimensionValues?.[0]?.value)
+      .filter((value) => value && value !== "(not set)"),
+  );
+
+  return {
+    available: true,
+    articles: catalog
+      .map(({ path, url }) => {
+        const contentId = decodeURIComponent(path.replace(/^\//, ""));
+        const page = traffic.get(path) || {};
+        const milestones = events.get(contentId) || {};
+        return {
+          contentId,
+          title: page.title || articleTitle(path),
+          url,
+          pageViews: page.pageViews || 0,
+          visitors: page.visitors || 0,
+          engagedVisits: page.engagedVisits || 0,
+          engagedReads: milestones.article_engaged_read || 0,
+          completions: milestones.article_complete || 0,
+          placeClicks: milestones.article_outbound_click || 0,
+          inDepthAvailable: analyzedContentIds.has(contentId),
+        };
+      })
+      .sort(
+        (left, right) =>
+          right.pageViews - left.pageViews ||
+          left.title.localeCompare(right.title),
+      ),
+  };
 }
 
 function normalizeLinkType(value) {
@@ -766,6 +900,7 @@ async function handler(event) {
   const endDate = "today";
   const [
     websiteResult,
+    articlesResult,
     guideResult,
     qrResult,
     passesResult,
@@ -774,6 +909,7 @@ async function handler(event) {
     facebookResult,
   ] = await Promise.allSettled([
     getWebsiteStats(startDate, endDate),
+    getOnlineArticleEngagement(startDate, endDate),
     getGuideEngagement(startDate, endDate),
     getQrDashboardSummary({ startDate, endDate }),
     countPasses(),
@@ -786,6 +922,10 @@ async function handler(event) {
     websiteResult.status === "fulfilled"
       ? websiteResult.value
       : unavailable(websiteResult.reason);
+  const articles =
+    articlesResult.status === "fulfilled"
+      ? articlesResult.value
+      : unavailable(articlesResult.reason);
   const guide =
     guideResult.status === "fulfilled"
       ? guideResult.value
@@ -800,6 +940,7 @@ async function handler(event) {
     generatedAt: new Date().toISOString(),
     days,
     website,
+    articles,
     guide,
     qr,
     overview: {
