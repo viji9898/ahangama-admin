@@ -416,11 +416,20 @@ export async function runGaReport(body) {
   return payload;
 }
 
-export async function getGaMetadata() {
+export async function getGaMetadata({ forceRefresh = false } = {}) {
   const propertyId = String(process.env.GA4_PROPERTY_ID || "").trim();
 
   if (!propertyId) {
     throw new Error("Missing env var: GA4_PROPERTY_ID");
+  }
+
+  if (forceRefresh) {
+    metadataCache = {
+      propertyId,
+      expiresAt: 0,
+      payload: null,
+      request: null,
+    };
   }
 
   if (
