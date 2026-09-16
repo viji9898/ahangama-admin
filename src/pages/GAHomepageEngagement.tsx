@@ -159,7 +159,7 @@ export default function GAHomepageEngagement() {
           query.set("days", days);
         }
         if (forceRefreshRef.current) {
-          query.set("refresh", "1");
+          query.set("refresh", String(refreshKey));
           forceRefreshRef.current = false;
         }
         const response = await fetch(`${ENDPOINT}?${query}`, {
@@ -272,7 +272,7 @@ export default function GAHomepageEngagement() {
             setRefreshKey((value) => value + 1);
           }}
           aria-label="Refresh analytics"
-          title="Refresh analytics"
+          title="Refresh cached analytics"
         >
           <ReloadOutlined spin={loading} />
         </button>

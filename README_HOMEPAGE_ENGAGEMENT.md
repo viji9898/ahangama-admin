@@ -45,7 +45,7 @@ Purchase counts are deliberately unavailable until reliable homepage and cross-d
 
 ## Operations
 
-Successful endpoint responses are cached in-memory for 10 minutes. GA4 reports run with bounded concurrency and return partial results with per-report warnings. The diagnostics panel shows recent custom events, missing dimensions, blank content fields, unexpected event paths, and Data API errors.
+Successful endpoint responses are cached in-memory for one hour. The dashboard refresh button bypasses both response and GA4 metadata caches once, then replaces the normal cached response. GA4 reports run with bounded concurrency and return partial results with per-report warnings. The diagnostics panel shows recent custom events, missing dimensions, blank content fields, unexpected event paths, and Data API errors.
 
 Run focused validation with:
 

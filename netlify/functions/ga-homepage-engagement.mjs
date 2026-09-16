@@ -16,7 +16,7 @@ import {
 
 const HOST_NAME = "ahangama.com";
 const HOME_PATH = "/";
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 60 * 60 * 1000;
 const CUSTOM_DIMENSIONS = {
   homeSection: "customEvent:home_section",
   componentLocation: "customEvent:component_location",
@@ -36,7 +36,7 @@ const json = (statusCode, body) => ({
   statusCode,
   headers: {
     "Content-Type": "application/json",
-    "Cache-Control": "private, max-age=600",
+    "Cache-Control": "private, no-store",
   },
   body: JSON.stringify(body),
 });
@@ -173,19 +173,38 @@ function mapSectionRows(report) {
   }));
 }
 
-function mapContentRows(report) {
-  return rowsByHeader(report).map((row) => ({
-    eventName: row.eventName,
-    contentId: row[CUSTOM_DIMENSIONS.contentId],
-    contentTitle: row[CUSTOM_DIMENSIONS.contentTitle],
-    contentType: row[CUSTOM_DIMENSIONS.contentType],
-    section: row[CUSTOM_DIMENSIONS.homeSection],
-    componentLocation: row[CUSTOM_DIMENSIONS.componentLocation],
-    position: row[CUSTOM_DIMENSIONS.position],
-    destination: safeDestination(row[CUSTOM_DIMENSIONS.destinationUrl]),
-    users: row.totalUsers,
-    eventCount: row.eventCount,
-  }));
+function mapContentRows(report, catalogReport) {
+  const catalog = new Map();
+  for (const row of rowsByHeader(catalogReport)) {
+    const contentId = row[CUSTOM_DIMENSIONS.contentId];
+    if (!contentId) continue;
+    const existing = catalog.get(contentId) || {};
+    catalog.set(contentId, {
+      contentTitle:
+        existing.contentTitle || row[CUSTOM_DIMENSIONS.contentTitle],
+      contentType: existing.contentType || row[CUSTOM_DIMENSIONS.contentType],
+      destination:
+        existing.destination ||
+        safeDestination(row[CUSTOM_DIMENSIONS.destinationUrl]),
+    });
+  }
+
+  return rowsByHeader(report).map((row) => {
+    const contentId = row[CUSTOM_DIMENSIONS.contentId];
+    const details = catalog.get(contentId) || {};
+    return {
+      eventName: row.eventName,
+      contentId,
+      contentTitle: details.contentTitle,
+      contentType: details.contentType,
+      section: row[CUSTOM_DIMENSIONS.homeSection],
+      componentLocation: row[CUSTOM_DIMENSIONS.componentLocation],
+      position: row[CUSTOM_DIMENSIONS.position],
+      destination: details.destination,
+      users: row.totalUsers,
+      eventCount: row.eventCount,
+    };
+  });
 }
 
 function safeDestination(value) {
@@ -376,13 +395,16 @@ async function buildHomepageEngagement(params, { forceRefresh = false } = {}) {
   const has = (dimension) => available.has(dimension);
   const optional = (dimensions) => dimensions.filter(has);
   const sectionDimensions = optional([CUSTOM_DIMENSIONS.homeSection]);
-  const contentDimensions = optional([
+  const contentMetricDimensions = optional([
     CUSTOM_DIMENSIONS.contentId,
-    CUSTOM_DIMENSIONS.contentTitle,
-    CUSTOM_DIMENSIONS.contentType,
     CUSTOM_DIMENSIONS.homeSection,
     CUSTOM_DIMENSIONS.componentLocation,
     CUSTOM_DIMENSIONS.position,
+  ]);
+  const contentCatalogDimensions = optional([
+    CUSTOM_DIMENSIONS.contentId,
+    CUSTOM_DIMENSIONS.contentTitle,
+    CUSTOM_DIMENSIONS.contentType,
     CUSTOM_DIMENSIONS.destinationUrl,
   ]);
   const utilityDimensions = optional([
@@ -408,8 +430,10 @@ async function buildHomepageEngagement(params, { forceRefresh = false } = {}) {
     ["previous utility engagement", ranges.previous, ["eventName", ...utilityDimensions], ["totalUsers", "eventCount"], HOME_EVENTS],
     ["daily trend", ranges.current, ["date", "eventName"], ["totalUsers", "engagedSessions", "eventCount"], ["page_view", "home_content_select", "article_select", "pass_cta_click"]],
     ["section reach", ranges.current, ["eventName", ...sectionDimensions], ["totalUsers", "eventCount"], ["home_section_view", "home_content_impression", "home_content_select", "article_card_impression", "article_select"]],
-    ["content performance", ranges.current, ["eventName", ...contentDimensions], ["totalUsers", "eventCount"], ["home_content_impression", "home_content_select", "article_card_impression", "article_select"]],
-    ["previous content performance", ranges.previous, ["eventName", ...contentDimensions], ["totalUsers", "eventCount"], ["home_content_impression", "home_content_select", "article_card_impression", "article_select"]],
+    ["content performance", ranges.current, ["eventName", ...contentMetricDimensions], ["totalUsers", "eventCount"], ["home_content_impression", "home_content_select", "article_card_impression", "article_select"]],
+    ["content catalog", ranges.current, contentCatalogDimensions, ["eventCount"], ["home_content_impression", "home_content_select", "article_card_impression", "article_select"]],
+    ["previous content performance", ranges.previous, ["eventName", ...contentMetricDimensions], ["totalUsers", "eventCount"], ["home_content_impression", "home_content_select", "article_card_impression", "article_select"]],
+    ["previous content catalog", ranges.previous, contentCatalogDimensions, ["eventCount"], ["home_content_impression", "home_content_select", "article_card_impression", "article_select"]],
     ["Pass CTA", ranges.current, ["eventName", ...optional([CUSTOM_DIMENSIONS.ctaLocation])], ["totalUsers", "eventCount"], ["pass_cta_click"]],
     ["utility engagement", ranges.current, ["eventName", ...utilityDimensions], ["totalUsers", "eventCount"], HOME_EVENTS],
     ["device totals", ranges.current, ["deviceCategory"], ["totalUsers", "sessions", "engagedSessions"], []],
@@ -470,7 +494,9 @@ async function buildHomepageEngagement(params, { forceRefresh = false } = {}) {
     trendReport,
     sectionReport,
     contentReport,
+    contentCatalogReport,
     previousContentReport,
+    previousContentCatalogReport,
     passReport,
     utilityReport,
     deviceTotals,
@@ -502,8 +528,8 @@ async function buildHomepageEngagement(params, { forceRefresh = false } = {}) {
     currentValues.users,
   );
   const content = buildContentRows(
-    mapContentRows(contentReport),
-    mapContentRows(previousContentReport),
+    mapContentRows(contentReport, contentCatalogReport),
+    mapContentRows(previousContentReport, previousContentCatalogReport),
   );
 
   return {
@@ -549,7 +575,7 @@ async function handler(event) {
     }
     requireAdmin(event);
     const requestParams = event.queryStringParameters || {};
-    const forceRefresh = requestParams.refresh === "1";
+    const forceRefresh = Boolean(requestParams.refresh);
     const { refresh: _refresh, ...params } = requestParams;
     const cacheKey = JSON.stringify(params);
     const cached = cache.get(cacheKey);
