@@ -149,7 +149,10 @@ export default function GAInstagramEngagement() {
   ];
 
   return (
-    <section className="article-insights instagram-insights" aria-busy={loading}>
+    <section
+      className="article-insights instagram-insights"
+      aria-busy={loading}
+    >
       <div className="article-insights__heading">
         <div>
           <p>Instagram Engagement</p>
@@ -198,7 +201,10 @@ export default function GAInstagramEngagement() {
         </label>
         <label className="article-insights__filter">
           <span>Sort by</span>
-          <select value={sort} onChange={(event) => setSort(event.target.value)}>
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+          >
             <option value="newest">Newest first</option>
             <option value="interactions">Most interactions</option>
             <option value="reach">Highest reach</option>
@@ -268,7 +274,9 @@ export default function GAInstagramEngagement() {
                     key={post.id}
                   >
                     <div className="instagram-insights__post">
-                      {post.imageUrl ? <img src={post.imageUrl} alt="" /> : null}
+                      {post.imageUrl ? (
+                        <img src={post.imageUrl} alt="" />
+                      ) : null}
                       <div>
                         <a
                           href={post.permalink}
@@ -291,7 +299,9 @@ export default function GAInstagramEngagement() {
                         post.handles.map((item) => (
                           <span
                             key={item}
-                            data-collaborator={post.collaborators.includes(item)}
+                            data-collaborator={post.collaborators.includes(
+                              item,
+                            )}
                             title={
                               post.collaborators.includes(item)
                                 ? "Collaborator"

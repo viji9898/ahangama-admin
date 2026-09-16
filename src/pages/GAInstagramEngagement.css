@@ -10,7 +10,9 @@
 }
 
 .instagram-insights__panel-heading > span {
-  font: 500 9px/1 "DM Mono", monospace;
+  font:
+    500 9px/1 "DM Mono",
+    monospace;
   text-transform: uppercase;
 }
 
@@ -63,7 +65,9 @@
 .instagram-insights__handles span {
   padding: 4px 6px;
   border: 1px solid var(--stats-line);
-  font: 500 9px/1 "DM Mono", monospace;
+  font:
+    500 9px/1 "DM Mono",
+    monospace;
 }
 
 .instagram-insights__handles span[data-collaborator="true"] {
