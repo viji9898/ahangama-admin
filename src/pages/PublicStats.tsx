@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./PublicStats.css";
 
 type MetricItem = { label: string; value: number };
@@ -83,14 +83,22 @@ type StatsPayload = {
     reach?: number;
     accountsEngaged?: number;
     interactions?: number;
-    topContent?: Array<{
+    posts?: Array<{
       id: string;
       caption: string;
       mediaType: string;
+      mediaProductType: string;
       permalink: string;
+      timestamp: string;
       imageUrl: string;
+      views: number;
+      reach: number;
       likes: number;
       comments: number;
+      shares: number;
+      saved: number;
+      interactions: number;
+      handles: string[];
     }>;
   };
   facebook?: {
@@ -236,6 +244,19 @@ function EmptyConnection({ label }: { label: string }) {
 }
 
 function InstagramInsights({ social }: { social?: StatsPayload["social"] }) {
+  const [selectedHandle, setSelectedHandle] = useState("all");
+  const posts = useMemo(() => social?.posts || [], [social?.posts]);
+  const handles = useMemo(
+    () => Array.from(new Set(posts.flatMap((post) => post.handles))).sort(),
+    [posts],
+  );
+  const filteredPosts =
+    selectedHandle === "all"
+      ? posts.slice(0, 5)
+      : posts
+          .filter((post) => post.handles.includes(selectedHandle))
+          .slice(0, 5);
+
   if (!social?.available) {
     return (
       <EmptyConnection label={social?.reason || "Meta account not connected"} />
@@ -258,21 +279,89 @@ function InstagramInsights({ social }: { social?: StatsPayload["social"] }) {
           </div>
         ))}
       </div>
-      {social.topContent?.length ? (
+      {posts.length ? (
         <div className="stats-instagram__content">
-          <span>Top content</span>
-          {social.topContent.map((item) => (
-            <a
-              href={item.permalink}
-              key={item.id}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {item.imageUrl ? <img src={item.imageUrl} alt="" /> : null}
-              <span>{item.caption}</span>
-              <strong>{formatNumber(item.likes + item.comments)}</strong>
-            </a>
-          ))}
+          <div className="stats-instagram__content-heading">
+            <span>
+              {selectedHandle === "all"
+                ? "Latest five posts"
+                : `Latest posts mentioning ${selectedHandle}`}
+            </span>
+            <label>
+              <span>Mentioned handle</span>
+              <select
+                value={selectedHandle}
+                onChange={(event) => setSelectedHandle(event.target.value)}
+              >
+                <option value="all">All handles</option>
+                {handles.map((handle) => (
+                  <option value={handle} key={handle}>
+                    {handle}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="stats-instagram__posts">
+            <div className="stats-instagram__post-head" aria-hidden="true">
+              <span>Post</span>
+              <span>Handles</span>
+              <span>Views</span>
+              <span>Reach</span>
+              <span>Likes</span>
+              <span>Comments</span>
+              <span>Shares</span>
+              <span>Saves</span>
+              <span>Interactions</span>
+            </div>
+            {filteredPosts.length ? (
+              filteredPosts.map((item) => (
+                <a
+                  className="stats-instagram__post"
+                  href={item.permalink}
+                  key={item.id}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span className="stats-instagram__post-info">
+                    {item.imageUrl ? <img src={item.imageUrl} alt="" /> : null}
+                    <span>
+                      <strong>{item.caption}</strong>
+                      <small>
+                        {new Date(item.timestamp).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                        {" · "}
+                        {item.mediaProductType || item.mediaType}
+                      </small>
+                    </span>
+                  </span>
+                  <span className="stats-instagram__handles">
+                    {item.handles.length ? item.handles.join(", ") : "—"}
+                  </span>
+                  {[
+                    item.views,
+                    item.reach,
+                    item.likes,
+                    item.comments,
+                    item.shares,
+                    item.saved,
+                    item.interactions,
+                  ].map((value, index) => (
+                    <span className="stats-instagram__post-metric" key={index}>
+                      {formatNumber(value)}
+                    </span>
+                  ))}
+                </a>
+              ))
+            ) : (
+              <p className="stats-instagram__empty">
+                No latest posts mention this handle.
+              </p>
+            )}
+          </div>
         </div>
       ) : null}
     </div>
@@ -321,7 +410,7 @@ export default function PublicStats() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(`/.netlify/functions/api-public-stats?days=${days}&v=10`, {
+    fetch(`/.netlify/functions/api-public-stats?days=${days}&v=12`, {
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -579,96 +668,96 @@ export default function PublicStats() {
           ) : (
             <>
               <div className="stats-articles__table" role="table">
-              <div className="stats-articles__table-head" role="row">
-                <span>Article</span>
-                <span>Page views</span>
-                <span>Visitors</span>
-                <span>Engaged visits</span>
-                <span>Engaged reads</span>
-                <span>Completions</span>
-                <span>Place clicks</span>
-              </div>
-              {paginatedArticles.map((article) => (
-                <div
-                  className="stats-articles__table-row"
-                  role="row"
-                  key={article.contentId}
-                >
-                  <div>
-                    <a href={article.url} target="_blank" rel="noreferrer">
-                      {article.title}
-                    </a>
-                    {!article.inDepthAvailable ? (
-                      <small>
-                        In-depth reading analysis is not yet available for this
-                        article.
-                      </small>
-                    ) : (
-                      <small className="is-available">
-                        In-depth analysis available
-                      </small>
-                    )}
-                  </div>
-                  <span>{formatNumber(article.pageViews)}</span>
-                  <span>{formatNumber(article.visitors)}</span>
-                  <span>{formatNumber(article.engagedVisits)}</span>
-                  <span>
-                    {article.inDepthAvailable
-                      ? formatNumber(article.engagedReads)
-                      : "—"}
-                  </span>
-                  <span>
-                    {article.inDepthAvailable
-                      ? formatNumber(article.completions)
-                      : "—"}
-                  </span>
-                  <span>
-                    {article.inDepthAvailable
-                      ? formatNumber(article.placeClicks)
-                      : "—"}
-                  </span>
+                <div className="stats-articles__table-head" role="row">
+                  <span>Article</span>
+                  <span>Page views</span>
+                  <span>Visitors</span>
+                  <span>Engaged visits</span>
+                  <span>Engaged reads</span>
+                  <span>Completions</span>
+                  <span>Place clicks</span>
                 </div>
-              ))}
+                {paginatedArticles.map((article) => (
+                  <div
+                    className="stats-articles__table-row"
+                    role="row"
+                    key={article.contentId}
+                  >
+                    <div>
+                      <a href={article.url} target="_blank" rel="noreferrer">
+                        {article.title}
+                      </a>
+                      {!article.inDepthAvailable ? (
+                        <small>
+                          In-depth reading analysis is not yet available for
+                          this article.
+                        </small>
+                      ) : (
+                        <small className="is-available">
+                          In-depth analysis available
+                        </small>
+                      )}
+                    </div>
+                    <span>{formatNumber(article.pageViews)}</span>
+                    <span>{formatNumber(article.visitors)}</span>
+                    <span>{formatNumber(article.engagedVisits)}</span>
+                    <span>
+                      {article.inDepthAvailable
+                        ? formatNumber(article.engagedReads)
+                        : "—"}
+                    </span>
+                    <span>
+                      {article.inDepthAvailable
+                        ? formatNumber(article.completions)
+                        : "—"}
+                    </span>
+                    <span>
+                      {article.inDepthAvailable
+                        ? formatNumber(article.placeClicks)
+                        : "—"}
+                    </span>
+                  </div>
+                ))}
               </div>
               {articlePageCount > 1 ? (
-              <nav
-                className="stats-articles__pagination"
-                aria-label="Article engagement pages"
-              >
-                <button
-                  type="button"
-                  aria-label="Previous page"
-                  title="Previous page"
-                  disabled={articlePage === 1}
-                  onClick={() => setArticlePage((page) => page - 1)}
+                <nav
+                  className="stats-articles__pagination"
+                  aria-label="Article engagement pages"
                 >
-                  ←
-                </button>
-                {Array.from({ length: articlePageCount }, (_, index) => {
-                  const page = index + 1;
-                  return (
-                    <button
-                      className={articlePage === page ? "is-active" : ""}
-                      type="button"
-                      aria-current={articlePage === page ? "page" : undefined}
-                      aria-label={`Page ${page}`}
-                      key={page}
-                      onClick={() => setArticlePage(page)}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  aria-label="Next page"
-                  title="Next page"
-                  disabled={articlePage === articlePageCount}
-                  onClick={() => setArticlePage((page) => page + 1)}
-                >
-                  →
-                </button>
-              </nav>
+                  <button
+                    type="button"
+                    aria-label="Previous page"
+                    title="Previous page"
+                    disabled={articlePage === 1}
+                    onClick={() => setArticlePage((page) => page - 1)}
+                  >
+                    ←
+                  </button>
+                  {Array.from({ length: articlePageCount }, (_, index) => {
+                    const page = index + 1;
+                    return (
+                      <button
+                        className={articlePage === page ? "is-active" : ""}
+                        type="button"
+                        aria-current={articlePage === page ? "page" : undefined}
+                        aria-label={`Page ${page}`}
+                        key={page}
+                        onClick={() => setArticlePage(page)}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    aria-label="Next page"
+                    title="Next page"
+                    disabled={articlePage === articlePageCount}
+                    onClick={() => setArticlePage((page) => page + 1)}
+                  >
+                    →
+                  </button>
+                </nav>
               ) : null}
             </>
           )}

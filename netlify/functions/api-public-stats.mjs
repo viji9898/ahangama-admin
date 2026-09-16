@@ -37,10 +37,7 @@ function numberMetric(row, index) {
 function articleEventFilter(startDate, endDate) {
   return {
     dateRanges: [{ startDate, endDate }],
-    dimensions: [
-      { name: "customEvent:content_id" },
-      { name: "eventName" },
-    ],
+    dimensions: [{ name: "customEvent:content_id" }, { name: "eventName" }],
     metrics: [{ name: "eventCount" }],
     dimensionFilter: {
       andGroup: {
@@ -91,16 +88,16 @@ async function getOnlineArticleEngagement(startDate, endDate) {
     ]);
 
   if (!sitemapResponse.ok) {
-    throw new Error(`Article sitemap request failed (${sitemapResponse.status})`);
+    throw new Error(
+      `Article sitemap request failed (${sitemapResponse.status})`,
+    );
   }
 
   const sitemap = await sitemapResponse.text();
-  const catalog = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
-    (match) => {
-      const url = new URL(match[1].replace(/&amp;/g, "&"));
-      return { path: url.pathname.replace(/\/$/, "") || "/", url: url.href };
-    },
-  );
+  const catalog = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => {
+    const url = new URL(match[1].replace(/&amp;/g, "&"));
+    return { path: url.pathname.replace(/\/$/, "") || "/", url: url.href };
+  });
   const traffic = new Map();
   for (const row of trafficReport?.rows || []) {
     const path = (row.dimensionValues?.[0]?.value || "/").replace(/\/$/, "");
@@ -224,6 +221,27 @@ async function fetchMeta(path, params = {}, tokenOverride = "") {
   return payload;
 }
 
+async function fetchAllInstagramMedia(accountId) {
+  const media = [];
+  let after = "";
+
+  while (true) {
+    const page = await fetchMeta(`${accountId}/media`, {
+      fields:
+        "id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,thumbnail_url,media_url,collaborators{username,invite_status},insights.metric(views,reach,likes,comments,shares,saved,total_interactions){name,values}",
+      limit: 100,
+      ...(after ? { after } : {}),
+    });
+    media.push(...(page?.data || []));
+
+    const nextAfter = String(page?.paging?.cursors?.after || "");
+    if (!page?.paging?.next || !nextAfter || nextAfter === after) break;
+    after = nextAfter;
+  }
+
+  return media;
+}
+
 async function getInstagramStats(days) {
   const { accountId } = getMetaConfig();
   const until = Math.floor(Date.now() / 1000);
@@ -252,11 +270,7 @@ async function getInstagramStats(days) {
         }),
       ),
     ),
-    fetchMeta(`${accountId}/media`, {
-      fields:
-        "id,caption,media_type,permalink,timestamp,like_count,comments_count,thumbnail_url,media_url",
-      limit: 50,
-    }),
+    fetchAllInstagramMedia(accountId),
   ]);
   const totals = insightReports
     .flatMap((report) => report?.data || [])
@@ -266,25 +280,58 @@ async function getInstagramStats(days) {
         Number(metric?.total_value?.value ?? metric?.values?.[0]?.value ?? 0);
       return values;
     }, {});
-  const rangeStart = since * 1000;
-  const topContent = (media?.data || [])
-    .filter((item) => new Date(item.timestamp).getTime() >= rangeStart)
-    .map((item) => ({
-      id: item.id,
-      caption: String(item.caption || "Instagram post")
-        .trim()
-        .slice(0, 120),
-      mediaType: item.media_type,
-      permalink: item.permalink,
-      imageUrl: item.thumbnail_url || item.media_url || "",
-      likes: Number(item.like_count || 0),
-      comments: Number(item.comments_count || 0),
-    }))
-    .sort(
-      (left, right) =>
-        right.likes + right.comments - (left.likes + left.comments),
-    )
-    .slice(0, 3);
+  const posts = media
+    .map((item) => {
+      const insightValue = (name, fallback = 0) => {
+        const metric = (item.insights?.data || []).find(
+          (insight) => insight.name === name,
+        );
+        return Number(metric?.values?.at(-1)?.value ?? fallback ?? 0);
+      };
+      const mentions = [
+        ...String(item.caption || "").matchAll(/@([a-z0-9._]+)/gi),
+      ].map((match) => `@${match[1].toLowerCase()}`);
+      const collaborators = (item.collaborators?.data || [])
+        .filter(
+          (collaborator) =>
+            !collaborator.invite_status ||
+            collaborator.invite_status === "Accepted",
+        )
+        .map((collaborator) =>
+          collaborator.username
+            ? `@${String(collaborator.username).toLowerCase()}`
+            : "",
+        )
+        .filter(Boolean);
+      const likes = insightValue("likes", item.like_count);
+      const comments = insightValue("comments", item.comments_count);
+      const shares = insightValue("shares");
+      const saved = insightValue("saved");
+
+      return {
+        id: item.id,
+        caption: String(item.caption || "Instagram post")
+          .trim()
+          .slice(0, 120),
+        mediaType: item.media_type,
+        mediaProductType: item.media_product_type,
+        permalink: item.permalink,
+        timestamp: item.timestamp,
+        imageUrl: item.thumbnail_url || item.media_url || "",
+        views: insightValue("views"),
+        reach: insightValue("reach"),
+        likes,
+        comments,
+        shares,
+        saved,
+        interactions: insightValue(
+          "total_interactions",
+          likes + comments + shares + saved,
+        ),
+        handles: Array.from(new Set([...mentions, ...collaborators])),
+      };
+    })
+    .sort((left, right) => right.timestamp.localeCompare(left.timestamp));
 
   return {
     available: true,
@@ -296,7 +343,7 @@ async function getInstagramStats(days) {
     reach: totals.reach || 0,
     accountsEngaged: totals.accounts_engaged || 0,
     interactions: totals.total_interactions || 0,
-    topContent,
+    posts,
   };
 }
 
