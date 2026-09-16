@@ -1,0 +1,98 @@
+.instagram-insights__filters {
+  grid-template-columns: minmax(280px, 2fr) repeat(3, minmax(150px, 1fr));
+}
+
+.instagram-insights__panel-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.instagram-insights__panel-heading > span {
+  font: 500 9px/1 "DM Mono", monospace;
+  text-transform: uppercase;
+}
+
+.instagram-insights__table .article-insights__table-head,
+.instagram-insights__table .article-insights__table-row {
+  min-width: 1450px;
+  grid-template-columns: 300px 110px 100px 240px repeat(6, 80px) 110px;
+}
+
+.instagram-insights__table .article-insights__table-row {
+  min-height: 84px;
+}
+
+.instagram-insights__post {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.instagram-insights__post img {
+  width: 52px;
+  height: 52px;
+  display: block;
+  object-fit: cover;
+}
+
+.instagram-insights__post a {
+  color: var(--stats-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.instagram-insights__post p {
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: rgba(23, 33, 27, 0.64);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instagram-insights__handles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.instagram-insights__handles span {
+  padding: 4px 6px;
+  border: 1px solid var(--stats-line);
+  font: 500 9px/1 "DM Mono", monospace;
+}
+
+.instagram-insights__handles span[data-collaborator="true"] {
+  border-color: var(--stats-ink);
+  background: var(--stats-lime);
+}
+
+.instagram-insights__handles em {
+  color: rgba(23, 33, 27, 0.54);
+  font-size: 11px;
+  font-style: normal;
+}
+
+@media (max-width: 900px) {
+  .instagram-insights__filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .instagram-insights__search {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .instagram-insights__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .instagram-insights__search {
+    grid-column: auto;
+  }
+}

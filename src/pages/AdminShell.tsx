@@ -122,6 +122,7 @@ const navItems = [
       { key: "/ga/article-engagement", label: "Article Engagement" },
       { key: "/ga/free-pass-scans", label: "All Free Pass Scans" },
       { key: "/ga/guide-engagement", label: "Guide Engagement" },
+      { key: "/ga/instagram-engagement", label: "Instagram Engagement" },
     ],
   },
   { key: "/admin/qr", label: "QR Analytics", icon: <BarChartOutlined /> },
@@ -430,7 +431,7 @@ export default function AdminShell() {
           </Space>
         </Layout.Sider>
 
-        <Layout>
+        <Layout style={{ width: isSmallScreen ? "100%" : undefined }}>
           <Layout.Content
             style={{
               padding: 24,
