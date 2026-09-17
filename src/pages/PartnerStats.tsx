@@ -76,6 +76,35 @@ const label = (value: string) =>
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
 
+function MetricTip({ id, text }: { id: string; text: string }) {
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <span
+      className="stats-metric-tip"
+      data-open={focused || hovered}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <button
+        className="stats-metric-tip__trigger"
+        type="button"
+        aria-label="Explain this metric"
+        aria-describedby={id}
+        aria-expanded={focused || hovered}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      >
+        i
+      </button>
+      <span className="stats-metric-tip__content" id={id} role="tooltip">
+        {text}
+      </span>
+    </span>
+  );
+}
+
 function Loading() {
   return (
     <div className="partner-stats__state" role="status">
@@ -167,7 +196,7 @@ export default function PartnerStats() {
           <p className="stats-kicker">Partner performance</p>
           <h1>{partner?.name || label(partnerSlug)},<br />in numbers.</h1>
           <div className="stats-period" aria-label="Reporting period">
-            {[7, 30, 90].map((value) => (
+            {[7, 30, 90, 180, 365].map((value) => (
               <button
                 className={days === value ? "is-active" : ""}
                 key={value}
@@ -185,19 +214,38 @@ export default function PartnerStats() {
       {!loading && error ? <div className="stats-alert">{error}</div> : null}
       {!loading && !error ? (
         <section className="stats-section partner-stats__section" id="performance">
+          <aside className="partner-stats__promotion-note">
+            <span>Annual promotion</span>
+            <p>Promotion period: 21 August 2026 to 20 August 2027</p>
+          </aside>
           <div className="stats-section__heading">
             <p>01 / Combined performance</p>
             <h2>The complete<br />Petals picture</h2>
           </div>
           <div className="partner-stats__overview">
             {[
-              ["Total visibility", totalVisibility],
-              ["Combined audience", combinedAudience],
-              ["Recorded interactions", recordedInteractions],
-            ].map(([title, value]) => (
+              [
+                "Total visibility",
+                totalVisibility,
+                "Online Guide impressions, article page views and Instagram post views added together. Repeat views are included.",
+              ],
+              [
+                "Combined audience",
+                combinedAudience,
+                "Online Guide users exposed, article visitors and Instagram reach added together. People may appear in more than one source.",
+              ],
+              [
+                "Recorded interactions",
+                recordedInteractions,
+                "Online Guide outbound actions, article engaged reads and place clicks, and Instagram interactions added together.",
+              ],
+            ].map(([title, value, tip], index) => (
               <article key={String(title)}>
                 <strong>{number(value as number)}</strong>
-                <span>{title}</span>
+                <span className="partner-stats__metric-label">
+                  {title}
+                  <MetricTip id={`overview-metric-${index}`} text={String(tip)} />
+                </span>
               </article>
             ))}
           </div>
@@ -213,12 +261,33 @@ export default function PartnerStats() {
                 <h3>Online guide</h3>
               </div>
               <div className="partner-stats__source-metrics">
-                <span><strong>{number(venue?.impressions)}</strong> Tracked impressions</span>
-                <span><strong>{number(venue?.usersExposed)}</strong> Users exposed</span>
-                <span><strong>{number(venue?.engagements)}</strong> Outbound actions</span>
+                <span>
+                  <strong>{number(venue?.impressions)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Tracked impressions
+                    <MetricTip id="partner-guide-impressions" text="Times the Petals card entered a visitor's view in the Online Guide. Repeat views count. Tracking began 7 September 2026." />
+                  </span>
+                </span>
+                <span>
+                  <strong>{number(venue?.usersExposed)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Users exposed
+                    <MetricTip id="partner-guide-exposed" text="Unique GA4 users who generated at least one tracked Petals card impression in the selected period." />
+                  </span>
+                </span>
+                <span>
+                  <strong>{number(venue?.engagements)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Outbound actions
+                    <MetricTip id="partner-guide-actions" text="Clicks from the Petals guide listing to destinations such as Instagram, Google Maps or a website." />
+                  </span>
+                </span>
                 <span>
                   <strong>{(Number(venue?.engagements || 0) / Math.max(Number(venue?.users || 0), 1)).toFixed(1)}</strong>
-                  Actions per visitor
+                  <span className="partner-stats__metric-label">
+                    Actions per visitor
+                    <MetricTip id="partner-guide-actions-per-visitor" text="Outbound actions divided by unique visitors who took an action. One visitor can take several actions." />
+                  </span>
                 </span>
               </div>
               <p className="partner-stats__source-note">
@@ -231,10 +300,34 @@ export default function PartnerStats() {
                 <h3>Petals article</h3>
               </div>
               <div className="partner-stats__source-metrics">
-                <span><strong>{number(articleTotals.pageViews)}</strong> Views</span>
-                <span><strong>{number(articleTotals.visitors)}</strong> Visitors</span>
-                <span><strong>{number(articleTotals.engagedReads)}</strong> Engaged reads</span>
-                <span><strong>{number(articleTotals.placeClicks)}</strong> Place clicks</span>
+                <span>
+                  <strong>{number(articleTotals.pageViews)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Views
+                    <MetricTip id="partner-article-views" text="Total page views for Petals articles. Repeat views by the same visitor are included." />
+                  </span>
+                </span>
+                <span>
+                  <strong>{number(articleTotals.visitors)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Visitors
+                    <MetricTip id="partner-article-visitors" text="Unique GA4 users who viewed a Petals article during the selected period." />
+                  </span>
+                </span>
+                <span>
+                  <strong>{number(articleTotals.engagedReads)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Engaged reads
+                    <MetricTip id="partner-article-engaged" text="Reads that recorded at least 15 active seconds and 25% scroll depth. This event has been tracked since 11 September 2026." />
+                  </span>
+                </span>
+                <span>
+                  <strong>{number(articleTotals.placeClicks)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Place clicks
+                    <MetricTip id="partner-article-clicks" text="Clicks from a Petals article to a featured place or other tracked outbound destination." />
+                  </span>
+                </span>
               </div>
               <p className="partner-stats__source-note">
                 In-depth article events tracked since 11 September 2026.
@@ -246,10 +339,34 @@ export default function PartnerStats() {
                 <h3>Instagram</h3>
               </div>
               <div className="partner-stats__source-metrics">
-                <span><strong>{number(data?.social?.views)}</strong> Views</span>
-                <span><strong>{number(data?.social?.reach)}</strong> Reach</span>
-                <span><strong>{number(data?.social?.interactions)}</strong> Interactions</span>
-                <span><strong>{number(posts.length)}</strong> Attributed posts</span>
+                <span>
+                  <strong>{number(data?.social?.views)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Views
+                    <MetricTip id="partner-instagram-views" text="Times attributed Instagram posts were viewed. Repeat views by the same account may be included." />
+                  </span>
+                </span>
+                <span>
+                  <strong>{number(data?.social?.reach)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Reach
+                    <MetricTip id="partner-instagram-reach" text="Instagram accounts that saw attributed posts, as reported by Meta." />
+                  </span>
+                </span>
+                <span>
+                  <strong>{number(data?.social?.interactions)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Interactions
+                    <MetricTip id="partner-instagram-interactions" text="Total interactions reported by Meta, including likes, comments, shares and saves." />
+                  </span>
+                </span>
+                <span>
+                  <strong>{number(posts.length)}</strong>
+                  <span className="partner-stats__metric-label">
+                    Attributed posts
+                    <MetricTip id="partner-instagram-posts" text="Ahangama Instagram posts that mention or collaborate with @petals.ahangama in the selected period." />
+                  </span>
+                </span>
               </div>
             </div>
           </div>
@@ -272,7 +389,7 @@ export default function PartnerStats() {
           <div className="partner-stats__detail" id="articles">
             <div className="partner-stats__detail-heading">
               <p>Article performance</p>
-              <h3>Petals Ahangama: A Dream Rooted In Legacy</h3>
+              <h3>All Petals articles</h3>
             </div>
             {articles.length ? (
               <div className="partner-stats__articles">
@@ -282,8 +399,20 @@ export default function PartnerStats() {
                     <div>
                       <span><strong>{number(article.pageViews)}</strong> Views</span>
                       <span><strong>{number(article.visitors)}</strong> Visitors</span>
-                      <span><strong>{number(article.engagedReads)}</strong> Engaged reads</span>
-                      <span><strong>{number(article.completions)}</strong> Completions</span>
+                      <span>
+                        <strong>{number(article.engagedReads)}</strong>
+                        <span className="partner-stats__metric-label">
+                          Engaged reads
+                          <MetricTip id={`article-engaged-${article.contentId}`} text="Reads that recorded at least 15 active seconds and 25% scroll depth. Tracking began 11 September 2026." />
+                        </span>
+                      </span>
+                      <span>
+                        <strong>{number(article.completions)}</strong>
+                        <span className="partner-stats__metric-label">
+                          Completions
+                          <MetricTip id={`article-complete-${article.contentId}`} text="Reads that recorded at least 30 active seconds and 90% scroll depth." />
+                        </span>
+                      </span>
                       <span><strong>{number(article.placeClicks)}</strong> Place clicks</span>
                     </div>
                   </a>
@@ -323,6 +452,44 @@ export default function PartnerStats() {
               </a>
             ) : null}
           </div>
+
+          <aside className="partner-stats__methodology" aria-labelledby="partner-methodology-title">
+            <div className="partner-stats__methodology-heading">
+              <p>Measurement &amp; sources</p>
+              <h2 id="partner-methodology-title">How this report is measured</h2>
+              <span>Direct platform data, scoped to Petals and the selected reporting period.</span>
+            </div>
+            <div className="partner-stats__methodology-grid">
+              <article>
+                <span>01</span>
+                <h3>Website &amp; articles</h3>
+                <p>
+                  Google Analytics 4 measures guide exposure, visitors, page views and tracked actions on ahangama.com. Article depth events record active reading time and scroll milestones.
+                </p>
+              </article>
+              <article>
+                <span>02</span>
+                <h3>Instagram</h3>
+                <p>
+                  Views, reach and interactions come from the Meta Graph API. Only Ahangama posts that mention or collaborate with @petals.ahangama are included.
+                </p>
+              </article>
+              <article>
+                <span>03</span>
+                <h3>Attribution</h3>
+                <p>
+                  Petals is identified from Ahangama's venue database. Guide events are matched by venue identity, articles by Petals content references, and Instagram by the exact account handle.
+                </p>
+              </article>
+              <article>
+                <span>04</span>
+                <h3>Reading the totals</h3>
+                <p>
+                  Cross-channel totals combine each platform's reported metrics and are not deduplicated between sources. Guide tracking began 7 September 2026; in-depth article tracking began 11 September 2026.
+                </p>
+              </article>
+            </div>
+          </aside>
         </section>
       ) : null}
 

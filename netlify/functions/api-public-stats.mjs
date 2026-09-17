@@ -4,7 +4,7 @@ import { query, queryFromEnv } from "./_lib/db.mjs";
 
 const HOST_NAME = "ahangama.com";
 const ARTICLE_SITEMAP_URL = `https://${HOST_NAME}/sitemaps/articles.xml`;
-const ALLOWED_DAYS = new Set([7, 30, 90]);
+const ALLOWED_DAYS = new Set([7, 30, 90, 180, 365]);
 const ARTICLE_EVENTS = [
   "article_view",
   "article_engaged_read",
