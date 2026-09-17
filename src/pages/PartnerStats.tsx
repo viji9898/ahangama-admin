@@ -71,6 +71,16 @@ type PartnerStatsPayload = {
 const number = (value?: number) =>
   new Intl.NumberFormat("en-US", { notation: "compact" }).format(value || 0);
 
+const percentage = (value: number, total: number, decimals = 0) =>
+  total > 0 ? ((value / total) * 100).toFixed(decimals) : "0";
+
+const currency = (value: number, decimals = 2) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: decimals,
+  }).format(Number.isFinite(value) ? value : 0);
+
 const label = (value: string) =>
   value
     .replace(/[-_]/g, " ")
@@ -177,6 +187,32 @@ export default function PartnerStats() {
     articleTotals.engagedReads +
     articleTotals.placeClicks +
     Number(data?.social?.interactions || 0);
+  const campaignStart = Date.UTC(2026, 7, 21);
+  const campaignEnd = Date.UTC(2027, 7, 20);
+  const generatedAt = data?.generatedAt ? Date.parse(data.generatedAt) : Date.now();
+  const campaignElapsed = Math.min(Math.max(generatedAt - campaignStart, 0), campaignEnd - campaignStart);
+  const campaignProgress = Math.round((campaignElapsed / (campaignEnd - campaignStart)) * 100);
+  const monthsRemaining = Math.max(0, Math.round((campaignEnd - generatedAt) / (30.44 * 24 * 60 * 60 * 1000)));
+  const instagramVisibilityShare = percentage(Number(data?.social?.views || 0), totalVisibility);
+  const instagramInteractionRate = percentage(
+    Number(data?.social?.interactions || 0),
+    Number(data?.social?.reach || 0),
+    1,
+  );
+  const guideActionRate = percentage(
+    Number(venue?.engagements || 0),
+    Number(venue?.usersExposed || 0),
+    1,
+  );
+  const campaignInvestment = 150;
+  const blendedCpm = campaignInvestment / Math.max(totalVisibility, 1) * 1000;
+  const costPerAudience = campaignInvestment / Math.max(combinedAudience, 1);
+  const costPerInteraction = campaignInvestment / Math.max(recordedInteractions, 1);
+  const guideOutboundRate = percentage(
+    Number(venue?.engagements || 0),
+    Number(venue?.impressions || 0),
+    1,
+  );
 
   return (
     <main className="stats-page partner-stats">
@@ -370,6 +406,90 @@ export default function PartnerStats() {
               </div>
             </div>
           </div>
+
+          <aside className="partner-stats__analysis" id="analysis" aria-labelledby="partner-analysis-title" hidden>
+            <div className="partner-stats__analysis-heading">
+              <p>AI-assisted campaign analysis</p>
+              <h2 id="partner-analysis-title">An encouraging opening chapter.</h2>
+              <span>
+                The annual promotion is approximately {campaignProgress}% complete, with around {monthsRemaining} months still available to build frequency, recognition and intent.
+              </span>
+            </div>
+            <p className="partner-stats__analysis-intro">
+              These results should be read as an early baseline, not a final verdict. The first signals are positive: Petals is earning attention across social, editorial and the Online Guide, while the longer campaign runway gives us time to repeat what works and strengthen conversion.
+            </p>
+            <div className="partner-stats__efficiency-heading">
+              <p>Investment efficiency</p>
+              <span>Full annual fee measured against this {days}-day reporting view</span>
+            </div>
+            <div className="partner-stats__efficiency">
+              <article>
+                <strong>{currency(campaignInvestment, 0)}</strong>
+                <span className="partner-stats__metric-label">
+                  Annual investment
+                  <MetricTip id="partner-investment" text="The total fee paid for the annual Petals promotion from 21 August 2026 to 20 August 2027." />
+                </span>
+              </article>
+              <article>
+                <strong>{currency(blendedCpm, 0)}</strong>
+                <span className="partner-stats__metric-label">
+                  Blended eCPM
+                  <MetricTip id="partner-ecpm" text="Annual investment divided by total tracked visibility, multiplied by 1,000. It combines unlike channels, so it is a directional efficiency measure rather than a paid-media CPM." />
+                </span>
+              </article>
+              <article>
+                <strong>{currency(costPerAudience)}</strong>
+                <span className="partner-stats__metric-label">
+                  Cost per audience
+                  <MetricTip id="partner-cost-audience" text="Annual investment divided by combined audience. Audience is not deduplicated between Instagram, articles and the Online Guide." />
+                </span>
+              </article>
+              <article>
+                <strong>{currency(costPerInteraction)}</strong>
+                <span className="partner-stats__metric-label">
+                  Cost per interaction
+                  <MetricTip id="partner-cost-interaction" text="Annual investment divided by recorded interactions across Instagram, articles and the Online Guide." />
+                </span>
+              </article>
+            </div>
+            <p className="partner-stats__efficiency-note">
+              <strong>Early value assessment: promising, not yet proven as revenue ROI.</strong> These are standard efficiency formulas, but this is not a media-only buy: the fee also covers content production, editorial distribution and year-long placement. Unit costs should improve as the article and guide continue accumulating attention without another campaign fee. Booking or revenue attribution would be required to calculate financial return on investment.
+            </p>
+            <div className="partner-stats__analysis-signals">
+              <article>
+                <span>Strongest early signal</span>
+                <h3>Instagram is driving discovery</h3>
+                <p>
+                  Instagram contributes {instagramVisibilityShare}% of tracked visibility in this {days}-day view. {number(data?.social?.reach)} accounts were reached and {number(data?.social?.interactions)} interactions were recorded, producing a {instagramInteractionRate}% engagement rate by reach. That is a promising response, though {posts.length === 1 ? "one attributed post is too early to establish a trend" : `${posts.length} attributed posts still represent an early sample`}.
+                </p>
+              </article>
+              <article>
+                <span>Compounding value</span>
+                <h3>The article extends the story</h3>
+                <p>
+                  Petals editorial content has generated {number(articleTotals.pageViews)} views from {number(articleTotals.visitors)} visitors. Unlike a social post, this story remains searchable and shareable throughout the year. In-depth reading events are too new to judge content quality reliably yet.
+                </p>
+              </article>
+              <article>
+                <span>Early intent</span>
+                <h3>The guide is prompting action</h3>
+                <p>
+                  The Petals listing reached {number(venue?.usersExposed)} tracked users and generated {number(venue?.engagements)} outbound {Number(venue?.engagements || 0) === 1 ? "action" : "actions"}. That is a {guideOutboundRate}% outbound rate against tracked impressions and a {guideActionRate}% action-to-exposure rate. The volume is still small, but {Number(venue?.engagements || 0) === 1 ? "this action indicates" : "these actions indicate"} movement from awareness toward consideration.
+                </p>
+              </article>
+            </div>
+            <div className="partner-stats__analysis-next">
+              <div>
+                <p>Recommended next phase</p>
+                <h3>Build evidence through repetition</h3>
+              </div>
+              <ol>
+                <li><strong>Maintain visibility.</strong> Publish consistently enough to learn which Petals stories and formats generate repeat reach.</li>
+                <li><strong>Connect attention to action.</strong> Keep clear Instagram, map and booking pathways across every Petals touchpoint.</li>
+                <li><strong>Review by quarter.</strong> Use the first 90 days as the baseline, then compare reach, article depth and outbound intent without over-projecting early results.</li>
+              </ol>
+            </div>
+          </aside>
 
           <div className="partner-stats__detail">
             <div className="partner-stats__actions">
