@@ -340,6 +340,7 @@ function isDateWithinRange(dateValue, startDate, endDate) {
 
 const METADATA_CACHE_MS = 15 * 60 * 1000;
 let authClientPromise = null;
+let accessTokenPromise = null;
 let metadataCache = {
   propertyId: "",
   expiresAt: 0,
@@ -373,16 +374,23 @@ async function getAuthClient() {
 }
 
 async function getAccessToken() {
-  const client = await getAuthClient();
-  const tokenResponse = await client.getAccessToken();
-  const token =
-    typeof tokenResponse === "string" ? tokenResponse : tokenResponse?.token;
-
-  if (!token) {
-    throw new Error("Unable to acquire Google access token");
+  if (!accessTokenPromise) {
+    accessTokenPromise = getAuthClient()
+      .then((client) => client.getAccessToken())
+      .then((tokenResponse) => {
+        const token =
+          typeof tokenResponse === "string"
+            ? tokenResponse
+            : tokenResponse?.token;
+        if (!token) throw new Error("Unable to acquire Google access token");
+        return token;
+      })
+      .finally(() => {
+        accessTokenPromise = null;
+      });
   }
 
-  return token;
+  return accessTokenPromise;
 }
 
 export async function runGaReport(body) {

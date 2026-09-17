@@ -25,6 +25,7 @@ import StayEnquiries from "./pages/StayEnquiries";
 import TransportEnquiries from "./pages/TransportEnquiries";
 import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import PublicStats from "./pages/PublicStats";
+import PartnerStats from "./pages/PartnerStats";
 import NewsletterBuilder from "./pages/NewsletterBuilder";
 import VenueContactInfo from "./pages/VenueContactInfo";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -36,6 +37,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/stats" element={<PublicStats />} />
+        <Route path="/stats/:partnerSlug" element={<PartnerStats />} />
 
         <Route
           path="/admin"

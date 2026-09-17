@@ -1194,6 +1194,7 @@ export const PLACES = [
       "Show your Ahangama Card when ordering to receive 10% off your total bill.",
     restrictions:
       "Valid for dine-in orders. Cannot be combined with other offers.",
+    instagram: "petals.ahangama",
     discount: 0.1,
     price: "Mid-range",
     hours: "Confirm seasonally",

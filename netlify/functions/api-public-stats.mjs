@@ -139,7 +139,10 @@ async function getOnlineArticleEngagement(startDate, endDate) {
         const milestones = events.get(contentId) || {};
         return {
           contentId,
-          title: page.title || articleTitle(path),
+          title:
+            page.title && page.title !== "(not set)"
+              ? page.title
+              : articleTitle(path),
           url,
           pageViews: page.pageViews || 0,
           visitors: page.visitors || 0,
@@ -936,6 +939,147 @@ function unavailable(error) {
   return { available: false, error: String(error?.message || error) };
 }
 
+function normalizeInstagramHandle(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^https?:\/\/(?:www\.)?instagram\.com\//i, "")
+    .replace(/^@|\/$/g, "")
+    .toLowerCase();
+}
+
+async function getPartnerVenue(slug) {
+  const result = await query(
+    `
+      SELECT id, slug, name, instagram, image, logo, map_url
+      FROM venues260414
+      WHERE deleted_at IS NULL
+        AND live = TRUE
+        AND (lower(slug) = $1 OR lower(id) = $1 OR lower(name) = $1)
+      LIMIT 1
+    `,
+    [slug],
+  );
+
+  return result.rows[0] || null;
+}
+
+function scopePartnerArticles(articles, venue) {
+  if (!articles?.available) return articles;
+  const terms = new Set(
+    [venue.name, venue.slug, venue.id]
+      .flatMap((value) => String(value || "").toLowerCase().split(/[^a-z0-9]+/))
+      .filter((value) => value.length >= 5 && value !== "ahangama"),
+  );
+
+  return {
+    ...articles,
+    articles: (articles.articles || []).filter((article) => {
+      const searchable = `${article.contentId} ${article.title}`.toLowerCase();
+      return [...terms].some((term) => searchable.includes(term));
+    }),
+  };
+}
+
+function scopePartnerGuide(guide, venue) {
+  if (!guide?.available) return guide;
+  const matchedVenue = (guide.venues || []).find(
+    (item) =>
+      item.id === venue.id ||
+      item.name.trim().toLowerCase() === venue.name.trim().toLowerCase(),
+  );
+  const scopedVenue = matchedVenue || {
+    id: venue.id,
+    name: venue.name,
+    impressions: 0,
+    usersExposed: 0,
+    engagements: 0,
+    users: 0,
+    linkTypes: [],
+  };
+  const leadingEngagements = Number(guide.venues?.[0]?.engagements || 0);
+
+  return {
+    available: true,
+    comparison: {
+      actionsBehindLeader: Math.max(
+        leadingEngagements - scopedVenue.engagements,
+        0,
+      ),
+      actionShare:
+        scopedVenue.engagements / Math.max(Number(guide.outboundClicks || 0), 1),
+    },
+    venue: scopedVenue,
+  };
+}
+
+function scopePartnerInstagram(social, venue, days) {
+  if (!social?.available) return social;
+  const handle = normalizeInstagramHandle(venue.instagram);
+  const earliestTimestamp = Date.now() - days * 24 * 60 * 60 * 1000;
+  const posts = (social.posts || []).filter(
+    (post) =>
+      new Date(post.timestamp).getTime() >= earliestTimestamp &&
+      post.handles.some(
+        (postHandle) => normalizeInstagramHandle(postHandle) === handle,
+      ),
+  );
+  const total = (field) =>
+    posts.reduce((sum, post) => sum + Number(post[field] || 0), 0);
+
+  return {
+    available: true,
+    username: handle,
+    views: total("views"),
+    reach: total("reach"),
+    interactions: total("interactions"),
+    posts,
+  };
+}
+
+async function getPartnerStats(slug, days, startDate, endDate) {
+  const venue = await getPartnerVenue(slug);
+  if (!venue) return json(404, { ok: false, error: "Partner not found" });
+
+  const [articlesResult, guideResult, instagramResult] =
+    await Promise.allSettled([
+      getOnlineArticleEngagement(startDate, endDate),
+      getGuideEngagement(startDate, endDate),
+      getInstagramStats(days),
+    ]);
+  const articles =
+    articlesResult.status === "fulfilled"
+      ? scopePartnerArticles(articlesResult.value, venue)
+      : unavailable(articlesResult.reason);
+  const guide =
+    guideResult.status === "fulfilled"
+      ? scopePartnerGuide(guideResult.value, venue)
+      : unavailable(guideResult.reason);
+  const social =
+    instagramResult.status === "fulfilled"
+      ? scopePartnerInstagram(instagramResult.value, venue, days)
+      : unavailable(instagramResult.reason);
+
+  return json(200, {
+    ok: true,
+    generatedAt: new Date().toISOString(),
+    days,
+    partner: {
+      id: venue.id,
+      slug,
+      name: venue.name,
+      instagram: normalizeInstagramHandle(venue.instagram),
+      instagramUrl: venue.instagram
+        ? `https://www.instagram.com/${normalizeInstagramHandle(venue.instagram)}/`
+        : "",
+      image: venue.image || venue.logo || "",
+      mapUrl: venue.map_url || "",
+    },
+    articles,
+    guide,
+    social,
+  });
+}
+
 async function handler(event) {
   if (event.httpMethod !== "GET") {
     return json(405, { ok: false, error: "Method not allowed" });
@@ -945,6 +1089,12 @@ async function handler(event) {
   const days = ALLOWED_DAYS.has(requestedDays) ? requestedDays : 30;
   const startDate = `${days}daysAgo`;
   const endDate = "today";
+  const partnerSlug = String(event.queryStringParameters?.partner || "")
+    .trim()
+    .toLowerCase();
+  if (partnerSlug) {
+    return getPartnerStats(partnerSlug, days, startDate, endDate);
+  }
   const [
     websiteResult,
     articlesResult,
