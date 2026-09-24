@@ -22,6 +22,15 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
+const partnerJson = (statusCode, body) => ({
+  statusCode,
+  headers: {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+  },
+  body: JSON.stringify(body),
+});
+
 function hostFilter() {
   return {
     filter: {
@@ -1023,12 +1032,17 @@ export async function collectPartnerStats({
   startDate = `${days}daysAgo`,
   endDate = "today",
 }) {
-  const [articlesResult, guideResult, instagramResult] =
-    await Promise.allSettled([
-      getOnlineArticleEngagement(startDate, endDate),
-      getGuideEngagement(startDate, endDate),
-      getInstagramStats(days),
-    ]);
+  const settle = (promise) =>
+    promise.then(
+      (value) => ({ status: "fulfilled", value }),
+      (reason) => ({ status: "rejected", reason }),
+    );
+  const instagramPromise = settle(getInstagramStats(days));
+  const articlesResult = await settle(
+    getOnlineArticleEngagement(startDate, endDate),
+  );
+  const guideResult = await settle(getGuideEngagement(startDate, endDate));
+  const instagramResult = await instagramPromise;
   const articles =
     articlesResult.status === "fulfilled"
       ? scopePartnerArticles(articlesResult.value, contentIds)
@@ -1078,8 +1092,8 @@ async function handler(event) {
   if (partnerSlug) {
     const snapshot = await getLatestPartnerStatsSnapshot(partnerSlug, days);
     return snapshot
-      ? json(200, snapshot)
-      : json(404, {
+      ? partnerJson(200, snapshot)
+      : partnerJson(404, {
           ok: false,
           error: "No stored partner stats are available for this period",
         });

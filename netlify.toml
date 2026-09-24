@@ -13,8 +13,20 @@
 [functions."daily-team-email"]
   schedule = "@daily"
 
-[functions."daily-partner-stats"]
-  schedule = "@daily"
+[functions."daily-partner-stats-7"]
+  schedule = "0 1 * * *"
+
+[functions."daily-partner-stats-30"]
+  schedule = "10 1 * * *"
+
+[functions."daily-partner-stats-90"]
+  schedule = "20 1 * * *"
+
+[functions."daily-partner-stats-180"]
+  schedule = "30 1 * * *"
+
+[functions."daily-partner-stats-365"]
+  schedule = "40 1 * * *"
 
 [[redirects]]
   from = "/stats"

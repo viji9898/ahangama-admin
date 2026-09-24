@@ -161,6 +161,10 @@ export default function PartnerStats() {
   const partnerInstagram = partner?.instagram || data?.social?.username || "";
   const partnerHandle = partnerInstagram ? `@${partnerInstagram}` : "the partner account";
   const isPetals = partner?.id === "patels-ahangama";
+  const guideAvailable = data?.guide?.available === true;
+  const articlesAvailable = data?.articles?.available === true;
+  const socialAvailable = data?.social?.available === true;
+  const combinedAvailable = guideAvailable && articlesAvailable && socialAvailable;
   const venue = data?.guide?.venue;
   const articles = data?.articles?.articles || [];
   const posts = data?.social?.posts || [];
@@ -285,7 +289,7 @@ export default function PartnerStats() {
               ],
             ].map(([title, value, tip], index) => (
               <article key={String(title)}>
-                <strong>{number(value as number)}</strong>
+                <strong>{combinedAvailable ? number(value as number) : "—"}</strong>
                 <span className="partner-stats__metric-label">
                   {title}
                   <MetricTip id={`overview-metric-${index}`} text={String(tip)} />
@@ -294,8 +298,9 @@ export default function PartnerStats() {
             ))}
           </div>
           <p className="partner-stats__overview-note">
-            Cross-channel totals add source-level results and are not deduplicated
-            between the website, article and Instagram.
+            {combinedAvailable
+              ? "Cross-channel totals add source-level results and are not deduplicated between the website, article and Instagram."
+              : "Combined totals are unavailable because one or more data sources failed when this snapshot was collected."}
           </p>
 
           <div className="partner-stats__sources">
@@ -306,28 +311,30 @@ export default function PartnerStats() {
               </div>
               <div className="partner-stats__source-metrics">
                 <span>
-                  <strong>{number(venue?.impressions)}</strong>
+                  <strong>{guideAvailable ? number(venue?.impressions) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Tracked impressions
                     <MetricTip id="partner-guide-impressions" text={`Times the ${partnerName} card entered a visitor's view in the Online Guide. Repeat views count. Tracking began 7 September 2026.`} />
                   </span>
                 </span>
                 <span>
-                  <strong>{number(venue?.usersExposed)}</strong>
+                  <strong>{guideAvailable ? number(venue?.usersExposed) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Users exposed
                     <MetricTip id="partner-guide-exposed" text={`Unique GA4 users who generated at least one tracked ${partnerName} card impression in the selected period.`} />
                   </span>
                 </span>
                 <span>
-                  <strong>{number(venue?.engagements)}</strong>
+                  <strong>{guideAvailable ? number(venue?.engagements) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Outbound actions
                     <MetricTip id="partner-guide-actions" text={`Clicks from the ${partnerName} guide listing to destinations such as Instagram, Google Maps or a website.`} />
                   </span>
                 </span>
                 <span>
-                  <strong>{(Number(venue?.engagements || 0) / Math.max(Number(venue?.users || 0), 1)).toFixed(1)}</strong>
+                  <strong>{guideAvailable
+                    ? (Number(venue?.engagements || 0) / Math.max(Number(venue?.users || 0), 1)).toFixed(1)
+                    : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Actions per visitor
                     <MetricTip id="partner-guide-actions-per-visitor" text="Outbound actions divided by unique visitors who took an action. One visitor can take several actions." />
@@ -335,7 +342,9 @@ export default function PartnerStats() {
                 </span>
               </div>
               <p className="partner-stats__source-note">
-                In-depth Online Guide tracking since 7 September 2026.
+                {guideAvailable
+                  ? "In-depth Online Guide tracking since 7 September 2026."
+                  : "Online Guide data was unavailable when this snapshot was collected."}
               </p>
             </div>
             <div className="partner-stats__source">
@@ -345,28 +354,28 @@ export default function PartnerStats() {
               </div>
               <div className="partner-stats__source-metrics">
                 <span>
-                  <strong>{number(articleTotals.pageViews)}</strong>
+                  <strong>{articlesAvailable ? number(articleTotals.pageViews) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Views
                     <MetricTip id="partner-article-views" text={`Total page views for ${partnerName} articles. Repeat views by the same visitor are included.`} />
                   </span>
                 </span>
                 <span>
-                  <strong>{number(articleTotals.visitors)}</strong>
+                  <strong>{articlesAvailable ? number(articleTotals.visitors) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Visitors
                     <MetricTip id="partner-article-visitors" text={`Unique GA4 users who viewed a ${partnerName} article during the selected period.`} />
                   </span>
                 </span>
                 <span>
-                  <strong>{number(articleTotals.engagedReads)}</strong>
+                  <strong>{articlesAvailable ? number(articleTotals.engagedReads) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Engaged reads
                     <MetricTip id="partner-article-engaged" text="Reads that recorded at least 15 active seconds and 25% scroll depth. This event has been tracked since 11 September 2026." />
                   </span>
                 </span>
                 <span>
-                  <strong>{number(articleTotals.placeClicks)}</strong>
+                  <strong>{articlesAvailable ? number(articleTotals.placeClicks) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Place clicks
                     <MetricTip id="partner-article-clicks" text={`Clicks from a ${partnerName} article to a featured place or other tracked outbound destination.`} />
@@ -374,7 +383,9 @@ export default function PartnerStats() {
                 </span>
               </div>
               <p className="partner-stats__source-note">
-                In-depth article events tracked since 11 September 2026.
+                {articlesAvailable
+                  ? "In-depth article events tracked since 11 September 2026."
+                  : "Article data was unavailable when this snapshot was collected."}
               </p>
             </div>
             <div className="partner-stats__source partner-stats__source--dark">
@@ -384,28 +395,28 @@ export default function PartnerStats() {
               </div>
               <div className="partner-stats__source-metrics">
                 <span>
-                  <strong>{number(data?.social?.views)}</strong>
+                  <strong>{socialAvailable ? number(data?.social?.views) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Views
                     <MetricTip id="partner-instagram-views" text="Times attributed Instagram posts were viewed. Repeat views by the same account may be included." />
                   </span>
                 </span>
                 <span>
-                  <strong>{number(data?.social?.reach)}</strong>
+                  <strong>{socialAvailable ? number(data?.social?.reach) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Reach
                     <MetricTip id="partner-instagram-reach" text="Instagram accounts that saw attributed posts, as reported by Meta." />
                   </span>
                 </span>
                 <span>
-                  <strong>{number(data?.social?.interactions)}</strong>
+                  <strong>{socialAvailable ? number(data?.social?.interactions) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Interactions
                     <MetricTip id="partner-instagram-interactions" text="Total interactions reported by Meta, including likes, comments, shares and saves." />
                   </span>
                 </span>
                 <span>
-                  <strong>{number(posts.length)}</strong>
+                  <strong>{socialAvailable ? number(posts.length) : "—"}</strong>
                   <span className="partner-stats__metric-label">
                     Attributed posts
                     <MetricTip id="partner-instagram-posts" text={`Ahangama Instagram posts that mention or collaborate with ${partnerHandle} in the selected period.`} />
@@ -503,9 +514,11 @@ export default function PartnerStats() {
             <div className="partner-stats__actions">
               <div className="partner-stats__actions-heading">
                 <h3>Recorded intent</h3>
-                <span>{number(venue?.engagements)} total actions</span>
+                <span>{guideAvailable ? `${number(venue?.engagements)} total actions` : "Data unavailable"}</span>
               </div>
-              {venue?.linkTypes.length ? venue.linkTypes.map((item) => (
+              {!guideAvailable ? (
+                <p>Online Guide data was unavailable when this snapshot was collected.</p>
+              ) : venue?.linkTypes.length ? venue.linkTypes.map((item) => (
                 <div key={item.label}>
                   <span>{label(item.label)}</span>
                   <strong>{number(item.value)}</strong>
@@ -519,7 +532,9 @@ export default function PartnerStats() {
               <p>Article performance</p>
               <h3>All {partnerName} articles</h3>
             </div>
-            {articles.length ? (
+            {!articlesAvailable ? (
+              <p className="partner-stats__empty">Article data was unavailable when this snapshot was collected.</p>
+            ) : articles.length ? (
               <div className="partner-stats__articles">
                 {articles.map((article) => (
                   <a href={article.url} target="_blank" rel="noreferrer" key={article.contentId}>
@@ -556,7 +571,9 @@ export default function PartnerStats() {
               <p>Instagram performance</p>
               <h3>Posts mentioning {partnerHandle}</h3>
             </div>
-            {posts.length ? (
+            {!socialAvailable ? (
+              <p className="partner-stats__empty partner-stats__empty--dark">Instagram data was unavailable when this snapshot was collected.</p>
+            ) : posts.length ? (
               <div className="partner-stats__posts">
                 {posts.map((post) => (
                   <a href={post.permalink} target="_blank" rel="noreferrer" key={post.id}>

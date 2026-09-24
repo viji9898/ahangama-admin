@@ -36,33 +36,43 @@ async function collectPeriod(venue, contentIds, days) {
   return { days, generatedAt: payload.generatedAt };
 }
 
-async function collectPartner(identifier) {
+async function collectPartner(identifier, periods) {
   const venue = await getVenueFromApi(identifier);
   if (!venue) throw new Error(`Venue not found in venues API: ${identifier}`);
   if (!venue.live) throw new Error(`Venue is not live: ${identifier}`);
 
   const contentIds = await getPartnerArticleContentIds(venue.id);
-  const periods = await Promise.all(
-    PARTNER_STATS_PERIODS.map((days) => collectPeriod(venue, contentIds, days)),
-  );
-  return { venueId: venue.id, slug: venue.slug, contentIds, periods };
-}
-
-async function handler() {
-  try {
-    const partners = [];
-    for (const identifier of configuredPartners()) {
-      partners.push(await collectPartner(identifier));
-    }
-    console.info("[daily-partner-stats] snapshots stored", { partners });
-    return json(200, { ok: true, partners });
-  } catch (error) {
-    console.error("[daily-partner-stats] collection failed", {
-      message: String(error?.message || error),
-      stack: error?.stack || null,
-    });
-    return json(500, { ok: false, error: String(error?.message || error) });
+  const results = [];
+  for (const days of periods) {
+    results.push(await collectPeriod(venue, contentIds, days));
   }
+  return { venueId: venue.id, slug: venue.slug, contentIds, periods: results };
 }
 
-export default modernHandler(handler);
+export async function runPartnerStatsCollection(
+  periods = PARTNER_STATS_PERIODS,
+) {
+  const partners = [];
+  for (const identifier of configuredPartners()) {
+    partners.push(await collectPartner(identifier, periods));
+  }
+  return partners;
+}
+
+export function createPartnerStatsHandler(periods = PARTNER_STATS_PERIODS) {
+  return async function handler() {
+    try {
+      const partners = await runPartnerStatsCollection(periods);
+      console.info("[daily-partner-stats] snapshots stored", { partners });
+      return json(200, { ok: true, partners });
+    } catch (error) {
+      console.error("[daily-partner-stats] collection failed", {
+        message: String(error?.message || error),
+        stack: error?.stack || null,
+      });
+      return json(500, { ok: false, error: String(error?.message || error) });
+    }
+  };
+}
+
+export default modernHandler(createPartnerStatsHandler());
