@@ -126,3 +126,33 @@ The `live` field was added using this playbook:
 - **Forgetting to SELECT a new column:** If the DB has the column but the list endpoint doesn’t select it, the UI will never see it.
 - **PATCH parameter order:** When adding a new column to the update SQL, make sure you re-number placeholders (`$1`, `$2`, ...) and shift params accordingly.
 - **Vite env vars:** Don’t rely on non-`VITE_` env vars in browser code unless you intentionally expose them.
+
+## Adding a partner stats venue
+
+Partner stats collection is database-driven. Do not add a scheduled function for
+each venue or reporting period. Create one migration that enables the venue and
+adds its explicit article mappings:
+
+```sql
+INSERT INTO partner_stats_config (venue_id, sort_order)
+VALUES ('venue-api-id', 40)
+ON CONFLICT (venue_id) DO UPDATE SET
+  enabled = TRUE,
+  sort_order = EXCLUDED.sort_order,
+  updated_at = NOW();
+
+INSERT INTO partner_article_mappings (venue_id, content_id, article_url)
+VALUES (
+  'venue-api-id',
+  'exact-article-content-id',
+  'https://ahangama.com/exact-article-content-id/'
+)
+ON CONFLICT (venue_id, content_id) DO UPDATE SET
+  article_url = EXCLUDED.article_url,
+  active = TRUE,
+  updated_at = NOW();
+```
+
+The venue ID must resolve exactly through the authenticated venues API. The
+single `daily-partner-stats` dispatcher fills one missing venue/period snapshot
+every 10 minutes and retries transient failures after 15 minutes.

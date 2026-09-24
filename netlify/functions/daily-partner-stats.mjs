@@ -1,7 +1,9 @@
 import { modernHandler } from "./_lib/modernHandler.mjs";
 import {
+  claimNextPartnerStatsJob,
+  completePartnerStatsJob,
+  failPartnerStatsJob,
   getPartnerArticleContentIds,
-  PARTNER_STATS_PERIODS,
   savePartnerStatsSnapshot,
 } from "./_lib/partnerStatsSnapshots.mjs";
 import { getVenueFromApi } from "./_lib/venueApi.mjs";
@@ -12,17 +14,6 @@ const json = (statusCode, body) => ({
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
 });
-
-function configuredPartners() {
-  const configured = String(process.env.PARTNER_STATS_VENUES || "").split(",");
-  return [
-    ...new Set(
-      ["patels-ahangama", "villa-mugatiya", ...configured]
-        .map((value) => value.trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  ];
-}
 
 async function collectPeriod(venue, contentIds, days) {
   const payload = await collectPartnerStats({ venue, contentIds, days });
@@ -36,46 +27,48 @@ async function collectPeriod(venue, contentIds, days) {
   return { days, generatedAt: payload.generatedAt };
 }
 
-async function collectPartner(identifier, periods) {
-  const venue = await getVenueFromApi(identifier);
-  if (!venue) throw new Error(`Venue not found in venues API: ${identifier}`);
+export async function runNextPartnerStatsJob() {
+  const job = await claimNextPartnerStatsJob();
+  if (!job) return null;
 
-  const contentIds = await getPartnerArticleContentIds(venue.id);
-  const results = [];
-  for (const days of periods) {
-    results.push(await collectPeriod(venue, contentIds, days));
-  }
-  return { venueId: venue.id, slug: venue.slug, contentIds, periods: results };
-}
-
-export async function runPartnerStatsCollection(
-  periods = PARTNER_STATS_PERIODS,
-  identifiers = configuredPartners(),
-) {
-  const partners = [];
-  for (const identifier of identifiers) {
-    partners.push(await collectPartner(identifier, periods));
-  }
-  return partners;
-}
-
-export function createPartnerStatsHandler(
-  periods = PARTNER_STATS_PERIODS,
-  identifiers = configuredPartners(),
-) {
-  return async function handler() {
-    try {
-      const partners = await runPartnerStatsCollection(periods, identifiers);
-      console.info("[daily-partner-stats] snapshots stored", { partners });
-      return json(200, { ok: true, partners });
-    } catch (error) {
-      console.error("[daily-partner-stats] collection failed", {
-        message: String(error?.message || error),
-        stack: error?.stack || null,
-      });
-      return json(500, { ok: false, error: String(error?.message || error) });
+  try {
+    const venue = await getVenueFromApi(job.venue_id);
+    if (!venue) {
+      throw new Error(`Venue not found in venues API: ${job.venue_id}`);
     }
-  };
+
+    const contentIds = await getPartnerArticleContentIds(venue.id);
+    const result = await collectPeriod(venue, contentIds, job.period_days);
+    await completePartnerStatsJob(job);
+    return {
+      venueId: venue.id,
+      slug: venue.slug,
+      contentIds,
+      ...result,
+      attempts: job.attempts,
+    };
+  } catch (error) {
+    await failPartnerStatsJob(job, error);
+    throw error;
+  }
 }
 
-export default modernHandler(createPartnerStatsHandler());
+async function handler() {
+  try {
+    const result = await runNextPartnerStatsJob();
+    if (!result) {
+      return json(200, { ok: true, idle: true });
+    }
+
+    console.info("[daily-partner-stats] snapshot stored", result);
+    return json(200, { ok: true, result });
+  } catch (error) {
+    console.error("[daily-partner-stats] collection failed", {
+      message: String(error?.message || error),
+      stack: error?.stack || null,
+    });
+    return json(500, { ok: false, error: String(error?.message || error) });
+  }
+}
+
+export default modernHandler(handler);
