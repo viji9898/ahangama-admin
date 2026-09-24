@@ -13,6 +13,9 @@
 [functions."daily-team-email"]
   schedule = "@daily"
 
+[functions."daily-partner-stats"]
+  schedule = "@daily"
+
 [[redirects]]
   from = "/stats"
   to = "/stats.html"

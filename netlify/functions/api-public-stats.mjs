@@ -1,6 +1,7 @@
 import { modernHandler } from "./_lib/modernHandler.mjs";
 import { getQrDashboardSummary, runGaReport } from "./_lib/ga4QrAnalytics.mjs";
 import { query, queryFromEnv } from "./_lib/db.mjs";
+import { getLatestPartnerStatsSnapshot } from "./_lib/partnerStatsSnapshots.mjs";
 
 const HOST_NAME = "ahangama.com";
 const ARTICLE_SITEMAP_URL = `https://${HOST_NAME}/sitemaps/articles.xml`;
@@ -947,36 +948,15 @@ function normalizeInstagramHandle(value) {
     .toLowerCase();
 }
 
-async function getPartnerVenue(slug) {
-  const result = await query(
-    `
-      SELECT id, slug, name, instagram, image, logo, map_url
-      FROM venues260414
-      WHERE deleted_at IS NULL
-        AND live = TRUE
-        AND (lower(slug) = $1 OR lower(id) = $1 OR lower(name) = $1)
-      LIMIT 1
-    `,
-    [slug],
-  );
-
-  return result.rows[0] || null;
-}
-
-function scopePartnerArticles(articles, venue) {
+function scopePartnerArticles(articles, contentIds) {
   if (!articles?.available) return articles;
-  const terms = new Set(
-    [venue.name, venue.slug, venue.id]
-      .flatMap((value) => String(value || "").toLowerCase().split(/[^a-z0-9]+/))
-      .filter((value) => value.length >= 5 && value !== "ahangama"),
-  );
+  const allowedContentIds = new Set(contentIds);
 
   return {
     ...articles,
-    articles: (articles.articles || []).filter((article) => {
-      const searchable = `${article.contentId} ${article.title}`.toLowerCase();
-      return [...terms].some((term) => searchable.includes(term));
-    }),
+    articles: (articles.articles || []).filter((article) =>
+      allowedContentIds.has(article.contentId),
+    ),
   };
 }
 
@@ -1036,10 +1016,13 @@ function scopePartnerInstagram(social, venue, days) {
   };
 }
 
-async function getPartnerStats(slug, days, startDate, endDate) {
-  const venue = await getPartnerVenue(slug);
-  if (!venue) return json(404, { ok: false, error: "Partner not found" });
-
+export async function collectPartnerStats({
+  venue,
+  contentIds,
+  days,
+  startDate = `${days}daysAgo`,
+  endDate = "today",
+}) {
   const [articlesResult, guideResult, instagramResult] =
     await Promise.allSettled([
       getOnlineArticleEngagement(startDate, endDate),
@@ -1048,7 +1031,7 @@ async function getPartnerStats(slug, days, startDate, endDate) {
     ]);
   const articles =
     articlesResult.status === "fulfilled"
-      ? scopePartnerArticles(articlesResult.value, venue)
+      ? scopePartnerArticles(articlesResult.value, contentIds)
       : unavailable(articlesResult.reason);
   const guide =
     guideResult.status === "fulfilled"
@@ -1059,25 +1042,25 @@ async function getPartnerStats(slug, days, startDate, endDate) {
       ? scopePartnerInstagram(instagramResult.value, venue, days)
       : unavailable(instagramResult.reason);
 
-  return json(200, {
+  return {
     ok: true,
     generatedAt: new Date().toISOString(),
     days,
     partner: {
       id: venue.id,
-      slug,
+      slug: venue.slug,
       name: venue.name,
       instagram: normalizeInstagramHandle(venue.instagram),
       instagramUrl: venue.instagram
         ? `https://www.instagram.com/${normalizeInstagramHandle(venue.instagram)}/`
         : "",
       image: venue.image || venue.logo || "",
-      mapUrl: venue.map_url || "",
+      mapUrl: venue.mapUrl || "",
     },
     articles,
     guide,
     social,
-  });
+  };
 }
 
 async function handler(event) {
@@ -1093,7 +1076,13 @@ async function handler(event) {
     .trim()
     .toLowerCase();
   if (partnerSlug) {
-    return getPartnerStats(partnerSlug, days, startDate, endDate);
+    const snapshot = await getLatestPartnerStatsSnapshot(partnerSlug, days);
+    return snapshot
+      ? json(200, snapshot)
+      : json(404, {
+          ok: false,
+          error: "No stored partner stats are available for this period",
+        });
   }
   const [
     websiteResult,

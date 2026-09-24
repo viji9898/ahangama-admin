@@ -26,6 +26,7 @@ async function handler(event) {
     const destinationSlug = (qs.destinationSlug || "all")
       .trim()
       .toLowerCase();
+    const identifier = (qs.identifier || "").trim().toLowerCase();
     const q = (qs.q || "").trim().toLowerCase();
     const category = (qs.category || "").trim().toLowerCase();
 
@@ -36,6 +37,14 @@ async function handler(event) {
     if (destinationSlug && destinationSlug !== "all") {
       where.push(`destination_slug = $${idx}`);
       params.push(destinationSlug);
+      idx++;
+    }
+
+    if (identifier) {
+      where.push(
+        `(lower(id) = $${idx} OR lower(slug) = $${idx} OR lower(name) = $${idx})`,
+      );
+      params.push(identifier);
       idx++;
     }
 

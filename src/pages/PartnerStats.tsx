@@ -5,6 +5,8 @@ import "./PublicStats.css";
 type MetricItem = { label: string; value: number };
 type PartnerStatsPayload = {
   generatedAt?: string;
+  snapshotDate?: string;
+  snapshotAt?: string;
   partner?: {
     id: string;
     slug: string;
@@ -155,6 +157,10 @@ export default function PartnerStats() {
   }, [days, partnerSlug]);
 
   const partner = data?.partner;
+  const partnerName = partner?.name || label(partnerSlug);
+  const partnerInstagram = partner?.instagram || data?.social?.username || "";
+  const partnerHandle = partnerInstagram ? `@${partnerInstagram}` : "the partner account";
+  const isPetals = partner?.id === "patels-ahangama";
   const venue = data?.guide?.venue;
   const articles = data?.articles?.articles || [];
   const posts = data?.social?.posts || [];
@@ -230,7 +236,7 @@ export default function PartnerStats() {
         <div className="partner-stats__hero-shade" />
         <div className="partner-stats__hero-content">
           <p className="stats-kicker">Partner performance</p>
-          <h1>{partner?.name || label(partnerSlug)},<br />in numbers.</h1>
+          <h1>{partnerName},<br />in numbers.</h1>
           <div className="stats-period" aria-label="Reporting period">
             {[7, 30, 90, 180, 365].map((value) => (
               <button
@@ -250,13 +256,15 @@ export default function PartnerStats() {
       {!loading && error ? <div className="stats-alert">{error}</div> : null}
       {!loading && !error ? (
         <section className="stats-section partner-stats__section" id="performance">
-          <aside className="partner-stats__promotion-note">
-            <span>Annual promotion</span>
-            <p>Promotion period: 21 August 2026 to 20 August 2027</p>
-          </aside>
+          {isPetals ? (
+            <aside className="partner-stats__promotion-note">
+              <span>Annual promotion</span>
+              <p>Promotion period: 21 August 2026 to 20 August 2027</p>
+            </aside>
+          ) : null}
           <div className="stats-section__heading">
             <p>01 / Combined performance</p>
-            <h2>The complete<br />Petals picture</h2>
+            <h2>The complete<br />{partnerName} picture</h2>
           </div>
           <div className="partner-stats__overview">
             {[
@@ -301,21 +309,21 @@ export default function PartnerStats() {
                   <strong>{number(venue?.impressions)}</strong>
                   <span className="partner-stats__metric-label">
                     Tracked impressions
-                    <MetricTip id="partner-guide-impressions" text="Times the Petals card entered a visitor's view in the Online Guide. Repeat views count. Tracking began 7 September 2026." />
+                    <MetricTip id="partner-guide-impressions" text={`Times the ${partnerName} card entered a visitor's view in the Online Guide. Repeat views count. Tracking began 7 September 2026.`} />
                   </span>
                 </span>
                 <span>
                   <strong>{number(venue?.usersExposed)}</strong>
                   <span className="partner-stats__metric-label">
                     Users exposed
-                    <MetricTip id="partner-guide-exposed" text="Unique GA4 users who generated at least one tracked Petals card impression in the selected period." />
+                    <MetricTip id="partner-guide-exposed" text={`Unique GA4 users who generated at least one tracked ${partnerName} card impression in the selected period.`} />
                   </span>
                 </span>
                 <span>
                   <strong>{number(venue?.engagements)}</strong>
                   <span className="partner-stats__metric-label">
                     Outbound actions
-                    <MetricTip id="partner-guide-actions" text="Clicks from the Petals guide listing to destinations such as Instagram, Google Maps or a website." />
+                    <MetricTip id="partner-guide-actions" text={`Clicks from the ${partnerName} guide listing to destinations such as Instagram, Google Maps or a website.`} />
                   </span>
                 </span>
                 <span>
@@ -333,21 +341,21 @@ export default function PartnerStats() {
             <div className="partner-stats__source">
               <div className="partner-stats__source-heading">
                 <p>Source 02</p>
-                <h3>Petals article</h3>
+                <h3>{partnerName} articles</h3>
               </div>
               <div className="partner-stats__source-metrics">
                 <span>
                   <strong>{number(articleTotals.pageViews)}</strong>
                   <span className="partner-stats__metric-label">
                     Views
-                    <MetricTip id="partner-article-views" text="Total page views for Petals articles. Repeat views by the same visitor are included." />
+                    <MetricTip id="partner-article-views" text={`Total page views for ${partnerName} articles. Repeat views by the same visitor are included.`} />
                   </span>
                 </span>
                 <span>
                   <strong>{number(articleTotals.visitors)}</strong>
                   <span className="partner-stats__metric-label">
                     Visitors
-                    <MetricTip id="partner-article-visitors" text="Unique GA4 users who viewed a Petals article during the selected period." />
+                    <MetricTip id="partner-article-visitors" text={`Unique GA4 users who viewed a ${partnerName} article during the selected period.`} />
                   </span>
                 </span>
                 <span>
@@ -361,7 +369,7 @@ export default function PartnerStats() {
                   <strong>{number(articleTotals.placeClicks)}</strong>
                   <span className="partner-stats__metric-label">
                     Place clicks
-                    <MetricTip id="partner-article-clicks" text="Clicks from a Petals article to a featured place or other tracked outbound destination." />
+                    <MetricTip id="partner-article-clicks" text={`Clicks from a ${partnerName} article to a featured place or other tracked outbound destination.`} />
                   </span>
                 </span>
               </div>
@@ -400,7 +408,7 @@ export default function PartnerStats() {
                   <strong>{number(posts.length)}</strong>
                   <span className="partner-stats__metric-label">
                     Attributed posts
-                    <MetricTip id="partner-instagram-posts" text="Ahangama Instagram posts that mention or collaborate with @petals.ahangama in the selected period." />
+                    <MetricTip id="partner-instagram-posts" text={`Ahangama Instagram posts that mention or collaborate with ${partnerHandle} in the selected period.`} />
                   </span>
                 </span>
               </div>
@@ -416,7 +424,7 @@ export default function PartnerStats() {
               </span>
             </div>
             <p className="partner-stats__analysis-intro">
-              These results should be read as an early baseline, not a final verdict. The first signals are positive: Petals is earning attention across social, editorial and the Online Guide, while the longer campaign runway gives us time to repeat what works and strengthen conversion.
+              These results should be read as an early baseline, not a final verdict. The first signals are positive: {partnerName} is earning attention across social, editorial and the Online Guide, while the longer campaign runway gives us time to repeat what works and strengthen conversion.
             </p>
             <div className="partner-stats__efficiency-heading">
               <p>Investment efficiency</p>
@@ -427,7 +435,7 @@ export default function PartnerStats() {
                 <strong>{currency(campaignInvestment, 0)}</strong>
                 <span className="partner-stats__metric-label">
                   Annual investment
-                  <MetricTip id="partner-investment" text="The total fee paid for the annual Petals promotion from 21 August 2026 to 20 August 2027." />
+                  <MetricTip id="partner-investment" text={`The total fee paid for the annual ${partnerName} promotion from 21 August 2026 to 20 August 2027.`} />
                 </span>
               </article>
               <article>
@@ -467,14 +475,14 @@ export default function PartnerStats() {
                 <span>Compounding value</span>
                 <h3>The article extends the story</h3>
                 <p>
-                  Petals editorial content has generated {number(articleTotals.pageViews)} views from {number(articleTotals.visitors)} visitors. Unlike a social post, this story remains searchable and shareable throughout the year. In-depth reading events are too new to judge content quality reliably yet.
+                  {partnerName} editorial content has generated {number(articleTotals.pageViews)} views from {number(articleTotals.visitors)} visitors. Unlike a social post, this story remains searchable and shareable throughout the year. In-depth reading events are too new to judge content quality reliably yet.
                 </p>
               </article>
               <article>
                 <span>Early intent</span>
                 <h3>The guide is prompting action</h3>
                 <p>
-                  The Petals listing reached {number(venue?.usersExposed)} tracked users and generated {number(venue?.engagements)} outbound {Number(venue?.engagements || 0) === 1 ? "action" : "actions"}. That is a {guideOutboundRate}% outbound rate against tracked impressions and a {guideActionRate}% action-to-exposure rate. The volume is still small, but {Number(venue?.engagements || 0) === 1 ? "this action indicates" : "these actions indicate"} movement from awareness toward consideration.
+                  The {partnerName} listing reached {number(venue?.usersExposed)} tracked users and generated {number(venue?.engagements)} outbound {Number(venue?.engagements || 0) === 1 ? "action" : "actions"}. That is a {guideOutboundRate}% outbound rate against tracked impressions and a {guideActionRate}% action-to-exposure rate. The volume is still small, but {Number(venue?.engagements || 0) === 1 ? "this action indicates" : "these actions indicate"} movement from awareness toward consideration.
                 </p>
               </article>
             </div>
@@ -484,8 +492,8 @@ export default function PartnerStats() {
                 <h3>Build evidence through repetition</h3>
               </div>
               <ol>
-                <li><strong>Maintain visibility.</strong> Publish consistently enough to learn which Petals stories and formats generate repeat reach.</li>
-                <li><strong>Connect attention to action.</strong> Keep clear Instagram, map and booking pathways across every Petals touchpoint.</li>
+                <li><strong>Maintain visibility.</strong> Publish consistently enough to learn which {partnerName} stories and formats generate repeat reach.</li>
+                <li><strong>Connect attention to action.</strong> Keep clear Instagram, map and booking pathways across every {partnerName} touchpoint.</li>
                 <li><strong>Review by quarter.</strong> Use the first 90 days as the baseline, then compare reach, article depth and outbound intent without over-projecting early results.</li>
               </ol>
             </div>
@@ -509,7 +517,7 @@ export default function PartnerStats() {
           <div className="partner-stats__detail" id="articles">
             <div className="partner-stats__detail-heading">
               <p>Article performance</p>
-              <h3>All Petals articles</h3>
+              <h3>All {partnerName} articles</h3>
             </div>
             {articles.length ? (
               <div className="partner-stats__articles">
@@ -539,14 +547,14 @@ export default function PartnerStats() {
                 ))}
               </div>
             ) : (
-              <p className="partner-stats__empty">No Petals-related article activity was recorded in this period.</p>
+              <p className="partner-stats__empty">No {partnerName}-related article activity was recorded in this period.</p>
             )}
           </div>
 
           <div className="partner-stats__detail partner-stats__detail--social" id="instagram">
             <div className="partner-stats__detail-heading">
               <p>Instagram performance</p>
-              <h3>Posts mentioning @petals.ahangama</h3>
+              <h3>Posts mentioning {partnerHandle}</h3>
             </div>
             {posts.length ? (
               <div className="partner-stats__posts">
@@ -564,7 +572,7 @@ export default function PartnerStats() {
                 ))}
               </div>
             ) : (
-              <p className="partner-stats__empty partner-stats__empty--dark">No @petals.ahangama mentions or collaborations were recorded in this period.</p>
+              <p className="partner-stats__empty partner-stats__empty--dark">No {partnerHandle} mentions or collaborations were recorded in this period.</p>
             )}
             {partner?.instagramUrl ? (
               <a className="partner-stats__instagram-link" href={partner.instagramUrl} target="_blank" rel="noreferrer">
@@ -577,7 +585,7 @@ export default function PartnerStats() {
             <div className="partner-stats__methodology-heading">
               <p>Measurement &amp; sources</p>
               <h2 id="partner-methodology-title">How this report is measured</h2>
-              <span>Direct platform data, scoped to Petals and the selected reporting period.</span>
+              <span>Direct platform data, scoped to {partnerName} and the selected reporting period.</span>
             </div>
             <div className="partner-stats__methodology-grid">
               <article>
@@ -591,14 +599,14 @@ export default function PartnerStats() {
                 <span>02</span>
                 <h3>Instagram</h3>
                 <p>
-                  Views, reach and interactions come from the Meta Graph API. Only Ahangama posts that mention or collaborate with @petals.ahangama are included.
+                  Views, reach and interactions come from the Meta Graph API. Only Ahangama posts that mention or collaborate with {partnerHandle} are included.
                 </p>
               </article>
               <article>
                 <span>03</span>
                 <h3>Attribution</h3>
                 <p>
-                  Petals is identified from Ahangama's venue database. Guide events are matched by venue identity, articles by Petals content references, and Instagram by the exact account handle.
+                  {partnerName} is identified through Ahangama's venues API. Guide events are matched by venue identity, articles by explicit content mappings, and Instagram by the exact account handle.
                 </p>
               </article>
               <article>
@@ -615,7 +623,11 @@ export default function PartnerStats() {
 
       <footer className="stats-footer">
         <span>{partner?.name?.toUpperCase() || "AHANGAMA"}</span>
-        <p>Updated {data?.generatedAt ? new Date(data.generatedAt).toLocaleString() : "when data loads"}</p>
+        <p>
+          Snapshot taken {data?.snapshotAt
+            ? new Date(data.snapshotAt).toLocaleString()
+            : "when data loads"}
+        </p>
       </footer>
     </main>
   );
