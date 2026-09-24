@@ -13,11 +13,11 @@ async function handler(event) {
   const user = getSessionAdmin(event);
   if (!user) return json(401, { ok: false });
 
-  try {
-    const email = String(user?.email || "").toLowerCase();
-    const dateKey = new Date().toISOString().slice(0, 10);
-    const presenceEntityId = `presence:${dateKey}:${email}`;
+  const email = String(user?.email || "").toLowerCase();
+  const dateKey = new Date().toISOString().slice(0, 10);
+  const presenceEntityId = `presence:${dateKey}:${email}`;
 
+  try {
     const existingPresence = await query(
       `
         SELECT 1
@@ -33,29 +33,25 @@ async function handler(event) {
 
     if (!existingPresence.rowCount) {
       const { ipAddress, userAgent } = getClientContext(event);
-      try {
-        await logAdminActivity({
-          action: "session",
-          actorEmail: email,
-          entityType: "auth",
-          entityId: presenceEntityId,
-          entityName: user?.name || email,
-          details: {
-            source: "auth-me",
-            dailyPresence: true,
-            ipAddress,
-            userAgent,
-          },
-        });
-      } catch {
-        // Session validation should still work if usage logging fails.
-      }
+      await logAdminActivity({
+        action: "session",
+        actorEmail: email,
+        entityType: "auth",
+        entityId: presenceEntityId,
+        entityName: user?.name || email,
+        details: {
+          source: "auth-me",
+          dailyPresence: true,
+          ipAddress,
+          userAgent,
+        },
+      });
     }
-
-    return json(200, { ok: true, user });
   } catch {
-    return json(401, { ok: false });
+    // Session validation must not depend on optional activity logging.
   }
+
+  return json(200, { ok: true, user });
 }
 
 export default modernHandler(handler);
