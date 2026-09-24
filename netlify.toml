@@ -28,6 +28,21 @@
 [functions."daily-partner-stats-365"]
   schedule = "40 1 * * *"
 
+[functions."daily-ribs-stats-7"]
+  schedule = "5 1 * * *"
+
+[functions."daily-ribs-stats-30"]
+  schedule = "15 1 * * *"
+
+[functions."daily-ribs-stats-90"]
+  schedule = "25 1 * * *"
+
+[functions."daily-ribs-stats-180"]
+  schedule = "35 1 * * *"
+
+[functions."daily-ribs-stats-365"]
+  schedule = "45 1 * * *"
+
 [[redirects]]
   from = "/stats"
   to = "/stats.html"

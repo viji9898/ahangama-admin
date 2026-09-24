@@ -39,7 +39,6 @@ async function collectPeriod(venue, contentIds, days) {
 async function collectPartner(identifier, periods) {
   const venue = await getVenueFromApi(identifier);
   if (!venue) throw new Error(`Venue not found in venues API: ${identifier}`);
-  if (!venue.live) throw new Error(`Venue is not live: ${identifier}`);
 
   const contentIds = await getPartnerArticleContentIds(venue.id);
   const results = [];
@@ -51,18 +50,22 @@ async function collectPartner(identifier, periods) {
 
 export async function runPartnerStatsCollection(
   periods = PARTNER_STATS_PERIODS,
+  identifiers = configuredPartners(),
 ) {
   const partners = [];
-  for (const identifier of configuredPartners()) {
+  for (const identifier of identifiers) {
     partners.push(await collectPartner(identifier, periods));
   }
   return partners;
 }
 
-export function createPartnerStatsHandler(periods = PARTNER_STATS_PERIODS) {
+export function createPartnerStatsHandler(
+  periods = PARTNER_STATS_PERIODS,
+  identifiers = configuredPartners(),
+) {
   return async function handler() {
     try {
-      const partners = await runPartnerStatsCollection(periods);
+      const partners = await runPartnerStatsCollection(periods, identifiers);
       console.info("[daily-partner-stats] snapshots stored", { partners });
       return json(200, { ok: true, partners });
     } catch (error) {
