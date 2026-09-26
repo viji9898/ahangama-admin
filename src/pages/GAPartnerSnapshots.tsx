@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
-import { Alert, Card, Empty, Select, Space, Spin, Table, Tag, Typography } from "antd";
+import { CopyOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Empty, Select, Space, Spin, Table, Tag, Tooltip, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 const ENDPOINT = "/.netlify/functions/api-partner-snapshots-list";
+const PUBLIC_STATS_BASE_URL = "https://admin.ahangama.com/stats";
 
 type SourceMetrics = { available: boolean };
 type Snapshot = {
@@ -91,6 +93,16 @@ export default function GAPartnerSnapshots() {
       (period === "all" || snapshot.periodDays === period),
   );
 
+  const copyPublicUrl = async (snapshot: Snapshot) => {
+    const publicUrl = `${PUBLIC_STATS_BASE_URL}/${encodeURIComponent(snapshot.partnerSlug)}`;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      message.success(`Copied ${snapshot.partnerName} public URL`);
+    } catch {
+      message.error("Unable to copy the public URL");
+    }
+  };
+
   const columns: ColumnsType<Snapshot> = [
     {
       title: "Snapshot",
@@ -102,12 +114,21 @@ export default function GAPartnerSnapshots() {
           key: "partnerName",
           width: 190,
           render: (value: string, record) => (
-            <Space direction="vertical" size={0}>
-              <Typography.Text strong>{value}</Typography.Text>
-              <Typography.Text type="secondary">
-                {record.venueId} · {record.partnerSlug}
-              </Typography.Text>
-            </Space>
+            <Tooltip title="Copy public stats URL">
+              <Button
+                type="text"
+                icon={<CopyOutlined />}
+                onClick={() => void copyPublicUrl(record)}
+                style={{ height: "auto", padding: 0, textAlign: "left" }}
+              >
+                <Space orientation="vertical" size={0}>
+                  <Typography.Text strong>{value}</Typography.Text>
+                  <Typography.Text type="secondary">
+                    {record.venueId} · {record.partnerSlug}
+                  </Typography.Text>
+                </Space>
+              </Button>
+            </Tooltip>
           ),
         },
         {
