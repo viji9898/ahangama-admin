@@ -121,6 +121,7 @@ const navItems = [
       { key: "/ga", label: "Overview" },
       { key: "/ga/homepage-engagement", label: "Homepage Engagement" },
       { key: "/ga/article-engagement", label: "Article Engagement" },
+      { key: "/ga/partner-snapshots", label: "Partner Snapshots" },
       { key: "/ga/free-pass-scans", label: "All Free Pass Scans" },
       { key: "/ga/guide-engagement", label: "Guide Engagement" },
       { key: "/ga/instagram-engagement", label: "Instagram Engagement" },

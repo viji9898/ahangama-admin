@@ -17,6 +17,7 @@ import GAFreePassScans from "./pages/GAFreePassScans";
 import GAGuideEngagement from "./pages/GAGuideEngagement";
 import GAHomepageEngagement from "./pages/GAHomepageEngagement";
 import GAInstagramEngagement from "./pages/GAInstagramEngagement";
+import GAPartnerSnapshots from "./pages/GAPartnerSnapshots";
 import GuestPassUsers from "./pages/GuestPassUsers";
 import HospoPassProfiles from "./pages/HospoPassProfiles";
 import PaidPassUsers from "./pages/PaidPassUsers";
@@ -92,6 +93,7 @@ export default function App() {
         >
           <Route index element={<GAAnalytics />} />
           <Route path="article-engagement" element={<GAArticleEngagement />} />
+          <Route path="partner-snapshots" element={<GAPartnerSnapshots />} />
           <Route path="free-pass-scans" element={<GAFreePassScans />} />
           <Route path="guide-engagement" element={<GAGuideEngagement />} />
           <Route path="homepage-engagement" element={<GAHomepageEngagement />} />
