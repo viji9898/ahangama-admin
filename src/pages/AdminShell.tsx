@@ -13,6 +13,7 @@ import {
   QrcodeOutlined,
   ShopOutlined,
   TeamOutlined,
+  UploadOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import {
@@ -63,6 +64,14 @@ const navItems = [
     icon: <LinkOutlined />,
   },
   { key: "/admin/qr-links", label: "QR Links", icon: <QrcodeOutlined /> },
+  {
+    key: "/admin/upload-menu",
+    label: "Upload",
+    icon: <UploadOutlined />,
+    children: [
+      { key: "/admin/upload/online-guide", label: "Online Guide" },
+    ],
+  },
   {
     key: "/admin/venues-menu",
     label: "Venues",
@@ -153,6 +162,10 @@ const getSelectedKey = (pathname: string) => {
 
   if (pathname.startsWith("/admin/venues")) {
     return pathname === "/admin/venues" ? "/admin/venues" : pathname;
+  }
+
+  if (pathname.startsWith("/admin/upload")) {
+    return pathname;
   }
 
   return (
@@ -394,6 +407,7 @@ export default function AdminShell() {
               "/admin/pass-users",
               "/admin/enquiries",
               "/admin/venues-menu",
+              "/admin/upload-menu",
               "/ga-menu",
             ]}
             items={menuItems}

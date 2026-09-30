@@ -28,6 +28,7 @@ import TravelAgentsCRM from "./pages/TravelAgentsCRM";
 import PublicStats from "./pages/PublicStats";
 import PartnerStats from "./pages/PartnerStats";
 import NewsletterBuilder from "./pages/NewsletterBuilder";
+import OnlineGuideUpload from "./pages/OnlineGuideUpload";
 import VenueContactInfo from "./pages/VenueContactInfo";
 import { RequireAuth } from "./auth/RequireAuth";
 import AdminShell from "./pages/AdminShell";
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="newsletters" element={<NewsletterBuilder />} />
           <Route path="links" element={<LinkGenerator />} />
           <Route path="qr-links" element={<QrLinkGenerator />} />
+          <Route path="upload/online-guide" element={<OnlineGuideUpload />} />
           <Route path="venues" element={<Admin />} />
           <Route path="venues/contact-info" element={<VenueContactInfo />} />
           <Route path="crm" element={<CRM />} />
