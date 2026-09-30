@@ -949,10 +949,21 @@ function unavailable(error) {
   return { available: false, error: String(error?.message || error) };
 }
 
-function normalizeInstagramHandle(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^https?:\/\/(?:www\.)?instagram\.com\//i, "")
+export function normalizeInstagramHandle(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return "";
+
+  try {
+    const url = new URL(rawValue);
+    if (/^(?:www\.)?instagram\.com$/i.test(url.hostname)) {
+      return url.pathname.split("/").filter(Boolean)[0]?.toLowerCase() || "";
+    }
+  } catch {
+    // Plain handles are normalized below.
+  }
+
+  return rawValue
+    .split(/[?#]/, 1)[0]
     .replace(/^@|\/$/g, "")
     .toLowerCase();
 }
