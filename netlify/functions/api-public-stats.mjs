@@ -12,6 +12,12 @@ const ARTICLE_EVENTS = [
   "article_complete",
   "article_outbound_click",
 ];
+const ARTICLE_TITLE_OVERRIDES = new Map([
+  [
+    "/gusta-groceries-good-food-and-more-in-ahangama",
+    "Gusta: Groceries, Good Food and More",
+  ],
+]);
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -74,6 +80,41 @@ function articleTitle(path) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function decodeHtmlTitle(value) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, codePoint) =>
+      String.fromCodePoint(Number(codePoint)),
+    )
+    .replace(/&#x([\da-f]+);/gi, (_, codePoint) =>
+      String.fromCodePoint(Number.parseInt(codePoint, 16)),
+    )
+    .trim();
+}
+
+async function canonicalArticleTitle(url, path) {
+  const override = ARTICLE_TITLE_OVERRIDES.get(path);
+  if (override) return override;
+
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "text/html" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) return articleTitle(path);
+
+    const html = await response.text();
+    const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1];
+    return title ? decodeHtmlTitle(title) : articleTitle(path);
+  } catch {
+    return articleTitle(path);
+  }
+}
+
 async function getOnlineArticleEngagement(startDate, endDate) {
   const [sitemapResponse, trafficReport, eventReport, historyReport] =
     await Promise.all([
@@ -83,7 +124,7 @@ async function getOnlineArticleEngagement(startDate, endDate) {
       }),
       runGaReport({
         dateRanges: [{ startDate, endDate }],
-        dimensions: [{ name: "pagePath" }, { name: "pageTitle" }],
+        dimensions: [{ name: "pagePath" }],
         metrics: [
           { name: "screenPageViews" },
           { name: "totalUsers" },
@@ -104,20 +145,25 @@ async function getOnlineArticleEngagement(startDate, endDate) {
   }
 
   const sitemap = await sitemapResponse.text();
-  const catalog = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => {
-    const url = new URL(match[1].replace(/&amp;/g, "&"));
-    return { path: url.pathname.replace(/\/$/, "") || "/", url: url.href };
-  });
+  const catalog = await Promise.all(
+    [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(async (match) => {
+      const url = new URL(match[1].replace(/&amp;/g, "&"));
+      const path = url.pathname.replace(/\/$/, "") || "/";
+      return {
+        path,
+        url: url.href,
+        title: await canonicalArticleTitle(url.href, path),
+      };
+    }),
+  );
   const traffic = new Map();
   for (const row of trafficReport?.rows || []) {
     const path = (row.dimensionValues?.[0]?.value || "/").replace(/\/$/, "");
     const current = traffic.get(path) || {
-      title: "",
       pageViews: 0,
       visitors: 0,
       engagedVisits: 0,
     };
-    current.title = row.dimensionValues?.[1]?.value || current.title;
     current.pageViews += numberMetric(row, 0);
     current.visitors += numberMetric(row, 1);
     current.engagedVisits += numberMetric(row, 2);
@@ -143,16 +189,13 @@ async function getOnlineArticleEngagement(startDate, endDate) {
   return {
     available: true,
     articles: catalog
-      .map(({ path, url }) => {
+      .map(({ path, url, title }) => {
         const contentId = decodeURIComponent(path.replace(/^\//, ""));
         const page = traffic.get(path) || {};
         const milestones = events.get(contentId) || {};
         return {
           contentId,
-          title:
-            page.title && page.title !== "(not set)"
-              ? page.title
-              : articleTitle(path),
+          title,
           url,
           pageViews: page.pageViews || 0,
           visitors: page.visitors || 0,
