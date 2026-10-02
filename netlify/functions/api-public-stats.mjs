@@ -2,6 +2,7 @@ import { modernHandler } from "./_lib/modernHandler.mjs";
 import { getQrDashboardSummary, runGaReport } from "./_lib/ga4QrAnalytics.mjs";
 import { query, queryFromEnv } from "./_lib/db.mjs";
 import { getLatestPartnerStatsSnapshot } from "./_lib/partnerStatsSnapshots.mjs";
+import { aggregateTopPages } from "./_lib/websiteStats.mjs";
 
 const HOST_NAME = "ahangama.com";
 const ARTICLE_SITEMAP_URL = `https://${HOST_NAME}/sitemaps/articles.xml`;
@@ -488,7 +489,7 @@ async function getWebsiteStats(startDate, endDate) {
       dimensions: [{ name: "pagePath" }, { name: "pageTitle" }],
       metrics: [{ name: "screenPageViews" }],
       orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
-      limit: 8,
+      limit: 10000,
     }),
     runGaReport({
       ...base,
@@ -532,11 +533,7 @@ async function getWebsiteStats(startDate, endDate) {
     pageViews: numberMetric(totals, 1),
     sessions: numberMetric(totals, 2),
     outboundClicks: numberMetric(clicksReport?.rows?.[0], 0),
-    topPages: (pagesReport?.rows || []).map((row) => ({
-      path: row.dimensionValues?.[0]?.value || "/",
-      title: row.dimensionValues?.[1]?.value || "Untitled page",
-      views: numberMetric(row, 0),
-    })),
+    topPages: aggregateTopPages(pagesReport?.rows),
     trafficSources: (sourcesReport?.rows || []).map((row) => ({
       label: row.dimensionValues?.[0]?.value || "Other",
       value: numberMetric(row, 0),
