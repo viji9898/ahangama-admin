@@ -229,6 +229,67 @@ html {
 }
 .stats-grid--website {
   grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-top: 1px solid var(--stats-ink);
+  border-bottom: 1px solid var(--stats-ink);
+}
+.stats-grid--website .stats-panel {
+  padding: clamp(28px, 4vw, 52px) 0;
+  border: 0;
+  background: transparent;
+}
+.stats-grid--website .stats-panel--wide {
+  grid-row: auto;
+  grid-column: 1 / -1;
+  padding-top: 0;
+  border-bottom: 1px solid var(--stats-ink);
+}
+.stats-grid--website .stats-panel:not(.stats-panel--wide) {
+  padding-right: clamp(24px, 4vw, 52px);
+}
+.stats-grid--website .stats-panel:not(.stats-panel--wide) + .stats-panel {
+  padding-right: 0;
+  padding-left: clamp(24px, 4vw, 52px);
+  border-left: 1px solid var(--stats-line);
+}
+.stats-grid--website .stats-panel__title {
+  min-height: 0;
+  margin-bottom: 26px;
+  padding-top: 28px;
+  align-items: end;
+}
+.stats-grid--website .stats-panel__title h3 {
+  font:
+    600 clamp(28px, 3vw, 40px)/1.05 "Playfair Display",
+    serif;
+  letter-spacing: 0;
+}
+.stats-grid--website .stats-panel__title > span {
+  padding-bottom: 3px;
+}
+.stats-grid--website .stats-list__row {
+  min-height: 68px;
+  grid-template-columns: 54px minmax(0, 1fr) 90px;
+}
+.stats-grid--website .stats-list__row:last-child {
+  border-bottom: 1px solid var(--stats-line);
+}
+.stats-grid--website .stats-list__row b {
+  text-align: right;
+}
+.stats-grid--website .stats-bars {
+  gap: 0;
+}
+.stats-grid--website .stats-bar {
+  padding: 18px 0;
+  border-top: 1px solid var(--stats-line);
+}
+.stats-grid--website .stats-bar:last-child {
+  border-bottom: 1px solid var(--stats-line);
+}
+.stats-grid--website .stats-bar__labels {
+  margin-bottom: 12px;
+  font-size: 13px;
 }
 .stats-grid--two {
   grid-template-columns: repeat(2, 1fr);
@@ -1756,6 +1817,18 @@ html {
   .stats-grid--two,
   .stats-grid--partners {
     grid-template-columns: 1fr;
+  }
+  .stats-grid--website .stats-panel:not(.stats-panel--wide),
+  .stats-grid--website .stats-panel:not(.stats-panel--wide) + .stats-panel {
+    padding-right: 0;
+    padding-left: 0;
+  }
+  .stats-grid--website .stats-panel:not(.stats-panel--wide) + .stats-panel {
+    border-top: 1px solid var(--stats-line);
+    border-left: 0;
+  }
+  .stats-grid--website .stats-list__row {
+    grid-template-columns: 34px minmax(0, 1fr) 58px;
   }
   .stats-panel--wide {
     grid-row: auto;
