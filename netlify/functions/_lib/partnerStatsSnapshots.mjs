@@ -24,7 +24,22 @@ export async function claimNextPartnerStatsJob(
           AND job.snapshot_date = CURRENT_DATE
           AND job.period_days = period.period_days
         WHERE config.enabled = TRUE
-          AND snapshot.venue_id IS NULL
+          AND (
+            snapshot.venue_id IS NULL
+            OR (
+              snapshot.generated_at <= NOW() - INTERVAL '2 hours'
+              AND COALESCE(
+                (snapshot.payload #>> '{guide,venue,engagements}')::numeric,
+                0
+              ) > 0
+              AND jsonb_array_length(
+                COALESCE(
+                  snapshot.payload #> '{guide,venue,linkTypes}',
+                  '[]'::jsonb
+                )
+              ) = 0
+            )
+          )
           AND (
             job.venue_id IS NULL
             OR (job.status = 'running' AND job.lease_expires_at <= NOW())
