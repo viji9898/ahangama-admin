@@ -28,16 +28,24 @@ export async function claimNextPartnerStatsJob(
             snapshot.venue_id IS NULL
             OR (
               snapshot.generated_at <= NOW() - INTERVAL '2 hours'
-              AND COALESCE(
-                (snapshot.payload #>> '{guide,venue,engagements}')::numeric,
-                0
-              ) > 0
-              AND jsonb_array_length(
-                COALESCE(
-                  snapshot.payload #> '{guide,venue,linkTypes}',
-                  '[]'::jsonb
+              AND (
+                (
+                  COALESCE(
+                    (snapshot.payload #>> '{guide,venue,engagements}')::numeric,
+                    0
+                  ) > 0
+                  AND jsonb_array_length(
+                    COALESCE(
+                      snapshot.payload #> '{guide,venue,linkTypes}',
+                      '[]'::jsonb
+                    )
+                  ) = 0
                 )
-              ) = 0
+                OR (
+                  (snapshot.payload #>> '{guide,available}')::boolean = TRUE
+                  AND snapshot.payload #>> '{guide,outboundClickMethod}' IS NULL
+                )
+              )
             )
           )
           AND (

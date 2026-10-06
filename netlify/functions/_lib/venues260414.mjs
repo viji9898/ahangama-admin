@@ -90,6 +90,7 @@ export function toVenueDto(row) {
     mapUrl: row.map_url,
     googlePlaceId: row.google_place_id,
     email: row.email,
+    website: row.website,
     instagram: row.instagram,
     instagramUrl: normalizeInstagramForDto(row.instagram),
     whatsapp: row.whatsapp,

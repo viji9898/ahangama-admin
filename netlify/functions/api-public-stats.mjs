@@ -1,6 +1,7 @@
 import { modernHandler } from "./_lib/modernHandler.mjs";
 import { getQrDashboardSummary, runGaReport } from "./_lib/ga4QrAnalytics.mjs";
 import { query, queryFromEnv } from "./_lib/db.mjs";
+import { reconcileVenueOutboundClicks } from "./_lib/partnerGuideStats.mjs";
 import { getLatestPartnerStatsSnapshot } from "./_lib/partnerStatsSnapshots.mjs";
 import { aggregateTopPages } from "./_lib/websiteStats.mjs";
 
@@ -892,6 +893,47 @@ async function getGuideEngagement(startDate, endDate) {
   };
 }
 
+async function getAutomaticGuideClicks(startDate, endDate) {
+  const report = await runGaReport({
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "linkUrl" }],
+    metrics: [{ name: "eventCount" }],
+    dimensionFilter: {
+      andGroup: {
+        expressions: [
+          hostFilter(),
+          {
+            filter: {
+              fieldName: "eventName",
+              stringFilter: {
+                matchType: "EXACT",
+                value: "click",
+                caseSensitive: true,
+              },
+            },
+          },
+          {
+            filter: {
+              fieldName: "pagePath",
+              inListFilter: {
+                values: ["/guide", "/guide/"],
+                caseSensitive: true,
+              },
+            },
+          },
+        ],
+      },
+    },
+    keepEmptyRows: false,
+    limit: 10000,
+  });
+
+  return (report?.rows || []).map((row) => ({
+    url: row.dimensionValues?.[0]?.value || "",
+    value: numberMetric(row, 0),
+  }));
+}
+
 async function countPasses() {
   const databaseEnv = "NETLIFY_DATABASE_URL";
   const tablesResult = await queryFromEnv(
@@ -1020,7 +1062,12 @@ function scopePartnerArticles(articles, contentIds) {
   };
 }
 
-function scopePartnerGuide(guide, venue) {
+function scopePartnerGuide(
+  guide,
+  venue,
+  automaticClicks = [],
+  automaticClicksAvailable = false,
+) {
   if (!guide?.available) return guide;
   const matchedVenue = (guide.venues || []).find(
     (item) =>
@@ -1037,18 +1084,29 @@ function scopePartnerGuide(guide, venue) {
     linkTypes: [],
   };
   const leadingEngagements = Number(guide.venues?.[0]?.engagements || 0);
+  const { engagements, linkTypes } = reconcileVenueOutboundClicks(
+    scopedVenue.linkTypes,
+    scopedVenue.engagements,
+    automaticClicks,
+    venue,
+  );
+  const reconciledVenue = { ...scopedVenue, engagements, linkTypes };
 
   return {
     available: true,
+    outboundClickMethod: automaticClicksAvailable
+      ? "custom_and_automatic"
+      : "custom",
     comparison: {
       actionsBehindLeader: Math.max(
-        leadingEngagements - scopedVenue.engagements,
+        leadingEngagements - reconciledVenue.engagements,
         0,
       ),
       actionShare:
-        scopedVenue.engagements / Math.max(Number(guide.outboundClicks || 0), 1),
+        reconciledVenue.engagements /
+        Math.max(Number(guide.outboundClicks || 0), 1),
     },
-    venue: scopedVenue,
+    venue: reconciledVenue,
   };
 }
 
@@ -1089,10 +1147,14 @@ export async function collectPartnerStats({
       (reason) => ({ status: "rejected", reason }),
     );
   const instagramPromise = settle(getInstagramStats(days));
+  const automaticGuideClicksPromise = settle(
+    getAutomaticGuideClicks(startDate, endDate),
+  );
   const articlesResult = await settle(
     getOnlineArticleEngagement(startDate, endDate),
   );
   const guideResult = await settle(getGuideEngagement(startDate, endDate));
+  const automaticGuideClicksResult = await automaticGuideClicksPromise;
   const instagramResult = await instagramPromise;
   const articles =
     articlesResult.status === "fulfilled"
@@ -1100,7 +1162,14 @@ export async function collectPartnerStats({
       : unavailable(articlesResult.reason);
   const guide =
     guideResult.status === "fulfilled"
-      ? scopePartnerGuide(guideResult.value, venue)
+      ? scopePartnerGuide(
+          guideResult.value,
+          venue,
+          automaticGuideClicksResult.status === "fulfilled"
+            ? automaticGuideClicksResult.value
+            : [],
+          automaticGuideClicksResult.status === "fulfilled",
+        )
       : unavailable(guideResult.reason);
   const social =
     instagramResult.status === "fulfilled"
