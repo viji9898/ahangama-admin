@@ -133,7 +133,7 @@ const navItems = [
       { key: "/ga/partner-snapshots", label: "Partner Snapshots" },
       { key: "/ga/free-pass-scans", label: "All Free Pass Scans" },
       { key: "/ga/guide-engagement", label: "Guide Engagement" },
-      { key: "/ga/instagram-engagement", label: "Instagram Engagement" },
+      { key: "/stats/instagram", label: "Instagram Report" },
     ],
   },
   { key: "/admin/qr", label: "QR Analytics", icon: <BarChartOutlined /> },

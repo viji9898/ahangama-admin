@@ -39,6 +39,14 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/stats" element={<PublicStats />} />
+        <Route
+          path="/stats/instagram"
+          element={
+            <RequireAuth>
+              <GAInstagramEngagement />
+            </RequireAuth>
+          }
+        />
         <Route path="/stats/:partnerSlug" element={<PartnerStats />} />
 
         <Route
@@ -101,7 +109,7 @@ export default function App() {
           <Route path="homepage-engagement" element={<GAHomepageEngagement />} />
           <Route
             path="instagram-engagement"
-            element={<GAInstagramEngagement />}
+            element={<Navigate to="/stats/instagram" replace />}
           />
         </Route>
 

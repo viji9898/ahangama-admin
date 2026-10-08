@@ -1,31 +1,19 @@
 import { modernHandler } from "./_lib/modernHandler.mjs";
 import { requireAdmin } from "./_lib/auth.mjs";
-
-const INSIGHT_METRICS = [
-  "views",
-  "reach",
-  "likes",
-  "comments",
-  "shares",
-  "saved",
-  "total_interactions",
-];
-
-const MEDIA_FIELDS = [
-  "id",
-  "caption",
-  "media_type",
-  "media_product_type",
-  "permalink",
-  "timestamp",
-  "like_count",
-  "comments_count",
-  "thumbnail_url",
-  "media_url",
-  "username",
-  "collaborators{username,invite_status}",
-  `insights.metric(${INSIGHT_METRICS.join(",")}){name,values}`,
-].join(",");
+import {
+  getInstagramAccountTotals,
+  getInstagramActiveStories,
+  getInstagramDailyInsights,
+  getInstagramMedia,
+  getInstagramPaidAvailability,
+  getInstagramProfile,
+} from "./_lib/metaInstagramApi.mjs";
+import {
+  buildInstagramReport,
+  instagramReportWindow,
+  normalizeInstagramReportDays,
+  normalizeInstagramTimeSeries,
+} from "./_lib/instagramStats.mjs";
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -36,99 +24,19 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-function getMetaConfig() {
-  const accessToken = String(
-    process.env.META_SYSTEM_USER_ACCESS_TOKEN || "",
-  ).trim();
-  const accountId = String(process.env.META_INSTAGRAM_ACCOUNT_ID || "").trim();
-  const rawVersion = String(
-    process.env.META_GRAPH_API_VERSION || "v25.0",
-  ).trim();
-  const version = /^v\d+\.\d+$/.test(rawVersion)
-    ? rawVersion
-    : /^\d+\.\d+$/.test(rawVersion)
-      ? `v${rawVersion}`
-      : "v25.0";
-
-  if (!accessToken || !accountId) {
-    throw new Error("Instagram credentials are not configured");
-  }
-
-  return { accessToken, accountId, version };
-}
-
-async function fetchMeta(pathOrUrl, params = {}) {
-  const { accessToken, version } = getMetaConfig();
-  const url = pathOrUrl.startsWith("http")
-    ? new URL(pathOrUrl)
-    : new URL(`https://graph.facebook.com/${version}/${pathOrUrl}`);
-
-  url.searchParams.delete("access_token");
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, String(value));
-  }
-
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  const payload = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(
-      payload?.error?.message || `Meta API request failed (${response.status})`,
-    );
-  }
-
-  return payload;
-}
-
-function insightValue(insights, name, fallback = 0) {
-  const metric = (insights?.data || []).find((item) => item.name === name);
-  return Number(metric?.values?.at(-1)?.value ?? fallback ?? 0);
-}
-
-function captionMentions(caption) {
-  return Array.from(
-    new Set(
-      [...String(caption || "").matchAll(/@([a-z0-9._]+)/gi)].map(
-        (match) => `@${match[1].toLowerCase()}`,
-      ),
-    ),
-  );
-}
-
-function collaboratorHandles(collaborators) {
-  return Array.from(
-    new Set(
-      (collaborators?.data || [])
-        .filter(
-          (collaborator) =>
-            !collaborator.invite_status ||
-            collaborator.invite_status === "Accepted",
-        )
-        .map((collaborator) =>
-          collaborator.username
-            ? `@${String(collaborator.username).toLowerCase()}`
-            : "",
-        )
-        .filter(Boolean),
-    ),
-  );
-}
-
-async function getAllMedia(accountId) {
-  const media = [];
-  let path = `${accountId}/media`;
-  let params = { fields: MEDIA_FIELDS, limit: 100 };
-
-  while (path) {
-    const page = await fetchMeta(path, params);
-    media.push(...(page?.data || []));
-    path = page?.paging?.next || "";
-    params = {};
-  }
-
-  return media;
+function accountMetrics(totals) {
+  return {
+    views: totals.views,
+    reach: totals.reach,
+    accountsEngaged: totals.accounts_engaged,
+    interactions: totals.total_interactions,
+    profileViews: totals.profile_views,
+    websiteClicks: totals.website_clicks,
+    profileLinkTaps: totals.profile_links_taps,
+    follows: totals.follows,
+    unfollows: totals.unfollows,
+    available: totals.available,
+  };
 }
 
 async function handler(event) {
@@ -139,50 +47,58 @@ async function handler(event) {
 
     requireAdmin(event);
 
-    const { accountId } = getMetaConfig();
-    const media = await getAllMedia(accountId);
-    const posts = media
-      .map((item) => {
-        const mentions = captionMentions(item.caption);
-        const collaborators = collaboratorHandles(item.collaborators);
-        const likes = insightValue(item.insights, "likes", item.like_count);
-        const comments = insightValue(
-          item.insights,
-          "comments",
-          item.comments_count,
-        );
-        const shares = insightValue(item.insights, "shares");
-        const saved = insightValue(item.insights, "saved");
-
-        return {
-          id: item.id,
-          caption: String(item.caption || ""),
-          mediaType: item.media_type || "",
-          mediaProductType: item.media_product_type || "",
-          permalink: item.permalink || "",
-          timestamp: item.timestamp || "",
-          imageUrl: item.thumbnail_url || item.media_url || "",
-          views: insightValue(item.insights, "views"),
-          reach: insightValue(item.insights, "reach"),
-          likes,
-          comments,
-          shares,
-          saved,
-          interactions: insightValue(
-            item.insights,
-            "total_interactions",
-            likes + comments + shares + saved,
-          ),
-          mentions,
-          collaborators,
-          handles: Array.from(new Set([...mentions, ...collaborators])),
-        };
-      })
-      .sort((left, right) => right.timestamp.localeCompare(left.timestamp));
+    const days = normalizeInstagramReportDays(event.queryStringParameters?.days);
+    const now = Date.now();
+    const window = instagramReportWindow(days, now);
+    const [
+      profile,
+      posts,
+      currentTotals,
+      previousTotals,
+      currentDaily,
+      previousDaily,
+      storiesResult,
+    ] = await Promise.all([
+      getInstagramProfile(),
+      getInstagramMedia(),
+      getInstagramAccountTotals(window.currentStart, window.currentEnd),
+      getInstagramAccountTotals(window.previousStart, window.previousEnd),
+      getInstagramDailyInsights(window.currentStart, window.currentEnd),
+      getInstagramDailyInsights(window.previousStart, window.previousEnd),
+      getInstagramActiveStories().then(
+        (stories) => ({ available: true, stories }),
+        (error) => ({
+          available: false,
+          stories: [],
+          reason: String(error?.message || error),
+        }),
+      ),
+    ]);
 
     return json(200, {
       ok: true,
-      username: media[0]?.username || "ahangama.pass",
+      generatedAt: new Date(now).toISOString(),
+      username: profile.username || posts[0]?.username || "ahangama.pass",
+      profile: {
+        followers: Number(profile.followers_count || 0),
+        mediaCount: Number(profile.media_count || 0),
+        pictureUrl: profile.profile_picture_url || "",
+      },
+      account: accountMetrics(currentTotals),
+      previousAccount: accountMetrics(previousTotals),
+      timeSeries: normalizeInstagramTimeSeries(
+        currentDaily,
+        window.currentStart,
+        window.currentEnd,
+      ),
+      previousTimeSeries: normalizeInstagramTimeSeries(
+        previousDaily,
+        window.previousStart,
+        window.previousEnd,
+      ),
+      stories: storiesResult,
+      paid: getInstagramPaidAvailability(),
+      report: buildInstagramReport(posts, days, now),
       posts,
     });
   } catch (error) {
@@ -194,5 +110,5 @@ async function handler(event) {
   }
 }
 
-export { captionMentions, collaboratorHandles, insightValue };
+export { accountMetrics };
 export default modernHandler(handler);
