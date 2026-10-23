@@ -1,0 +1,103 @@
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,650&display=swap");
+
+:root { --mid-ink: #172d24; --mid-paper: #f3f0e7; --mid-coral: #ff6b4a; --mid-blue: #176b87; --mid-yellow: #f1c84c; --mid-line: rgba(23, 45, 36, 0.2); }
+.midigama-page { min-height: 100vh; background: var(--mid-paper); color: var(--mid-ink); font-family: "Archivo", sans-serif; }
+.midigama-page * { box-sizing: border-box; }
+.midigama-header { min-height: 68px; padding: 16px clamp(20px, 5vw, 72px); display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--mid-line); font-size: 11px; text-transform: uppercase; }
+.midigama-back { display: inline-flex; align-items: center; gap: 9px; color: inherit; font-weight: 700; text-decoration: none; }
+.midigama-hero { min-height: 620px; padding: clamp(76px, 11vw, 150px) clamp(20px, 7vw, 108px) 54px; display: flex; flex-direction: column; justify-content: flex-end; background-color: #dce8dd; background-image: linear-gradient(rgba(23, 45, 36, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(23, 45, 36, 0.1) 1px, transparent 1px); background-size: 40px 40px; border-bottom: 1px solid var(--mid-ink); }
+.midigama-kicker, .midigama-section-label { margin: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.midigama-hero h1 { max-width: 1000px; margin: 18px 0 24px; font: 650 clamp(58px, 10vw, 146px)/0.82 "Source Serif 4", serif; letter-spacing: 0; }
+.midigama-deck { max-width: 700px; margin: 0; font: 500 clamp(18px, 2.2vw, 28px)/1.4 "Source Serif 4", serif; }
+.midigama-facts { margin-top: clamp(54px, 8vw, 100px); display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--mid-ink); }
+.midigama-facts div { padding: 20px 20px 0 0; display: grid; gap: 9px; }
+.midigama-facts span, .midigama-assumptions dt { font-size: 10px; text-transform: uppercase; }
+.midigama-facts strong { font-size: clamp(16px, 1.6vw, 22px); }
+.midigama-section { padding: clamp(72px, 10vw, 130px) clamp(20px, 7vw, 108px); display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 3fr); gap: clamp(32px, 8vw, 130px); border-bottom: 1px solid var(--mid-line); }
+.midigama-section-label { padding-top: 10px; }
+.midigama-prose { min-width: 0; }
+.midigama-prose > h2, .midigama-market-heading h2 { max-width: 900px; margin: 0 0 28px; font: 650 clamp(34px, 5vw, 68px)/1.02 "Source Serif 4", serif; letter-spacing: 0; }
+.midigama-prose > p, .midigama-market-heading p { max-width: 820px; margin: 0 0 32px; font-size: clamp(16px, 1.5vw, 20px); line-height: 1.65; }
+.midigama-status { display: inline-block; padding: 8px 12px; background: var(--mid-yellow); font-size: 11px !important; font-weight: 700; text-transform: uppercase; }
+.midigama-callout { max-width: 820px; margin-top: 48px; padding: 24px 0; display: grid; grid-template-columns: 140px 1fr; gap: 24px; border-top: 3px solid var(--mid-coral); border-bottom: 1px solid var(--mid-line); line-height: 1.55; }
+.midigama-site-grid { margin-top: 56px; display: grid; grid-template-columns: minmax(240px, 0.8fr) minmax(260px, 1.2fr); gap: clamp(36px, 8vw, 100px); align-items: center; }
+.midigama-plot { width: min(100%, 310px); aspect-ratio: 8.07 / 20.23; position: relative; display: grid; grid-template-rows: 1fr 2fr 0.8fr; gap: 5%; padding: 9%; border: 2px solid var(--mid-ink); background: #e1e6c7; }
+.midigama-buildable { display: grid; place-items: center; background: var(--mid-ink); color: white; text-align: center; font: 650 18px/1.2 "Source Serif 4", serif; }
+.midigama-pool { display: grid; place-items: center; background: #89cee0; font-size: 11px; text-transform: uppercase; }
+.midigama-parking { display: grid; place-items: center; width: 58%; justify-self: end; border: 1px dashed var(--mid-ink); font-size: 10px; text-transform: uppercase; }
+.midigama-plot-length { position: absolute; top: 50%; left: -50px; transform: rotate(-90deg); font-size: 10px; text-transform: uppercase; }
+.midigama-plot-width { position: absolute; bottom: -30px; left: 0; width: 100%; text-align: center; font-size: 10px; text-transform: uppercase; }
+.midigama-assumptions { margin: 0; border-top: 1px solid var(--mid-ink); }
+.midigama-assumptions div { padding: 17px 0; display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--mid-line); }
+.midigama-assumptions dd { margin: 0; font-weight: 600; }
+.midigama-note { margin-top: 48px !important; color: rgba(23, 45, 36, 0.68); font-size: 12px !important; }
+.midigama-table-wrap { margin-top: 55px; overflow-x: auto; border-top: 2px solid var(--mid-ink); }
+.midigama-table { width: 100%; min-width: 720px; border-collapse: collapse; }
+.midigama-table th, .midigama-table td { padding: 19px 14px; border-bottom: 1px solid var(--mid-line); text-align: right; vertical-align: top; }
+.midigama-table th { font: 650 18px/1.25 "Source Serif 4", serif; }
+.midigama-table th:first-child, .midigama-table td:first-child { padding-left: 0; text-align: left; }
+.midigama-table-total td { background: #dce8dd; font-weight: 700; }
+.midigama-warning { margin-top: 28px; padding: 18px 20px; border-left: 4px solid var(--mid-coral); background: rgba(255, 107, 74, 0.1); line-height: 1.55; }
+.midigama-market-heading { display: flex; justify-content: space-between; gap: 32px; align-items: flex-end; }
+.midigama-radius { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 54px); border: 1px solid var(--mid-ink); }
+.midigama-radius button { height: 42px; border: 0; border-right: 1px solid var(--mid-ink); background: transparent; color: inherit; cursor: pointer; font: 700 11px "Archivo", sans-serif; }
+.midigama-radius button:last-child { border-right: 0; }
+.midigama-radius button.is-active { background: var(--mid-ink); color: white; }
+.midigama-market-error { margin: 28px 0; padding: 16px 18px; display: flex; justify-content: space-between; gap: 20px; border: 1px solid #a8402e; color: #8f3425; }
+.midigama-market-error button { border: 0; background: none; color: inherit; font-weight: 700; cursor: pointer; }
+.midigama-market-summary { margin: 45px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--mid-ink); border-bottom: 1px solid var(--mid-ink); }
+.midigama-market-summary div { min-height: 130px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid var(--mid-line); }
+.midigama-market-summary div:last-child { border: 0; }
+.midigama-market-summary strong { font: 650 clamp(34px, 4vw, 58px)/1 "Source Serif 4", serif; }
+.midigama-market-summary span { font-size: 10px; text-transform: uppercase; }
+.midigama-map { height: 480px; margin-top: 45px; border: 1px solid var(--mid-ink); }
+.midigama-google-map { width: 100%; height: 100%; }
+.midigama-google-map-error { width: 100%; height: 100%; padding: 32px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 12px; background: #e6e1d4; }
+.midigama-google-map-error strong { font: 650 28px "Source Serif 4", serif; }
+.midigama-google-map-error span { max-width: 620px; line-height: 1.5; }
+.midigama-google-map-error a { color: var(--mid-blue); font-weight: 700; }
+.midigama-place-columns { margin-top: 54px; display: grid; grid-template-columns: 1fr 1fr; gap: clamp(36px, 7vw, 90px); }
+.midigama-place-columns h3 { margin: 0 0 20px; font: 650 28px "Source Serif 4", serif; }
+.midigama-place-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--mid-ink); }
+.midigama-place-list li { padding: 16px 0; display: grid; grid-template-columns: 1fr auto; gap: 20px; border-bottom: 1px solid var(--mid-line); }
+.midigama-place-list li > div:first-child { display: grid; gap: 6px; }
+.midigama-place-list span, .midigama-place-score { color: rgba(23, 45, 36, 0.68); font-size: 11px; }
+.midigama-place-score { white-space: nowrap; text-align: right; }
+.midigama-place-score a { margin-left: 7px; color: var(--mid-blue); }
+.midigama-muted { color: rgba(23, 45, 36, 0.68); }
+.midigama-actions { margin-top: 50px; border-top: 2px solid var(--mid-ink); }
+.midigama-actions article { padding: 28px 0; display: grid; grid-template-columns: 60px 1fr; gap: 24px; border-bottom: 1px solid var(--mid-line); }
+.midigama-actions article > span { color: var(--mid-coral); font-size: 12px; font-weight: 700; }
+.midigama-actions h3 { margin: 0 0 8px; font: 650 25px "Source Serif 4", serif; }
+.midigama-actions p { max-width: 700px; margin: 0; line-height: 1.55; }
+.midigama-conclusion { padding: clamp(70px, 10vw, 130px) clamp(20px, 7vw, 108px); display: flex; align-items: flex-start; gap: 24px; background: var(--mid-ink); color: white; }
+.midigama-conclusion > .anticon { margin-top: 10px; color: var(--mid-coral); font-size: 30px; }
+.midigama-conclusion p { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; }
+.midigama-conclusion h2 { margin: 0 0 24px; font: 650 clamp(30px, 5vw, 66px)/1 "Source Serif 4", serif; }
+.midigama-conclusion a { color: white; }
+@media (max-width: 800px) {
+  .midigama-header { align-items: flex-start; flex-direction: column; }
+  .midigama-hero { min-height: 540px; }
+  .midigama-facts { grid-template-columns: 1fr 1fr; }
+  .midigama-section { grid-template-columns: 1fr; gap: 26px; }
+  .midigama-section-label { padding: 0; }
+  .midigama-site-grid, .midigama-place-columns { grid-template-columns: 1fr; }
+  .midigama-plot { margin: 0 auto 26px; }
+  .midigama-market-heading { display: grid; }
+  .midigama-market-summary { grid-template-columns: 1fr; }
+  .midigama-market-summary div { min-height: 100px; border-right: 0; border-bottom: 1px solid var(--mid-line); }
+  .midigama-market-summary div:last-child { border-bottom: 0; }
+}
+@media (max-width: 520px) {
+  .midigama-hero h1 { font-size: 54px; }
+  .midigama-facts { grid-template-columns: 1fr; }
+  .midigama-callout { grid-template-columns: 1fr; }
+  .midigama-map { height: 380px; }
+  .midigama-place-list li { grid-template-columns: 1fr; }
+  .midigama-place-score { text-align: left; }
+}
+@media print {
+  .midigama-header, .midigama-radius, .midigama-map { display: none; }
+  .midigama-page { background: white; }
+  .midigama-section { break-inside: avoid; padding: 48px 32px; }
+}

@@ -1,7 +1,5 @@
-import { getSessionAdmin } from "./_lib/auth.mjs";
+import { getMidigamaUser } from "./_lib/midigamaAuth.mjs";
 import { modernHandler } from "./_lib/modernHandler.mjs";
-
-const MIDIGAMA_EMAIL = "viji@viji.com";
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -14,13 +12,8 @@ async function handler(event) {
     return json(405, { error: "Method not allowed" });
   }
 
-  const user = getSessionAdmin(event);
-  if (!user) return json(401, { ok: false });
-
-  const email = String(user.email || "").trim().toLowerCase();
-  if (email !== MIDIGAMA_EMAIL) {
-    return json(403, { ok: false });
-  }
+  const access = getMidigamaUser(event);
+  if (!access.user) return json(access.statusCode, { ok: false });
 
   return json(200, { ok: true });
 }
