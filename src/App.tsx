@@ -31,7 +31,9 @@ import NewsletterBuilder from "./pages/NewsletterBuilder";
 import OnlineGuideUpload from "./pages/OnlineGuideUpload";
 import VenueContactInfo from "./pages/VenueContactInfo";
 import { RequireAuth } from "./auth/RequireAuth";
+import { RequireMidigamaAccess } from "./auth/RequireMidigamaAccess";
 import AdminShell from "./pages/AdminShell";
+import Midigama from "./pages/Midigama";
 
 export default function App() {
   return (
@@ -48,6 +50,15 @@ export default function App() {
           }
         />
         <Route path="/stats/:partnerSlug" element={<PartnerStats />} />
+
+        <Route
+          path="/midigama"
+          element={
+            <RequireMidigamaAccess>
+              <Midigama />
+            </RequireMidigamaAccess>
+          }
+        />
 
         <Route
           path="/admin"
